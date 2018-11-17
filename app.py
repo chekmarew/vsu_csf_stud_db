@@ -1,13 +1,9 @@
 from datetime import datetime
-
 from flask import request, render_template, redirect, url_for
-from wtforms import validators, Form, SubmitField, IntegerField, StringField
-from wtforms_alchemy import ModelForm
-from wtforms_alchemy.fields import QuerySelectField
-from wtforms_alchemy.validators import Unique
 
 from app_config import app, db
 from model import StudGroup, Subject, Teacher, Student, CurriculumUnit, AttMark
+from forms import StudGroupForm, StudentForm, StudentSearchForm, SubjectForm, TeacherForm
 
 
 @app.route('/')
@@ -22,20 +18,6 @@ def stud_groups():
         order_by(StudGroup.year, StudGroup.semester, StudGroup.num, StudGroup.subnum). \
         all()
     return render_template('stud_groups.html', stud_groups=groups)
-
-
-class StudGroupForm(ModelForm):
-    class Meta:
-        model = StudGroup
-        exclude = ['active']
-
-    year = IntegerField('Учебный год с 1 сентября',
-                        [validators.DataRequired(), validators.NumberRange(min=2000, max=datetime.now().year + 1)])
-    semester = IntegerField('Семестр', [validators.DataRequired(), validators.NumberRange(min=1, max=10)])
-    num = IntegerField('Группа', [validators.DataRequired(), validators.NumberRange(min=1, max=255)])
-    subnum = IntegerField('Подгруппа', [validators.NumberRange(min=0, max=3)])
-    button_save = SubmitField('Сохранить')
-    button_delete = SubmitField('Удалить')
 
 
 @app.route('/stud_group/<id>', methods=['GET', 'POST'])
@@ -97,29 +79,6 @@ def stud_group(id):
     return render_template('stud_group.html', group=group, form=form)
 
 
-class StudentForm(ModelForm):
-    class Meta:
-        model = Student
-        include_primary_keys = True
-
-    id = IntegerField('Номер студенческого билета', [validators.DataRequired(), validators.NumberRange(min=1), Unique(Student.id, get_session=lambda: db.session, message='Номер студенческого билета занят')])
-    surname = StringField('Фамилия', [validators.DataRequired()])
-    firstname = StringField('Имя', [validators.DataRequired()])
-    middlename = StringField('Отчество')
-    semester = IntegerField('Семестр', [validators.NumberRange(min=1, max=10), validators.Optional()])
-    stud_group = QuerySelectField('Группа',
-                                  query_factory=lambda: db.session.query(StudGroup).filter(StudGroup.active).order_by(
-                                      StudGroup.year, StudGroup.semester, StudGroup.num, StudGroup.subnum).all(),
-                                  get_pk=lambda g: g.id,
-                                  get_label=lambda g: "%d курс группа %s" % (g.course, g.num_print),
-                                  blank_text='Не указана', allow_blank=True)
-    alumnus_year = IntegerField('Учебный год выпуск', [validators.NumberRange(min=2000, max=datetime.now().year + 1), validators.Optional()])
-    expelled_year = IntegerField('Учебный год отчисления', [validators.NumberRange(min=2000, max=datetime.now().year + 1), validators.Optional()])
-
-    button_save = SubmitField('Сохранить')
-    button_delete = SubmitField('Удалить')
-
-
 @app.route('/student/<id>', methods=['GET', 'POST'])
 def student(id):
     if id == 'new':
@@ -162,25 +121,6 @@ def student(id):
     return render_template('student.html', student=s, form=form)
 
 
-class StudentSearchForm(Form):
-    id = IntegerField('Номер студенческого билета', [validators.NumberRange(min=1), validators.Optional()])
-    surname = StringField('Фамилия', [validators.Length(min=2, max=Student.surname.property.columns[0].type.length), validators.Optional()])
-    firstname = StringField('Имя', [validators.Length(min=2, max=Student.firstname.property.columns[0].type.length), validators.Optional()])
-    middlename = StringField('Отчество', [validators.Length(min=2, max=Student.middlename.property.columns[0].type.length), validators.Optional()])
-    semester = IntegerField('Семестр', [validators.NumberRange(min=1, max=10), validators.Optional()])
-    stud_group = QuerySelectField('Группа',
-                                  query_factory=lambda: db.session.query(StudGroup).filter(StudGroup.active).order_by(
-                                      StudGroup.year, StudGroup.semester, StudGroup.num, StudGroup.subnum).all(),
-                                  get_pk=lambda g: g.id,
-                                  get_label=lambda g: "%d курс группа %s" % (g.course, g.num_print),
-                                  blank_text='Неизвестно', allow_blank=True)
-    alumnus_year = IntegerField('Учебный год выпуск',
-                                [validators.NumberRange(min=2000, max=datetime.now().year + 1), validators.Optional()])
-    expelled_year = IntegerField('Учебный год отчисления',
-                                 [validators.NumberRange(min=2000, max=datetime.now().year + 1), validators.Optional()])
-    button_search = SubmitField('Поиск')
-
-
 @app.route('/students', methods=['GET'])
 def students():
     form = StudentSearchForm(request.args)
@@ -215,14 +155,6 @@ def students():
 def subjects():
     s = db.session.query(Subject).order_by(Subject.name)
     return render_template('subjects.html', subjects=s)
-
-
-class SubjectForm(ModelForm):
-    class Meta:
-        model = Subject
-    name = StringField('Название предмета', [validators.DataRequired(), Unique(Subject.name, get_session=lambda: db.session, message='Предмет с таким названием существует')])
-    button_save = SubmitField('Сохранить')
-    button_delete = SubmitField('Удалить')
 
 
 @app.route('/subject/<id>', methods=['GET', 'POST'])
@@ -261,18 +193,6 @@ def subject(id):
 @app.route('/teachers')
 def teachers():
     return render_template('teachers.html', teachers=db.session.query(Teacher).order_by(Teacher.surname, Teacher.firstname, Teacher.middlename))
-
-
-class TeacherForm(ModelForm):
-    class Meta:
-        model = Teacher
-
-    surname = StringField('Фамилия', [validators.DataRequired()])
-    firstname = StringField('Имя', [validators.DataRequired()])
-    middlename = StringField('Отчество')
-    rank = StringField('Должность', [validators.DataRequired()])
-    button_save = SubmitField('Сохранить')
-    button_delete = SubmitField('Удалить')
 
 
 @app.route('/teacher/<id>', methods=['GET', 'POST'])

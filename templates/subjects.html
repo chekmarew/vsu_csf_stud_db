@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Список предметов</title>
+    {% include '_header.html' %}
+</head>
+<body>
+    {% include '_menu.html' %}
+    <div class="container">
+    <h2>Список предметов</h2>
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Название</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for s in subjects %}
+                <tr>
+                    <td><a href="{{ url_for('subject', id=s.id) }}">{{ s.name }}</a></td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div class="container">
+        <a href="{{ url_for('subject', id='new') }}" class="btn btn-primary">Добавить предмет</a>
+    </div>
+    </div>
+</body>
+</html>

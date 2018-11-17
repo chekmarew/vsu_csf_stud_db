@@ -1,0 +1,24 @@
+{% macro bootstrap_form_input(element) -%}
+    <div class="form-group row">
+        {{ element.label(class_="col-sm-4 col-form-label") }}
+        <div class="col-sm-4">
+            {{ element(class_="form-control") }}
+        </div>
+        {% if element.errors %}
+            <div class="col-sm-4 d-block invalid-feedback">
+                {{ ', '.join(element.errors ) }}
+            </div>
+        {% endif %}
+    </div>
+{%- endmacro %}
+
+{% macro bootstrap_form_button(element, class_='btn btn-success') -%}
+    <div class="form-group">
+        {{ element(class_=class_) }}
+        {% if element.errors %}
+            <div class="d-block invalid-feedback">
+                {{ ', '.join(element.errors ) }}
+            </div>
+        {% endif %}
+    </div>
+{%- endmacro %}

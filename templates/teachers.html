@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Список преподавателей</title>
+    {% include '_header.html' %}
+</head>
+<body>
+    {% include '_menu.html' %}
+    <div class="container">
+    <h2>Список преподавателей</h2>
+    <table class="table">
+        <thead>
+            <tr>
+                <th>ФИО</th>
+                <th>Должность</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for t in teachers %}
+                <tr>
+                    <td><a href="{{ url_for('teacher', id=t.id) }}">{{ t.full_name }}</a></td>
+                    <td>{{ t.rank }}</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div class="container">
+        <a href="{{ url_for('teacher', id='new') }}" class="btn btn-primary">Добавить преподавателя</a>
+    </div>
+    </div>
+</body>
+</html>
