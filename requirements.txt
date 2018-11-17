@@ -1,0 +1,8 @@
+SQLAlchemy
+Flask
+Flask-SQLAlchemy
+PyMySQL
+mysql-connector
+MySQL-connector-python
+WTForms
+WTForms-Alchemy
