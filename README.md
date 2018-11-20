@@ -3,3 +3,4 @@
 - vsu_csf_stud_db/create_db.sql
 - Python
 - SqlAlchemy Flask FlaskAlchemy
+- UI Jquery Bootstrap 4
