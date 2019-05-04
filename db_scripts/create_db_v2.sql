@@ -74,10 +74,10 @@ CREATE TABLE `att_mark` (
 
 
 -- tables for attendance
+
 CREATE TABLE `teaching_lesson` (
   `teaching_lesson_id` int(11) unsigned NOT NULL AUTO_INCREMENT COMMENT 'ID учебного занятия',
-  `schedule` json NOT NULL COMMENT 'Расписание', -- возможно оно должно быть UNIQUE, но я пока не уверен
-  -- на json почему-то ругается, хотя тип такой в MySQL есть
+  `schedule` json NOT NULL COMMENT 'Расписание',
   `lesson_type` enum ('Lection', 'Practice', 'Seminar') NOT NULL COMMENT 'Тип учебного занятия',
   PRIMARY KEY (`teaching_lesson_id`)
 ) DEFAULT CHARSET=utf8 COMMENT 'Учебные занятия';
@@ -99,7 +99,7 @@ CREATE TABLE `attendance` (
 ) DEFAULT CHARSET=utf8 COMMENT 'Посещаемость';
 
 CREATE TABLE `support_table_for_nominator_and_denominator` (
--- вставить сюда дату (не забыть)!!!
+	`first_lesson_date` date NOT NULL COMMENT 'Дата первого занятия'
 ) DEFAULT CHARSET=utf8 COMMENT 'Вспомогательная таблица для определения числителя/знаменателя';
 
 

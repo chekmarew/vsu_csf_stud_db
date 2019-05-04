@@ -1,0 +1,10 @@
+DROP TABLE IF EXISTS att_mark CASCADE;
+DROP TABLE IF EXISTS attendance CASCADE;
+DROP TABLE IF EXISTS curriculum_unit CASCADE;
+DROP TABLE IF EXISTS stud_group CASCADE;
+DROP TABLE IF EXISTS student CASCADE;
+DROP TABLE IF EXISTS subject CASCADE;
+DROP TABLE IF EXISTS support_table_for_nominator_and_denominator CASCADE;
+DROP TABLE IF EXISTS teacher CASCADE;
+DROP TABLE IF EXISTS teaching_lesson CASCADE;
+DROP TABLE IF EXISTS teaching_lesson_and_curriculum_unit CASCADE;

@@ -98,6 +98,7 @@ class CurriculumUnit(db.Model):
     subject = db.relationship('Subject')
     teacher = db.relationship('Teacher')
     att_marks = db.relationship('AttMark', lazy=True, backref='curriculum_unit')
+    teaching_lessons = db.relationship('TeachingLesson', secondary='teaching_lesson_and_curriculum_unit')
 
 
 class Student(db.Model, _ObjectWithFullName):
@@ -128,3 +129,44 @@ class AttMark(db.Model):
     att_mark_exam = db.Column(db.SMALLINT)
     att_mark_append_ball = db.Column(db.SMALLINT)
     student = db.relationship('Student')
+
+# ToDo - смаппить добавленные таблицы
+
+
+class LessonType(enum.Enum):
+    lection = 1
+    practice = 2
+    seminar = 3
+
+
+class TeachingLesson(db.Model):
+    __tablename__ = 'teaching_lesson'
+
+    teaching_lesson_id = db.Column(db.INTEGER, primary_key=True, autoincrement=True)
+    schedule = db.Column(db.JSON, nullable=False)
+    lesson_type = db.Column(db.Enum(LessonType), nullable=False)
+
+    curriculum_units = db.relationship('CurriculumUnit', secondary='teaching_lesson_and_curriculum_unit')
+
+
+class TeachingLessonAndCurriculumUnit(db.Model):
+    __tablename__ = 'teaching_lesson_and_curriculum_unit'
+
+    teaching_lesson_id = db.Column(db.Integer, db.ForeignKey('curriculum_unit.curriculum_unit_id'), primary_key=True)
+    curriculum_unit_id = db.Column(db.Integer, db.ForeignKey('teaching_lesson.teaching_lesson_id'), primary_key=True)
+
+
+class Attendance(db.Model):
+    __tablename__ = 'attendance'
+    __table_args__ = (
+        db.ForeignKeyConstraint(['attendance_teaching_lesson_id', 'attendance_curriculum_unit_id'],
+                                ['teaching_lesson_and_curriculum_unit.teaching_lesson_id',
+                                 'teaching_lesson_and_curriculum_unit.curriculum_unit_id'])
+    )
+
+    attendance_teaching_lesson_id = db.Column(db.INTEGER, primary_key=True, autoincrement=True)
+    attendance_curriculum_unit_id = db.Column(db.INTEGER, primary_key=True, autoincrement=True)
+
+    lesson_attendance = db.Column(db.Boolean, nullable=False)
+    lesson_date = db.Column(db.Date, nullable=False)
+    student_id = db.Column(db.BIGINT, db.ForeignKey('student.student_id'), nullable=False)

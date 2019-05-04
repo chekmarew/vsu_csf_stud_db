@@ -82,3 +82,5 @@ class TeacherForm(ModelForm):
     rank = StringField('Должность', [validators.DataRequired()])
     button_save = SubmitField('Сохранить')
     button_delete = SubmitField('Удалить')
+
+# код для курсовой ниже

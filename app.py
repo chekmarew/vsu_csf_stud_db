@@ -228,6 +228,7 @@ def teacher(id):
 
     return render_template('teacher.html', teacher=t, form=form)
 
+# код для курсовой ниже
 
 if __name__ == '__main__':
     app.run()
