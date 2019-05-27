@@ -78,7 +78,7 @@ CREATE TABLE `att_mark` (
 CREATE TABLE `teaching_lesson` (
   `teaching_lesson_id` int(11) unsigned NOT NULL AUTO_INCREMENT COMMENT 'ID учебного занятия',
   `schedule` json NOT NULL COMMENT 'Расписание',
-  `lesson_type` enum ('Lection', 'Practice', 'Seminar') NOT NULL COMMENT 'Тип учебного занятия',
+  `lesson_type` enum ('Лекция', 'Практика', 'Семинар') NOT NULL COMMENT 'Тип учебного занятия',
   PRIMARY KEY (`teaching_lesson_id`)
 ) DEFAULT CHARSET=utf8 COMMENT 'Учебные занятия';
 
@@ -94,13 +94,35 @@ CREATE TABLE `attendance` (
 	-- что имелось ввиду под этим в письме? - ссылка на ключ из таблицы(2)
     `lesson_attendance` bool NOT NULL COMMENT 'Посещение занятия',
     `lesson_date` date NOT NULL COMMENT 'Дата занятия',
-    `student_id` int(11) unsigned NOT NULL COMMENT 'ID студента',
+    `student_id` bigint(20) unsigned NOT NULL COMMENT 'ID студента',
     CONSTRAINT `fk_student_id` FOREIGN KEY (`student_id`) REFERENCES `student` (`student_id`) ON DELETE NO ACTION ON UPDATE NO ACTION
 ) DEFAULT CHARSET=utf8 COMMENT 'Посещаемость';
 
 CREATE TABLE `support_table_for_nominator_and_denominator` (
 	`first_lesson_date` date NOT NULL COMMENT 'Дата первого занятия'
 ) DEFAULT CHARSET=utf8 COMMENT 'Вспомогательная таблица для определения числителя/знаменателя';
+
+CREATE TABLE `user` (
+	`id` int(11) unsigned NOT NULL AUTO_INCREMENT COMMENT 'ID пользователя',
+    `username` varchar(50) NOT NULL UNIQUE COMMENT 'Имя пользователя',
+    `password` varchar(255) NOT NULL DEFAULT '' COMMENT 'Пароль пользователя',
+    `is_active` boolean NOT NULL DEFAULT '0' COMMENT 'Активен/неактивен аккаунт',
+    PRIMARY KEY (`id`)
+) DEFAULT CHARSET=utf8 COMMENT 'Пользователи';
+
+CREATE TABLE `role` (
+	`id` int(11) unsigned NOT NULL AUTO_INCREMENT COMMENT 'ID роли',
+    `name` varchar(50) NOT NULL UNIQUE COMMENT 'Название роли',
+    PRIMARY KEY (`id`)
+) DEFAULT CHARSET=utf8 COMMENT 'Роли для пользователей';
+
+CREATE TABLE `user_roles` (
+  `user_id` int(11) unsigned NOT NULL COMMENT 'ID пользователя',
+  `role_id` int(11) unsigned NOT NULL COMMENT 'ID роли',
+  PRIMARY KEY (`user_id`, `role_id`),
+  CONSTRAINT `fk_user_id` FOREIGN KEY (`user_id`) REFERENCES `user` (`id`) ON DELETE CASCADE ON UPDATE NO ACTION,
+  CONSTRAINT `fk_role_id` FOREIGN KEY (`role_id`) REFERENCES `role` (`id`) ON DELETE CASCADE ON UPDATE NO ACTION
+) DEFAULT CHARSET=utf8 COMMENT 'Связь между пользователями и ролями';
 
 
 

@@ -16,6 +16,23 @@
         <li class="nav-item">
             <a href="{{ url_for('teachers') }}" class="nav-link">Преподаватели</a>
         </li>
+        <li class="nav-item">
+            <a href="{{ url_for('attendance') }}" class="nav-link">Посещаемость</a>
+        </li>
     </ul>
-
+    <div class="col" style="text-align: right;">
+            {{username}}
+        </div>
+        <li class="dropdown">
+            <a class="dropdown-toggle" data-toggle="dropdown" href="#">
+                <i class="fa fa-user fa-fw"></i>
+            </a>
+            <ul class="dropdown-menu dropdown-user dropdown-menu-right">
+                <li>
+                    <a href="/user/sign-out">
+                        <i class="fas fa-sign-out-alt"></i> Logout
+                    </a>
+                </li>
+            </ul>
+        </li>
 </nav>

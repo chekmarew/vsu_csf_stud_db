@@ -22,7 +22,7 @@
                 <tr>
                     <td>{{ g.year_print }}</td>
                     <td>{{ g.course }}</td>
-                    <td>{{ g.semester }}</td>
+                    <td><a href="{{url_for('attendance')}}">{{ g.semester }}</a></td>
                     <td><a href="{{url_for('stud_group', id=g.id)}}">{{ g.num_print }}</a></td>
                 </tr>
             {% endfor %}

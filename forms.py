@@ -1,11 +1,13 @@
 from datetime import datetime
 
-from app_config import db
-from model import StudGroup, Subject, Teacher, Student, CurriculumUnit, AttMark
-from wtforms import validators, Form, SubmitField, IntegerField, StringField
+from flask_wtf import FlaskForm
+from wtforms import validators, Form, SubmitField, IntegerField, StringField, PasswordField
 from wtforms_alchemy import ModelForm
 from wtforms_alchemy.fields import QuerySelectField
 from wtforms_alchemy.validators import Unique
+
+from app_config import db
+from model import StudGroup, Subject, Teacher, Student
 
 
 class StudGroupForm(ModelForm):
@@ -27,7 +29,9 @@ class StudentForm(ModelForm):
         model = Student
         include_primary_keys = True
 
-    id = IntegerField('Номер студенческого билета', [validators.DataRequired(), validators.NumberRange(min=1), Unique(Student.id, get_session=lambda: db.session, message='Номер студенческого билета занят')])
+    id = IntegerField('Номер студенческого билета', [validators.DataRequired(), validators.NumberRange(min=1),
+                                                     Unique(Student.id, get_session=lambda: db.session,
+                                                            message='Номер студенческого билета занят')])
     surname = StringField('Фамилия', [validators.DataRequired()])
     firstname = StringField('Имя', [validators.DataRequired()])
     middlename = StringField('Отчество')
@@ -38,8 +42,10 @@ class StudentForm(ModelForm):
                                   get_pk=lambda g: g.id,
                                   get_label=lambda g: "%d курс группа %s" % (g.course, g.num_print),
                                   blank_text='Не указана', allow_blank=True)
-    alumnus_year = IntegerField('Учебный год выпуск', [validators.NumberRange(min=2000, max=datetime.now().year + 1), validators.Optional()])
-    expelled_year = IntegerField('Учебный год отчисления', [validators.NumberRange(min=2000, max=datetime.now().year + 1), validators.Optional()])
+    alumnus_year = IntegerField('Учебный год выпуск',
+                                [validators.NumberRange(min=2000, max=datetime.now().year + 1), validators.Optional()])
+    expelled_year = IntegerField('Учебный год отчисления',
+                                 [validators.NumberRange(min=2000, max=datetime.now().year + 1), validators.Optional()])
 
     button_save = SubmitField('Сохранить')
     button_delete = SubmitField('Удалить')
@@ -47,9 +53,13 @@ class StudentForm(ModelForm):
 
 class StudentSearchForm(Form):
     id = IntegerField('Номер студенческого билета', [validators.NumberRange(min=1), validators.Optional()])
-    surname = StringField('Фамилия', [validators.Length(min=2, max=Student.surname.property.columns[0].type.length), validators.Optional()])
-    firstname = StringField('Имя', [validators.Length(min=2, max=Student.firstname.property.columns[0].type.length), validators.Optional()])
-    middlename = StringField('Отчество', [validators.Length(min=2, max=Student.middlename.property.columns[0].type.length), validators.Optional()])
+    surname = StringField('Фамилия', [validators.Length(min=2, max=Student.surname.property.columns[0].type.length),
+                                      validators.Optional()])
+    firstname = StringField('Имя', [validators.Length(min=2, max=Student.firstname.property.columns[0].type.length),
+                                    validators.Optional()])
+    middlename = StringField('Отчество',
+                             [validators.Length(min=2, max=Student.middlename.property.columns[0].type.length),
+                              validators.Optional()])
     semester = IntegerField('Семестр', [validators.NumberRange(min=1, max=10), validators.Optional()])
     stud_group = QuerySelectField('Группа',
                                   query_factory=lambda: db.session.query(StudGroup).filter(StudGroup.active).order_by(
@@ -67,7 +77,10 @@ class StudentSearchForm(Form):
 class SubjectForm(ModelForm):
     class Meta:
         model = Subject
-    name = StringField('Название предмета', [validators.DataRequired(), Unique(Subject.name, get_session=lambda: db.session, message='Предмет с таким названием существует')])
+
+    name = StringField('Название предмета', [validators.DataRequired(),
+                                             Unique(Subject.name, get_session=lambda: db.session,
+                                                    message='Предмет с таким названием существует')])
     button_save = SubmitField('Сохранить')
     button_delete = SubmitField('Удалить')
 
@@ -83,4 +96,15 @@ class TeacherForm(ModelForm):
     button_save = SubmitField('Сохранить')
     button_delete = SubmitField('Удалить')
 
+
 # код для курсовой ниже
+
+
+class LoginForm(FlaskForm):
+    username = StringField('username', validators=[validators.InputRequired(), validators.Length(max=50)])
+    password = PasswordField('password', validators=[validators.InputRequired(), validators.Length(max=255)])
+
+
+class RegisterForm(FlaskForm):
+    username = StringField('username', validators=[validators.InputRequired(), validators.Length(max=50)])
+    password = PasswordField('password', validators=[validators.InputRequired(), validators.Length(max=255)])

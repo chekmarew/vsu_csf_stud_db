@@ -1,3 +1,15 @@
+-- пользователи
+insert into user values(1, 'qwerty', 'qwerty', true);
+insert into user values(2, 'admin', 'admin', true);
+
+-- роли пользователей
+insert into role values(1, 'Student');
+insert into role values(2, 'Teacher');
+
+-- связь между пользователями и ролями
+insert into user_roles values(1, 1);
+insert into user_roles values(2, 2);
+
 -- группы
 insert into stud_group values(null, 2018,1,1,0,1);
 insert into stud_group values(null, 2018,1,2,0,1);
