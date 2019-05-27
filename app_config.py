@@ -1,10 +1,9 @@
 import os
 
+import flask_excel as excel
 from flask import Flask
-from flask_bootstrap import Bootstrap
 from flask_sqlalchemy import SQLAlchemy
 from flask_user import LoginManager
-import flask_excel as excel
 
 
 class Config:
@@ -25,7 +24,6 @@ app = Flask(__name__)
 app.config.from_object(Config())
 app.config['SECRET_KEY'] = os.urandom(24)
 db = SQLAlchemy(app)
-bootstrap = Bootstrap(app)
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 excel.init_excel(app)

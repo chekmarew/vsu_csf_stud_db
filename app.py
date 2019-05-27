@@ -18,7 +18,6 @@ from model import StudGroup, Subject, Teacher, Student, CurriculumUnit, AttMark,
 # ToDo - отметка праздничных неучебных дней???
 
 # ToDo - при регистрации задать еще роль бы как-то...
-# ToDo - с Flask-Bootstrap решить вопрос (стили в PDF нет скорее всего тоже из-за этого)
 
 path_wkthmltopdf = b'C:/Program Files/wkhtmltopdf/bin/wkhtmltopdf.exe'
 config = configuration(wkhtmltopdf=path_wkthmltopdf)
