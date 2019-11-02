@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    {% from "public/_macros_bootstrap" import bootstrap_form_input, bootstrap_form_button with context %}
+    <meta charset="UTF-8">
+    <title>Преподаватель</title>
+    {% include 'public/_header.html' %}
+</head>
+<body>
+{% include 'public/_menu.html' %}
+<div class="container">
+    <h2>Преподаватель</h2>
+    {% if teacher.id %}
+    <h3>{{ teacher.full_name }}</h3>
+    {% endif %}
+    <form method="post">
+        {{ bootstrap_form_input(form.surname) }}
+        {{ bootstrap_form_input(form.firstname) }}
+        {{ bootstrap_form_input(form.middlename) }}
+        {{ bootstrap_form_input(form.rank) }}
+        {% if teacher.id %}
+        {{ bootstrap_form_button(form.button_delete, class_="btn btn-danger") }}
+        {% endif %}
+        {{ bootstrap_form_button(form.button_save, class_="btn btn-success") }}
+    </form>
+
+</div>
+</body>
+</html>

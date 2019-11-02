@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    {% from "public/_macros_bootstrap" import bootstrap_form_input, bootstrap_form_button with context %}
+    <meta charset="UTF-8">
+    <title>Поиск студентов</title>
+    {% include 'public/_header.html' %}
+</head>
+<body>
+{% include 'public/_menu.html' %}
+<div class="container">
+    <h2>Студенты</h2>
+
+    <h3>Поиск</h3>
+    <form method="get">
+        {{ bootstrap_form_input(form.id) }}
+        {{ bootstrap_form_input(form.surname) }}
+        {{ bootstrap_form_input(form.firstname) }}
+        {{ bootstrap_form_input(form.middlename) }}
+        {{ bootstrap_form_input(form.stud_group) }}
+        {{ bootstrap_form_input(form.semester) }}
+        {{ bootstrap_form_input(form.alumnus_year) }}
+        {{ bootstrap_form_input(form.expelled_year) }}
+        {{ bootstrap_form_button(form.button_search, class_="btn btn-success") }}
+    </form>
+    {% if students != None %}
+    <h3>Результаты поиска</h3>
+    <table class="table">
+        <thead>
+        <tr>
+            <th>Студ. билет №</th>
+            <th>ФИО</th>
+            <th>Семестр</th>
+            <th>Группа</th>
+            <th>Дополнительно</th>
+        </tr>
+        </thead>
+        <tbody>
+        {% for s in students %}
+        <tr>
+            <td><a href="{{ url_for('student', id=s.id) }}">{{ s.id }}</a></td>
+            <td><a href="{{ url_for('student', id=s.id) }}">{{ s.full_name }}</a></td>
+            <td>
+                {% if s.semester %}
+                {{ s.semester }}
+                {% endif %}
+            </td>
+            <td>
+                {% if s.stud_group %}
+                <a href="{{ url_for('stud_group', id=s.stud_group.id) }}">{{ s.stud_group.num_print }}</a>
+                {% endif %}
+            </td>
+            <td>
+                {% if s.alumnus_year %}
+                Успешно закончил обучение в {{ s.alumnus_year }} году
+                {% endif %}
+                {% if s.expelled_year %}
+                Отчислен в {{ s.expelled_year }} году
+                {% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+    <div>
+        <a href="{{url_for('student', id='new')}}" class="btn btn-primary">Добавить студента</a>
+    </div>
+</div>
+</body>
+</html>
