@@ -12,14 +12,18 @@ class Config:
     SQLALCHEMY_COMMIT_ON_TEARDOWN = True  # Autocommit
     SQLALCHEMY_TRACK_MODIFICATIONS = False  # ??? Если не прописать, то будет Warning
     SECRET_KEY = urandom(24)
-    MINIFY_PAGE = True
     SESSION_COOKIE_HTTPONLY = True
+
+    WKHTMLTOPDF_BIN_PATH = 'C:/Program Files/wkhtmltopdf/bin'
+    PDF_DIR_PATH = 'app/pdf'
+    WKHTMLTOPDF_USE_CELERY = False
 
 
 class ProductionConfig(Config):
     """Конфигурация для Production"""
     ASSETS_DEBUG = False
     SQLALCHEMY_TRACK_MODIFICATIONS = False
+    MINIFY_PAGE = True
 
 
 class DevelopmentConfig(Config):

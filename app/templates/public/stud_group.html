@@ -53,7 +53,7 @@
         {% for s in group.students %}
         <tr>
             <td>{{ s.id }}</td>
-            <td><a href="{{ url_for('student', id=s.id) }}">{{ s.full_name }}</a></td>
+            <td><a href="{{ url_for('student', group_id=s.id) }}">{{ s.full_name }}</a></td>
         </tr>
         {% endfor %}
         </tbody>

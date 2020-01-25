@@ -24,13 +24,13 @@
             <td>{{ g.year_print }}</td>
             <td>{{ g.course }}</td>
             <td>{{ g.semester }}</td>
-            <td><a href="{{url_for('stud_group', id=g.id)}}">{{ g.num_print }}</a></td>
+            <td><a href="{{url_for('stud_group', group_id=g.id)}}">{{ g.num_print }}</a></td>
         </tr>
         {% endfor %}
         </tbody>
     </table>
     <div>
-        <a href="{{url_for('stud_group', id='new')}}" class="btn btn-primary">Добавить группу</a>
+        <a href="{{url_for('stud_group', group_id='new')}}" class="btn btn-primary">Добавить группу</a>
     </div>
 </div>
 </body>

@@ -90,15 +90,15 @@ class StudentSearchForm(Form):
     surname = StringField('Фамилия',
                           [validators.Length(
                               min=2, max=Student.surname.property.columns[0].type.length),
-                           validators.Optional()])
+                              validators.Optional()])
     firstname = StringField('Имя',
                             [validators.Length(
                                 min=2, max=Student.firstname.property.columns[0].type.length),
-                             validators.Optional()])
+                                validators.Optional()])
     middlename = StringField('Отчество',
                              [validators.Length(
                                  min=2, max=Student.middlename.property.columns[0].type.length),
-                              validators.Optional()])
+                                 validators.Optional()])
     semester = IntegerField('Семестр',
                             [validators.NumberRange(min=1, max=10),
                              validators.Optional()])

@@ -1,4 +1,5 @@
 """Класс в котором содержатся веб-странички приложения"""
+from collections import OrderedDict
 from datetime import datetime
 
 from flask import make_response
@@ -6,15 +7,11 @@ from flask import redirect
 from flask import render_template
 from flask import request
 from flask import url_for
-from flask_excel import make_response as excel_response
-from flask_user import SQLAlchemyAdapter
-from flask_user import UserManager
-from flask_user import roles_accepted
-from pdfkit import configuration
-from pdfkit import from_url
+from pdfkit import from_string
 
 from app import APP
 from app import DB
+from app import excel
 from app.forms import StudGroupForm
 from app.forms import StudentForm
 from app.forms import StudentSearchForm
@@ -27,22 +24,9 @@ from app.model import StudGroup
 from app.model import Student
 from app.model import Subject
 from app.model import Teacher
-from app.model import User
 
-# ToDo - добавить тестовые данные для своих таблиц
-# ToDo - статистика по студентам (по %, по пропускам, посещениям)
-# ToDo - Экспорт, импорт pdf, Excel
-# ToDo - авторизация, регистрация? (роли: студент, преподаватель, староста???) - в общем сделано
-# ToDo - настройка баллов по посещаемости???
-# ToDo - отметка праздничных неучебных дней???
 
-# ToDo - при регистрации задать еще роль бы как-то...
-
-PATH_WKHTMLTOPDF = b'C:/Program Files/wkhtmltopdf/bin/wkhtmltopdf.exe'
-CONFIG = configuration(wkhtmltopdf=PATH_WKHTMLTOPDF)
-
-DB_ADAPTER = SQLAlchemyAdapter(DB, User)
-USER_MANAGER = UserManager(DB_ADAPTER, APP)
+# USER_MANAGER = UserManager(APP, DB, User)
 
 
 @APP.route('/')
@@ -52,7 +36,7 @@ def index():
 
 
 @APP.route('/stud_groups')
-@roles_accepted('Teacher', 'Student')
+# @login_required
 def stud_groups():
     """Страничка, отображающая все учебные группы студентов"""
     groups = DB.session.query(StudGroup). \
@@ -63,7 +47,7 @@ def stud_groups():
 
 
 @APP.route('/stud_group/<group_id>', methods=['GET', 'POST'])
-@roles_accepted('Teacher')
+# @login_required
 def stud_group(group_id):
     """Страничка, отображающая конкретную учебную группу"""
     if group_id == 'new':
@@ -130,7 +114,7 @@ def stud_group(group_id):
 
 
 @APP.route('/student/<group_id>', methods=['GET', 'POST'])
-@roles_accepted('Teacher', 'Student')
+# @login_required
 def student(group_id):
     """Страничка для отображения студента из группы"""
     if group_id == 'new':
@@ -178,7 +162,7 @@ def student(group_id):
 
 
 @APP.route('/students', methods=['GET'])
-@roles_accepted('Teacher', 'Student')
+# @login_required
 def students():
     """Страница для отображения всех студентов"""
     form = StudentSearchForm(request.args)
@@ -210,7 +194,7 @@ def students():
 
 
 @APP.route('/subjects')
-@roles_accepted('Teacher', 'Student')
+# @login_required
 def subjects():
     """Страничка для отображения предметов обучения"""
     fetched_subjects = DB.session.query(Subject).order_by(Subject.name)
@@ -218,7 +202,7 @@ def subjects():
 
 
 @APP.route('/subject/<subject_id>', methods=['GET', 'POST'])
-@roles_accepted('Teacher')
+# @login_required
 def subject(subject_id):
     """Страничка для отображения конкретного предмета обучения"""
     if subject_id == 'new':
@@ -257,7 +241,7 @@ def subject(subject_id):
 
 
 @APP.route('/teachers')
-@roles_accepted('Teacher', 'Student')
+# @login_required
 def teachers():
     """Страничка для отображения списка учителей"""
     return render_template('public/teachers.html',
@@ -266,7 +250,7 @@ def teachers():
 
 
 @APP.route('/teacher/<teacher_id>', methods=['GET', 'POST'])
-@roles_accepted('Teacher')
+# @login_required
 def teacher(teacher_id):
     """Страничка для отображения конкретного учителя"""
     if teacher_id == 'new':
@@ -312,29 +296,110 @@ def teacher(teacher_id):
 # распечатка PDF - https://pythonhosted.org/Flask-WeasyPrint/
 # распечатка Excel - https://flask-excel.readthedocs.io/en/latest/
 
-@APP.login_manager.user_loader
-def load_user(user_id):
-    """Функция которая загружает пользователя по id"""
-    return User.query.get(int(user_id))
 
-
-@APP.route("/attendance.pdf")
+@APP.route("/pdf_attendance")
 def print_pdf():
     """Страничка для отображения посещаемости в формате PDF"""
-    pdf = from_url(url_for('attendance', _external=True), output_path='docs_output/attendance.pdf',
-                   configuration=CONFIG)
+    course = 3
+    group_num = 3
+    group_subnum = 1
+    groups = DB.session.query(StudGroup). \
+        filter(StudGroup.active). \
+        filter(StudGroup.semester == 5). \
+        order_by(StudGroup.year, StudGroup.semester, StudGroup.num, StudGroup.subnum). \
+        all()  # находим список групп
+    group = DB.session.query(StudGroup). \
+        filter(StudGroup.active). \
+        filter(StudGroup.semester == 5). \
+        filter(StudGroup.num == group_num). \
+        filter(StudGroup.subnum == group_subnum). \
+        order_by(StudGroup.year, StudGroup.semester, StudGroup.num, StudGroup.subnum). \
+        first()  # находим всех студентов по группе и семестру
 
+    rendered = render_template('public/attendance.html', course=course, groups=groups, group=group_num,
+                               lesson_type=LessonType, students=group.students)
+    css = ['app/static/libs/bootstrap.min.css',
+           'app/static/libs/all.min.css']
+    pdf = from_string(rendered, False, css=css)
     response = make_response(pdf)
     response.headers['Content-Type'] = 'application/pdf'
     response.headers['Content-Disposition'] = 'inline; filename=attendance.pdf'
 
     return response
+    # return WKHTMLTOPDF.render_template_to_pdf('public/attendance.html', course=course, groups=groups, group=group_num,
+    #                                           lesson_type=LessonType, students=group.students, save=True)
 
 
 @APP.route("/excel_attendance")
 def print_excel():
     """Страничка для отображения посещаемости в формате Excel"""
-    return excel_response(file_name='attendance', file_type='xls')
+    content = OrderedDict([
+        (
+            'ФИО студента/Дата проведения занятия',
+            [
+                'Борисов Александр Дмитриевич',
+                'Ильина Анастасия Дмитриевна',
+                'Коновалов Игорь Романович',
+                'Копылова Анастасия Евгеньевна',
+                'Королёв Дмитрий Андреевич',
+                'Кравченко Денис Александрович',
+                'Кушнеренко Виктор Константинович',
+                'Мущенко Илья Викторович',
+                'Науменко Дмитрий Иванович',
+                'Никонов Иван Евгеньевич',
+                'Папина Анастасия Александровна',
+                'Рудин Павел Игоревич',
+                'Смольянинов Никита Сергеевич',
+                'Старкин Михаил Владимирович',
+                'Транина Олеся Александровна'
+            ]
+        ),
+        (
+            '01.01.2017',
+            [
+                '+',
+                '+',
+                '+',
+                '-',
+                '-',
+                '+',
+                '-',
+                '+',
+                '-',
+                '+',
+                '+',
+                '-',
+                '+',
+                '-',
+                '+'
+            ]
+        ),
+        (
+            '02.01.2017',
+            [
+                '+',
+                '+',
+                '+',
+                '-',
+                '-',
+                '+',
+                '-',
+                '+',
+                '-',
+                '+',
+                '+',
+                '-',
+                '+',
+                '-',
+                '+'
+            ]
+        )
+    ])
+    output_excel = excel.make_response_from_dict(content, file_type='xlsx')
+    output_excel.headers["Content-Disposition"] = "attachment; filename=Attendance.xlsx"
+    output_excel.headers["Content-type"] = "application/vnd.openxmlformats-\
+    officedocument.spreadsheetml.sheet"
+    return output_excel
 
 
 @APP.route("/attendance", methods=['GET', 'POST'])

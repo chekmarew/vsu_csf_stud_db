@@ -19,7 +19,7 @@
         <tbody>
         {% for t in teachers %}
         <tr>
-            <td><a href="{{ url_for('teacher', id=t.id) }}">{{ t.full_name }}</a></td>
+            <td><a href="{{ url_for('teacher', teacher_id=t.id) }}">{{ t.full_name }}</a></td>
             <td>{{ t.rank }}</td>
         </tr>
         {% endfor %}
@@ -27,7 +27,7 @@
     </table>
 
     <div class="container">
-        <a href="{{ url_for('teacher', id='new') }}" class="btn btn-primary">Добавить преподавателя</a>
+        <a href="{{ url_for('teacher', teacher_id='new') }}" class="btn btn-primary">Добавить преподавателя</a>
     </div>
 </div>
 </body>

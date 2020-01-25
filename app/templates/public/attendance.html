@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
     {% from "public/_macros_bootstrap" import bootstrap_form_input, bootstrap_form_button with context %}
     <meta charset="UTF-8">
@@ -15,96 +15,88 @@
         </div>
     </div>
     <div class="row border-bottom border-top">
-        <div class="col-1">
-            <a href="{{ url_for('print_excel') }}">
+        <div class="col-2 p-0 my-auto" style="max-width: 190px;">
+            <a href="{{ url_for('print_excel') }}" id="print-to-excel" class="text-dark">
                 <i class="fas fa-file-excel fa-2x bg-success"></i>
             </a>
-            <a href="{{ url_for('print_pdf') }}">
+            <a href="{{ url_for('print_pdf') }}" class="text-dark">
                 <i class="fas fa-file-pdf fa-2x bg-danger"></i>
             </a>
         </div>
-        <div class="col">
-            <label>
-                <select>
-                    {% for i in range(1, 5) %}
+        <div class="col p-0">
+            <select class="custom-select" style="border-radius: 0;">
+                {% for i in range(1, 5) %}
                     {% if i != course %}
-                    <option>{{i}} курс</option>
+                        <option>{{ i }} курс</option>
                     {% else %}
-                    <option selected>{{i}} курс</option>
+                        <option selected>{{ i }} курс</option>
                     {% endif %}
-                    {% endfor %}
-                </select>
-            </label>
+                {% endfor %}
+            </select>
         </div>
-        <div class="col">
-            <label>
-                <select>
-                    {% for group in groups %}
-                    <option>{{group.num_print}} группа</option>
-                    {% endfor %}
-                </select>
-            </label>
+        <div class="col p-0">
+            <select class="custom-select" style="border-radius: 0;">
+                {% for group in groups %}
+                    <option>{{ group.num_print }} группа</option>
+                {% endfor %}
+            </select>
         </div>
-        <div class="col">
-            <label>
-                <select>
-                    {% for lesson in lesson_type.value %}
-                    <option>{{lesson}}</option>
-                    {% endfor %}
-                    <option>Лекции</option>
-                    <option>Практики</option>
-                    <option>Семинары</option>
-                </select>
-            </label>
+        <div class="col p-0">
+            <select class="custom-select" style="border-radius: 0;">
+                {% for lesson in lesson_type.value %}
+                    <option>{{ lesson }}</option>
+                {% endfor %}
+                <option>Лекции</option>
+                <option>Практики</option>
+                <option>Семинары</option>
+            </select>
         </div>
-        <div class="col">
-            <label>
-                <select>
-                    <option>Язык С++</option>
-                    <option>Язык С++</option>
-                    <option>Язык С++</option>
-                    <option>Язык С++</option>
-                </select>
-            </label>
+        <div class="col p-0">
+            <select class="custom-select" style="border-radius: 0;">
+                <option>Язык С++</option>
+                <option>Язык С++</option>
+                <option>Язык С++</option>
+                <option>Язык С++</option>
+            </select>
         </div>
     </div>
     <table class="table">
         <thead>
         <tr> <!-- сюда помещается 13 дат -->
             <th scope="col">ФИО студента/Дата проведения занятия</th>
-            <th scope="col">01.01.17</th>
-            <th scope="col">02.01.17</th>
-            <th scope="col">03.01.17</th>
-            <th scope="col">04.01.17</th>
-            <th scope="col">05.01.17</th>
-            <th scope="col">06.01.17</th>
-            <th scope="col">07.01.17</th>
-            <th scope="col">08.01.17</th>
-            <th scope="col">09.01.17</th>
-            <th scope="col">10.01.17</th>
-            <th scope="col">12.01.17</th>
-            <th scope="col">14.01.17</th>
-            <th scope="col">15.01.17</th>
+            <th scope="col" class="align-middle">01.01.2017</th>
+            <th scope="col" class="align-middle">02.01.2017</th>
+            <th scope="col" class="align-middle">03.01.2017</th>
+            <th scope="col" class="align-middle">04.01.2017</th>
+            <th scope="col" class="align-middle">05.01.2017</th>
+            <th scope="col" class="align-middle">06.01.2017</th>
+            <th scope="col" class="align-middle">07.01.2017</th>
+            <th scope="col" class="align-middle">08.01.2017</th>
+            <th scope="col" class="align-middle">09.01.2017</th>
+            <th scope="col" class="align-middle">10.01.2017</th>
+            <th scope="col" class="align-middle">12.01.2017</th>
+            <th scope="col" class="align-middle">14.01.2017</th>
+            <th scope="col" class="align-middle">15.01.2017</th>
         </tr>
         </thead>
         <tbody>
         {% for student in students %}
-        <tr>
-            <td>{{student.full_name}}</td>
-            <td>+</td>
-            <td>+</td>
-            <td>-</td>
-            <td>+</td>
-            <td>+</td>
-            <td>-</td>
-            <td>+</td>
-            <td>+</td>
-            <td>-</td>
-            <td>+</td>
-            <td>+</td>
-            <td>-</td>
-            <td>-</td>
-        </tr>
+            <tr>
+                <td class="align-middle font-weight-bold">{{ student.full_name }}</td>
+                <td class="align-middle h2">+</td>
+                <td class="align-middle h2">+</td>
+                <td class="align-middle h2">-</td>
+                <td class="align-middle h2">+</td>
+                <td class="align-middle h2">+</td>
+                <td class="align-middle h2">-</td>
+                <td class="align-middle h2">+</td>
+                <td class="align-middle h2">+</td>
+                <td class="align-middle h2">-</td>
+                <td class="align-middle h2">+</td>
+                <td class="align-middle h2">+</td>
+                <td class="align-middle h2">-</td>
+                <td class="align-middle h2">-</td>
+            </tr>
         {% endfor %}
         </tbody>
     </table>

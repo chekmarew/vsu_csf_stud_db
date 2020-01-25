@@ -18,14 +18,14 @@
         <tbody>
         {% for s in subjects %}
         <tr>
-            <td><a href="{{ url_for('subject', id=s.id) }}">{{ s.name }}</a></td>
+            <td><a href="{{ url_for('subject', subject_id=s.id) }}">{{ s.name }}</a></td>
         </tr>
         {% endfor %}
         </tbody>
     </table>
 
     <div class="container">
-        <a href="{{ url_for('subject', id='new') }}" class="btn btn-primary">Добавить предмет</a>
+        <a href="{{ url_for('subject', subject_id='new') }}" class="btn btn-primary">Добавить предмет</a>
     </div>
 </div>
 </body>
