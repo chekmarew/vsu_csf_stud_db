@@ -1,8 +1,11 @@
 SQLAlchemy
 Flask
+Flask-Login
+Flask-JWT-Extended
 Flask-SQLAlchemy
+Flask-Mail
 PyMySQL
-mysql-connector
-MySQL-connector-python
 WTForms
 WTForms-Alchemy
+py3o.template
+openpyxl

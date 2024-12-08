@@ -1,0 +1,322 @@
+<html lang="ru">
+<head>
+    {% from "_macros_bootstrap" import bootstrap_form_input, bootstrap_form_button with context %}
+    <meta charset="UTF-8">
+    <title>ВГУ ФКН БРС Единица учебного плана</title>
+    {% include '_header.html' %}
+</head>
+<body>
+    {% include '_menu.html' %}
+    <div class="container">
+        <h2>Единица учебного плана</h2>
+        <form method="post" id="formCurriculumUnit">
+    	    {% autoescape false %}
+            {{ bootstrap_form_input(form.code) }}
+            {% if curriculum_unit.stud_group != None and not curriculum_unit.stud_group.active %}
+            <div class="form-group row">
+                <label class="col-md-4 col-form-label">Группа</label>
+                <div class="col-md-4 text-center">
+                    {{ curriculum_unit.stud_group.course }} курс группа {{ curriculum_unit.stud_group.num }} ({{ curriculum_unit.stud_group.year_print }} {{ curriculum_unit.stud_group.session_type }})
+                </div>
+            </div>
+            {% else %}
+                {{ bootstrap_form_input(form.stud_group) }}
+            {% endif %}
+            {{ bootstrap_form_input(form.subject) }}
+            {{ bootstrap_form_input(form.curriculum_unit_group_id, list='curriculum_unit_group_rel_ids' if curriculum_unit_group_rels != None else '', autocomplete='off') }}
+            {% if curriculum_unit_group_rels != None %}
+            <datalist id="curriculum_unit_group_rel_ids">
+                {% for rel_id, subjects in curriculum_unit_group_rels %}
+                <option value="{{ rel_id }}">{{ subjects|map(attribute='name')|join(', ') }}</option>
+                {% endfor %}
+            </datalist>
+            {% endif %}
+            {{ bootstrap_form_input(form.mark_type) }}
+            <div class="form-group row" id="has_simple_mark_row">
+                <div class="col-md-4">Типы отчётности без аттестаций</div>
+                <div class="col-md-8">
+                    <span class="px-2 py-1 mb-1 small rounded border border-primary nowrap"><label for="has_simple_mark_test_simple">Зачет</label> {{form.has_simple_mark_test_simple | safe }}</span>
+                    <span class="px-2 py-1 mb-1 small rounded border border-primary nowrap"><label for="has_simple_mark_exam">Экзамен</label> {{form.has_simple_mark_exam | safe }}</span>
+                    <span class="px-2 py-1 mb-1 small rounded border border-primary nowrap"><label for="has_simple_mark_test_diff">Дифференцированный зачет</label> {{form.has_simple_mark_test_diff | safe }}</span>
+                    <span class="px-2 py-1 mb-1 small rounded border border-primary nowrap"><label for="has_simple_mark_course_work">Курсовая работа</label> {{form.has_simple_mark_course_work | safe }}</span>
+                    <span class="px-2 py-1 mb-1 small rounded border border-primary nowrap"><label for="has_simple_mark_course_project">Курсовой проект</label> {{form.has_simple_mark_course_project | safe }}</span>
+                </div>
+            </div>
+            {{ bootstrap_form_input(form.department) }}
+            {% if curriculum_unit.teacher != None and not curriculum_unit.teacher.active %}
+            <div class="form-group row">
+                <label class="col-md-4 col-form-label">Преподаватель</label>
+                <div class="col-md-4 text-center">
+                    {{ curriculum_unit.teacher.full_name_short }}
+                </div>
+            </div>
+            {% else %}
+                {{ bootstrap_form_input(form.teacher) }}
+            {% endif %}
+            {% if curriculum_unit.id %}
+            <h6>Преподаватели практ. занятий:</h6>
+            {% for t in curriculum_unit.practice_teachers %}
+            <div class="row my-1 py-1 border-bottom">
+                <div class="col-1">
+                    {% if form_practice_teacher_add %}
+                        <a href="{{ url_for('curriculum_unit_practice_teacher_remove', id=curriculum_unit.id, practice_teacher_id=t.id) }}" title="Удалить из списка" class="btn btn-danger btn-sm btn-practice-teacher-remove">X</a>
+                    {% endif %}
+                </div>
+                <div class="col-11">
+                    {{ t.full_name }}
+                </div>
+            </div>
+            {% endfor %}
+            {% if form_practice_teacher_add %}
+            <div class="row my-1 py-1 border-bottom">
+                <div class="col-12">
+                    <a class="btn btn-primary text-white btn-practice-teacher-add" data-toggle="modal" data-target="#modalPracticeTeacher">+ Добавить</a>
+                </div>
+            </div>
+            {% endif %}
+            {% endif %}
+            {% if curriculum_unit.id and curriculum_unit.practice_teachers|length > 0 %}
+            <div class="container" id="form_practice_teacher_rights">
+                <h6>Поля ведомости, которые может править преподаватель практ. занятий:</h6>
+                <div id="form_practice_teacher_rights_att_mark_1">Аттестация 1 {{form.allow_edit_practice_teacher_att_mark_1 | safe }}</div>
+                <div id="form_practice_teacher_rights_att_mark_2">Аттестация 2 {{form.allow_edit_practice_teacher_att_mark_2 | safe }}</div>
+                <div id="form_practice_teacher_rights_att_mark_3">Аттестация 3 {{form.allow_edit_practice_teacher_att_mark_3 | safe }}</div>
+                <div id="form_practice_teacher_rights_att_mark_exam">Экзамен {{form.allow_edit_practice_teacher_att_mark_exam | safe }}</div>
+                <div id="form_practice_teacher_rights_att_mark_append_ball">Доп. балл {{form.allow_edit_practice_teacher_att_mark_append_ball | safe }}</div>
+
+                <div id="form_practice_teacher_rights_simple_mark_test_simple">Зачёт {{form.allow_edit_practice_teacher_simple_mark_test_simple | safe }}</div>
+                <div id="form_practice_teacher_rights_simple_mark_exam">Экзамен {{form.allow_edit_practice_teacher_simple_mark_exam | safe }}</div>
+                <div id="form_practice_teacher_rights_simple_mark_test_diff">Зачёт с оценкой {{form.allow_edit_practice_teacher_simple_mark_test_diff | safe }}</div>
+                <div id="form_practice_teacher_rights_simple_mark_course_work">Курсовая работа {{form.allow_edit_practice_teacher_simple_mark_course_work | safe }}</div>
+                <div id="form_practice_teacher_rights_simple_mark_course_project">Курсовой проект {{form.allow_edit_practice_teacher_simple_mark_course_project | safe }}</div>
+
+            </div>
+            {% endif %}
+            {{ bootstrap_form_input(form.hours_att_1) }}
+            {{ bootstrap_form_input(form.hours_att_2) }}
+            {{ bootstrap_form_input(form.hours_att_3) }}
+            {{ bootstrap_form_input(form.moodle_id) }}
+
+            {{ bootstrap_form_input(form.hours_lect) }}
+            {{ bootstrap_form_input(form.hours_pract) }}
+            {{ bootstrap_form_input(form.hours_lab) }}
+
+            {% if current_user.admin_user and current_user.admin_user.active and curriculum_unit.id %}
+               {{ bootstrap_form_button(form.button_delete, class_="btn btn-danger") }}
+           {% endif %}
+           {{ bootstrap_form_button(form.button_save, class_="btn btn-success") }}
+           {% endautoescape %}
+        </form>
+        <div class="container">
+            {% if current_user.admin_user and current_user.admin_user.active and curriculum_unit.id and not (curriculum_unit.closed) %}
+                <a href="{{ url_for('curriculum_unit_copy', id=curriculum_unit.id) }}" class="btn btn-info">Копировать</a>
+            {% endif %}
+            {% if current_user.admin_user and current_user.admin_user.active and curriculum_unit.stud_group and curriculum_unit.active %}
+                <a href="{{ url_for('stud_group', id=curriculum_unit.stud_group.id, _anchor='curriculum_units') }}" class="btn btn-primary">Студенческая группа</a>
+            {% endif %}
+            {% if curriculum_unit.id %}
+                {% if curriculum_unit.teacher %}
+                    <a href="{{url_for('teacher_report', id=curriculum_unit.teacher.id)}}" class="btn btn-primary">Личный кабинет преподавателя</a>
+                {% endif %}
+                <a href="{{ url_for('lessons', _anchor='/curriculum-unit/'+(curriculum_unit.id|string)) }}" class="btn btn-primary">Посещаемость</a>
+                <a href="{{ url_for('att_marks', id=curriculum_unit.id) }}" class="btn btn-primary">Аттестационная ведомость</a>
+
+            {% endif %}
+        </div>
+    </div>
+
+    {% if form_practice_teacher_add %}
+    <!-- Modal add practice teacher -->
+    <div class="modal fade" id="modalPracticeTeacher" tabindex="-1" role="dialog" aria-labelledby="modalPracticeTeacherTitle">
+        <div class="modal-dialog modal-dialog-centered" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalPracticeTeacherTitle">Добавить преподавателя практических занятий</h5>
+                </div>
+                <div class="modal-body">
+                    <form action="{{ url_for('curriculum_unit_practice_teacher_add', id=curriculum_unit.id) }}" method="post">
+                        <div class="form-group row">
+                            {{ form_practice_teacher_add.teacher.label(class_="col-12 col-form-label") }}
+                            <div class="col-12">
+                                {{ form_practice_teacher_add.teacher(class_="form-control") }}
+                            </div>
+                            <div class="col-12 my-2 small text-justify">
+                                Если преподаватель практических занятий в списке отсутствует, то напишите письмо на <a href="mailto:{{ config.MAIL_SUPPORT }}">{{ config.MAIL_SUPPORT }}</a> с указанием его ФИО, кафедры, должности, email и телефона.
+                            </div>
+                        </div>
+                        {{ bootstrap_form_button(form_practice_teacher_add.button_add) }}
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- End add practice teacher -->
+    {% endif %}
+
+    <script>
+
+        $(document).ready(function(){
+            var input_mark_type = $('#formCurriculumUnit select[name=mark_type]');
+            var row_has_simple_mark = $('#has_simple_mark_row');
+            var input_has_simple_mark_test_simple = $('#has_simple_mark_test_simple');
+            var input_has_simple_mark_exam = $('#has_simple_mark_exam');
+            var input_has_simple_mark_test_diff = $('#has_simple_mark_test_diff');
+            var input_has_simple_mark_course_work = $('#has_simple_mark_course_work');
+            var input_has_simple_mark_course_project = $('#has_simple_mark_course_project');
+
+            var input_hours_att_1 = $('#formCurriculumUnit input[name=hours_att_1]');
+            var input_hours_att_2 = $('#formCurriculumUnit input[name=hours_att_2]');
+            var input_hours_att_3 = $('#formCurriculumUnit input[name=hours_att_3]');
+            var input_teacher = $('#formCurriculumUnit select[name=teacher]');
+            var input_department = $('#formCurriculumUnit select[name=department]');
+
+            var form_practice_teacher_rights = $("#form_practice_teacher_rights");
+
+            var fn_show_form_practice_teacher_rights = function(evt){
+                if (evt && evt.target)
+                {
+                    $('.btn-practice-teacher-add').hide();
+                    $('.btn-practice-teacher-remove').hide();
+                }
+                var mark_type = input_mark_type.val();
+
+                $("#form_practice_teacher_rights_att_mark_1")[(((input_hours_att_1.val() > 0) && (mark_type != "no_att")) ? 'show': 'hide')]();
+                $("#form_practice_teacher_rights_att_mark_2")[(((input_hours_att_2.val() > 0) && (mark_type != "no_att")) ? 'show': 'hide')]();
+                $("#form_practice_teacher_rights_att_mark_3")[(((input_hours_att_3.val() > 0) && (mark_type != "no_att")) ? 'show': 'hide')]();
+
+
+
+                if (mark_type == "no_att")
+                {
+                    input_hours_att_1.parent().parent().hide();
+                    if (!input_hours_att_1.val()) input_hours_att_1.val(0);
+                    input_hours_att_2.parent().parent().hide();
+                    if (!input_hours_att_2.val()) input_hours_att_2.val(0);
+                    input_hours_att_3.parent().parent().hide();
+                    if (!input_hours_att_3.val()) input_hours_att_3.val(0);
+
+
+                }else
+                {
+                    input_hours_att_1.parent().parent().show();
+                    input_hours_att_2.parent().parent().show();
+                    input_hours_att_3.parent().parent().show();
+                }
+
+                if ((mark_type == "no_mark")||(mark_type == "no_att"))
+                {
+                    $("#form_practice_teacher_rights_att_mark_exam").hide();
+                    $("#form_practice_teacher_rights_att_mark_append_ball").hide();
+                }
+
+                if (mark_type == "test_simple")
+                {
+                    $("#form_practice_teacher_rights_att_mark_exam").hide();
+                    $("#form_practice_teacher_rights_att_mark_append_ball").hide();
+                    input_has_simple_mark_test_simple.parent().hide();
+                }
+                else
+                {
+                    input_has_simple_mark_test_simple.parent().show();
+                }
+
+                if (mark_type == "exam")
+                {
+                    $("#form_practice_teacher_rights_att_mark_exam").show();
+                    $("#form_practice_teacher_rights_att_mark_append_ball").show();
+                    input_has_simple_mark_exam.parent().hide();
+                }
+                else
+                {
+                    input_has_simple_mark_exam.parent().show();
+                }
+
+                if (mark_type == "test_diff")
+                {
+                    $("#form_practice_teacher_rights_att_mark_exam").hide();
+                    $("#form_practice_teacher_rights_att_mark_append_ball").show();
+                    input_has_simple_mark_test_diff.parent().hide();
+                }
+                else
+                {
+                    input_has_simple_mark_test_diff.parent().show();
+                }
+
+                if (mark_type == "no_mark")
+                {
+                    row_has_simple_mark.hide();
+                }
+                else
+                {
+                    row_has_simple_mark.show();
+                }
+
+                $("#form_practice_teacher_rights_simple_mark_test_simple")[((input_has_simple_mark_test_simple.prop('checked') && (mark_type != "test_simple") && (mark_type != "no_mark")) ? 'show': 'hide')]();
+                $("#form_practice_teacher_rights_simple_mark_exam")[((input_has_simple_mark_exam.prop('checked') && (mark_type != "exam") && (mark_type != "no_mark")) ? 'show': 'hide')]();
+                $("#form_practice_teacher_rights_simple_mark_test_diff")[((input_has_simple_mark_test_diff.prop('checked') && (mark_type != "test_diff") && (mark_type != "no_mark")) ? 'show': 'hide')]();
+                $("#form_practice_teacher_rights_simple_mark_course_work")[((input_has_simple_mark_course_work.prop('checked') && (mark_type != "no_mark")) ? 'show': 'hide')]();
+                $("#form_practice_teacher_rights_simple_mark_course_project")[((input_has_simple_mark_course_project.prop('checked') && (mark_type != "no_mark")) ? 'show': 'hide')]();
+
+
+            }
+            input_teacher.change(fn_show_form_practice_teacher_rights);
+            input_mark_type.change(fn_show_form_practice_teacher_rights);
+            input_hours_att_1.change(fn_show_form_practice_teacher_rights);
+            input_hours_att_2.change(fn_show_form_practice_teacher_rights);
+            input_hours_att_3.change(fn_show_form_practice_teacher_rights);
+            input_has_simple_mark_test_simple.change(fn_show_form_practice_teacher_rights);
+            input_has_simple_mark_exam.change(fn_show_form_practice_teacher_rights);
+            input_has_simple_mark_test_diff.change(fn_show_form_practice_teacher_rights);
+            input_has_simple_mark_course_work.change(fn_show_form_practice_teacher_rights);
+            input_has_simple_mark_course_project.change(fn_show_form_practice_teacher_rights);
+
+            fn_show_form_practice_teacher_rights();
+
+            var teacher_departments = {{ teacher_departments|string|safe }};
+
+            var fn_teacher_department_show = function(){
+                var department_id = 0;
+                if (input_department.val() != '__None') department_id = parseInt(input_department.val());
+
+                for (var r of teacher_departments){
+                    input_teacher.find('option[value="'+r.teacher_id+'"]')[(r.department_ids.indexOf(department_id) >=0 ? 'show': 'hide')]();
+                }
+            }
+            fn_teacher_department_show();
+            input_department.change(function(evt){
+                fn_show_form_practice_teacher_rights(evt);
+                fn_teacher_department_show();
+            });
+
+        });
+
+        {% if curriculum_unit_group_rels != None and curriculum_unit.curriculum_unit_group_id == None %}
+        $(document).ready(function(){
+            var btn_new_id = $('<a class="mt-1 btn btn-sm btn-primary text-white float-right" href="javascript:void(null);">Новый код</a>');
+            var input_curriculum_unit_group_id = $('#formCurriculumUnit input[name=curriculum_unit_group_id]')
+            var data_list = $('#'+ input_curriculum_unit_group_id.attr('list'));
+            input_curriculum_unit_group_id.parent().append(btn_new_id);
+
+            btn_new_id.click(function(){
+
+                $.get("{{ url_for('api_curriculum_unit_group_id_next') }}").done(function(data){
+                        if (data.ok){
+                            input_curriculum_unit_group_id.val(data.curriculum_unit_group_id);
+                            var opt=$('<option></option>');
+                            opt.val(data.curriculum_unit_group_id);
+                            data_list.append(opt);
+                            btn_new_id.remove();
+                        }
+
+                    }).fail(function() {
+                        alert("Произошла ошибка");
+                    });
+             });
+        });
+        {% endif %}
+
+
+    </script>
+
+</body>
+</html>

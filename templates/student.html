@@ -1,0 +1,171 @@
+<html lang="ru">
+<head>
+    {% from "_macros_bootstrap" import bootstrap_form_input, bootstrap_form_button with context %}
+    <meta charset="UTF-8">
+    <title>Студент</title>
+    {% include '_header.html' %}
+</head>
+<body>
+    {% include '_menu.html' %}
+    <div class="container">
+        <h2>ВГУ ФКН БРС Студент</h2>
+        <h3><a href="{{ url_for('person', id=student.person.id) }}">{{ student.person.full_name }}</a></h3>
+        <form method="post" id="formStudent">
+    	    {% autoescape false %}
+            {{ bootstrap_form_input(form.id) }}
+            {{ bootstrap_form_input(form.student_ext_id) }}
+            {{ bootstrap_form_input(form.status) }}
+            {{ bootstrap_form_input(form.stud_group) }}
+            {{ bootstrap_form_input(form.stud_group_subnum, type='number') }}
+            {{ bootstrap_form_input(form.semester) }}
+            {{ bootstrap_form_input(form.alumnus_year) }}
+            {{ bootstrap_form_input(form.expelled_year) }}
+            <hr/>
+            <h5>Изучает особые предметы:</h5>
+            {% for sp in form.particular_subjects %}
+            {{ bootstrap_form_input(sp) }}
+            {% endfor %}
+            <hr/>
+            {% if student.id %}
+
+                {{ bootstrap_form_button(form.button_delete, class_="btn btn-danger") }}
+            {% endif %}
+            {{ bootstrap_form_button(form.button_save, class_="btn btn-success") }}
+            {% endautoescape %}
+        </form>
+        {% if student.id %}
+            <hr/>
+            {% if favorite_list_teachers|length > 0 %}
+            <div class="h4">Добавлен в раздел "Мой список студентов" у преподавателей:</div>
+            {% for t in favorite_list_teachers %}
+                <div class="row my-1 favorite-teacher-row" data-teacher-id="{{ t.id }}">
+                    <div class="col-1"><a href="javascript:void(null)" title="Удалить" class="btn btn-danger btn-sm favorite-teacher-btn-remove" data-teacher-id="{{ t.id }}">X</a></div>
+                    <div class="col-11"><a href="{{ url_for('teacher_report', id=t.id) }}">{{ t.full_name }}</a></div>
+                </div>
+            {% endfor %}
+            {% endif %}
+            <div class="my-1">
+                <a href="{{ url_for('att_marks_report_student', id=student.id) }}" class="btn btn-primary">Свод оценок рубежных аттестаций</a>
+                <a href="{{ url_for('lessons_report_student', id=student.id) }}" class="btn btn-primary">Посещаемость студента</a>
+            </div>
+        {% endif %}
+    </div>
+
+
+    <script type="text/javascript">
+        /*Вставка javascript скрыть семестр, год выпуска и отчисления, если указана группа*/
+        $(document).ready(function(){
+            var stud_group_map = {
+                {% for sg in stud_groups %}
+                {{ sg.id }}: { "id": {{sg.id}}, "semester": {{ sg.semester }}, "num": {{ sg.num }}, "sub_count": {{ sg.sub_count }} }{% if not loop.last %},{% endif %}
+                {% endfor %}
+            }
+
+            var input_status = $('#formStudent select[name=status]');
+            var input_stud_group = $('#formStudent select[name=stud_group]');
+            var input_stud_group_subnum = $('#formStudent input[name=stud_group_subnum]');
+            var input_stud_group_parent  = input_stud_group.parent().parent();
+            var input_stud_group_subnum_parent = input_stud_group_subnum.parent().parent();
+            var input_semester_parent = $('#formStudent input[name=semester]').parent().parent();
+            var input_alumnus_year_parent = $('#formStudent input[name=alumnus_year]').parent().parent();
+            var input_expelled_year_parent = $('#formStudent input[name=expelled_year]').parent().parent();
+
+            {% if student.person.gender == "W" %}
+            input_status.find('option[value="alumnus"]').text('успешно закончила обучение');
+            input_status.find('option[value="expelled"]').text('отчислена');
+            {% endif %}
+
+
+            input_stud_group.change(function(){
+                if (input_stud_group.val() == "__None" || input_status.val() != 'study')
+                {
+                    input_semester_parent.show();
+                    input_stud_group_subnum_parent.hide();
+                    input_stud_group_subnum.val('');
+                    input_stud_group_subnum.removeAttr('min');
+                    input_stud_group_subnum.removeAttr('max');
+                    input_stud_group_subnum.prop('required', false);
+                }
+                else
+                {
+                    input_semester_parent.hide();
+                    var stud_group = stud_group_map[input_stud_group.val()];
+                    input_stud_group_subnum.prop('required', true);
+                    if (stud_group.sub_count == 0)
+                    {
+                        input_stud_group_subnum_parent.hide();
+                        input_stud_group_subnum.val(0);
+                        input_stud_group_subnum.attr('min', 0);
+                        input_stud_group_subnum.attr('max', 0);
+
+                    }
+                    else
+                    {
+                        input_stud_group_subnum_parent.show();
+                        var sub_num = input_stud_group_subnum.val();
+                        if (!sub_num) sub_num = 1;
+                        if (sub_num < 1) sub_num = 1;
+                        if (sub_num > stud_group.sub_count) sub_num = stud_group.sub_count;
+                        input_stud_group_subnum.attr('min', 1);
+                        input_stud_group_subnum.attr('max', stud_group.sub_count);
+                        input_stud_group_subnum.val(sub_num);
+
+                    }
+                }
+            });
+
+            input_status.change(function(){
+                input_stud_group_parent.show();
+                input_stud_group_subnum_parent.show();
+                input_semester_parent.show();
+                input_alumnus_year_parent.show();
+                input_expelled_year_parent.show();
+
+                var status = input_status.val()
+
+                if (status == "study")
+                {
+                    input_alumnus_year_parent.hide();
+                    input_expelled_year_parent.hide();
+                }
+
+                if (status == "alumnus")
+                {
+                    input_stud_group_parent.hide();
+                    input_stud_group_subnum_parent.hide();
+                    input_semester_parent.hide();
+                    input_expelled_year_parent.hide();
+                }
+
+                if ((status == "expelled") || (status == "academic_leave"))
+                {
+                    input_stud_group_parent.hide();
+                    input_stud_group_subnum_parent.hide();
+                    input_alumnus_year_parent.hide();
+                }
+                input_stud_group.change();
+
+            });
+            input_status.change();
+            {% if student.id and favorite_list_teachers|length > 0 %}
+                $('.favorite-teacher-btn-remove').click(function(evt){
+                    var teacherId = $(evt.target).data().teacherId;
+                    if (teacherId){
+                        if (confirm("Продолжить ?")){
+                            $.post( "{{ url_for('api_favorite_teacher_student') }}", {action: "remove", studentId: {{ student.id }}, teacherId: teacherId })
+                              .done(function(data){
+                                if (data.ok){
+                                    $('.favorite-teacher-row[data-teacher-id='+teacherId+']').remove();
+                                }
+                              })
+                              .fail(function() {
+                                alert( "Произошла ошибка" );
+                            });
+                        }
+                    }
+                });
+            {% endif %}
+        });
+    </script>
+</body>
+</html>

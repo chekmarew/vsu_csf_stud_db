@@ -1,0 +1,177 @@
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>ВГУ ФКН БРС {% if current_user.teacher and current_user.teacher.id == teacher.id %}Мой список студентов{% else %}Cписок студентов преподавателя{% endif %}</title>
+    {% include '_header.html' %}
+    <style>
+        .fixed {
+            background-color: #f8f9fa;
+            position: sticky;
+            z-index: 1;
+        }
+
+        .fixed_top {
+            top: 0;
+            border-bottom: 3px solid #dee2e6 !important;
+        }
+    </style>
+</head>
+<body>
+    {% include '_menu.html' %}
+    <div class="container-fluid">
+        {% if current_user.teacher and current_user.teacher.id == teacher.id %}
+        <h3>Мой список студентов</h3>
+        {% else %}
+            <h3>Cписок студентов преподавателя</h3>
+            <h4>{{ teacher.full_name }}</h4>
+            <h5>{{ teacher.rank }}</h5>
+        {% endif %}
+        <div class="row fixed fixed_top my-2 font-weight-bold">
+            <div class="col-1"></div>
+            <div class="col-1"><a href="javascript:void(null)" data-sort-students-keys="id">Студ. билет №</a></div>
+            <div class="col-4"><a href="javascript:void(null)" data-sort-students-keys="full_name">ФИО</a></div>
+            <div class="col-1"><a href="javascript:void(null)" data-sort-students-keys="status,education_level_order,year,course,full_name">Курс</a></div>
+            <div class="col-1"><a href="javascript:void(null)" data-sort-students-keys="status,education_level_order,year,course,stud_group_num,full_name">Группа</a> <a href="javascript:void(null)" data-sort-students-keys="status,education_level_order,year,course,stud_group_num,stud_group_subnum,full_name">(подгруппа)</a></div>
+            <div class="col-2">E-mail</div>
+            <div class="col-2">Телефон</div>
+        </div>
+        <div class="d-flex flex-column">
+            {% for s in students %}
+                <div class="row my-1 py-1 border-bottom favorite-student-row" data-student-id="{{ s.id }}">
+                    <div class="col-1">
+                        <a href="javascript:void(null)" title="Удалить из списка" class="btn btn-danger btn-sm favorite-student-btn-remove" data-student-id="{{ s.id }}">X</a>
+                    </div>
+                    <div class="col-1">
+                        {% if s.get_rights(current_user)["read_marks"] %}
+                            <a href="{{ url_for('att_marks_report_student', id=s.id) }}">{{ s.id }}</a>
+                        {% else %}
+                            {{ s.id }}
+                        {% endif %}
+                    </div>
+                    <div class="col-4">
+                        {% if s.get_rights(current_user)["read_marks"] %}
+                            <a href="{{ url_for('att_marks_report_student', id=s.id) }}">{{ s.full_name }}</a>
+                        {% else %}
+                            {{ s.full_name }}
+                        {% endif %}
+                        {% if s.foreigner %}
+                            <span class="badge badge-warning" title="изучает русский язык как иностранный">И</span>
+                        {% endif %}
+                    </div>
+                    {% if s.status == 'study' %}
+                        <div class="col-1">
+                            {% if s.stud_group %}
+                            {{ s.stud_group.course_print }}
+                            {% else %}
+                            {{ s.course }}
+                            {% endif %}
+                        </div>
+                        {% if s.stud_group %}
+                            {% set stud_group_subnum = s.stud_group_subnum %}
+                            <div class="col-1" title="{{ s.stud_group.specialty.full_name }}">
+                                {% if s.stud_group.get_rights(current_user)["read_marks"] %}
+                                <a href="{{ url_for('att_marks_report_stud_group', id=s.stud_group.id) }}">{{ s.stud_group.num }}</a>
+                                {% else %}
+                                    {{ s.stud_group.num }}
+                                {% endif %}
+                                {% if stud_group_subnum %}({{ stud_group_subnum }}){% endif %}
+                            </div>
+                        {% endif %}
+                    {% elif s.status == 'alumnus' %}
+                    <div class="col-2">Успешно {{ 'закончила' if s.person.gender == 'W' else 'закончил' }} обучение в {{ s.alumnus_year }} году</div>
+                    {% elif s.status == 'expelled' %}
+                    <div class="col-2">{{ 'Отчислена' if s.person.gender == 'W' else 'Отчислен' }} в {{ s.expelled_year }} году</div>
+                    {% elif s.status == 'academic_leave' %}
+                    <div class="col-2">В академическом отпуске с {{ s.expelled_year }} года</div>
+                    {% endif %}
+                    <div class="col-2">
+                        {% if s.person.email %}
+                            <a href="mailto:{{ s.person.email }}">{{ s.person.email }}</a>
+                        {% endif %}
+                    </div>
+                    <div class="col-2">
+                        {% if s.person.phone %}
+                            <a href="tel:{{ s.person.phone_str }}">{{ s.person.phone_format }}</a>
+                        {% endif %}
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+    <script>
+        $(document).ready(function(){
+            var students=[
+            {% for s in students %}
+                {% set year = 0 %}
+                {% set education_level_order = 0 %}
+                {% set course = 0 %}
+                {% set stud_group_num = 0 %}
+                {% set stud_group_subnum = 0 %}
+                {% if s.status == 'study' %}
+                    {% set course = s.course %}
+                    {% if s.stud_group %}
+                        {% set education_level_order = s.stud_group.specialty.education_level_order %}
+                        {% set stud_group_num = s.stud_group.num %}
+                        {% set stud_group_subnum = s.stud_group_subnum %}
+                    {% endif %}
+                {% elif s.status == 'alumnus' %}
+                    {% set year = s.alumnus_year %}
+                {% elif s.status in ('expelled', 'academic_leave') %}
+                    {% set year = s.expelled_year %}
+                {% endif %}
+                {"id": {{ s.id }}, "full_name": "{{ s.full_name }}", "year": {{ year }}, "education_level_order": {{ education_level_order }}, "course": {{ course }}, "stud_group_num": {{ stud_group_num }}, "stud_group_subnum": {{ stud_group_subnum }}, "status": {{ {"study": 1, "academic_leave": 2, "expelled": 3, "alumnus": 4}[s.status] }} }{% if not loop.last %},{% endif %}
+            {% endfor %}
+            ];
+            var fn_sort_students = function(sortStudentsKeys){
+                students.sort(function(s1, s2){
+                    for (var i=0; i< sortStudentsKeys.length; i++)
+                    {
+                        if (s1[sortStudentsKeys[i]] < s2[sortStudentsKeys[i]]) return -1;
+                        if (s1[sortStudentsKeys[i]] > s2[sortStudentsKeys[i]]) return 1;
+                    }
+                    return 0;
+                });
+                for (var i=0; i<students.length; i++){
+                    var s = students[i];
+                    var elem = $('.favorite-student-row[data-student-id="'+s.id.toString()+'"]');
+                    elem.css('order', i+1);
+                }
+            }
+            $('[data-sort-students-keys]').click(function(evt){
+                var sortStudentsKeys = $(evt.target).data().sortStudentsKeys.split(",");
+                fn_sort_students(sortStudentsKeys);
+                localStorage.setItem("sort_favorite_students_keys", sortStudentsKeys.join(","));
+            });
+            if (localStorage.getItem("sort_favorite_students_keys"))
+            {
+                var sortStudentsKeys = localStorage.getItem("sort_favorite_students_keys").split(",");
+                fn_sort_students(sortStudentsKeys);
+            }
+            $('.favorite-student-btn-remove').click(function(evt){
+                    var studentId = $(evt.target).data().studentId;
+                    if (studentId){
+                        if (confirm("Продолжить ?")){
+                            $.post( "{{ url_for('api_favorite_teacher_student') }}", {action: "remove", studentId: studentId, teacherId: {{ teacher.id }} })
+                              .done(function(data){
+                                if (data.ok){
+                                    $('.favorite-student-row[data-student-id="'+studentId.toString()+'"]').remove();
+                                    for (var i=0; i<students.length; i++){
+                                        var s = students[i];
+                                        if (s.id == studentId){
+                                            students.splice(i,1);
+                                            break;
+                                        }
+                                    }
+                                }
+                              })
+                              .fail(function() {
+                                alert( "Произошла ошибка" );
+                            });
+                        }
+                    }
+            });
+        });
+    </script>
+
+</body>
+</html>

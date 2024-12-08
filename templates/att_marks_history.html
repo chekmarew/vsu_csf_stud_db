@@ -1,0 +1,192 @@
+<html lang="ru">
+<head>
+    {% from "_macros_bootstrap" import bootstrap_form_input, bootstrap_form_button with context %}
+    <meta charset="UTF-8">
+    <title>ВГУ ФКН БРС Аттестационная ведомость. История изменения</title>
+    {% include '_header.html' %}
+    <style>
+        .col-changed
+        {
+            background-color: rgba(255, 0, 255, 0.75);
+        }
+        .col-added
+        {
+            background-color: rgba(0, 255, 0, 0.75);
+        }
+        .col-removed
+        {
+            background-color: black;
+            color: white;
+        }
+
+    </style>
+</head>
+<body>
+    {% include '_menu.html' %}
+    <div class="container">
+        <h2>Аттестационная ведомость. История изменения</h2>
+        <dl class="row">
+            <dt class="col-sm-3">
+                Учебный год:
+            </dt>
+            <dd class="col-sm-3">
+                {{ curriculum_unit.year_print }}
+            </dd>
+            <dt class="col-sm-3">
+                Дисциплина:
+            </dt>
+            <dd class="col-sm-3">
+                {{ curriculum_unit.subject_name_print }}
+            </dd>
+            <dt class="col-sm-3">
+                Группа:
+            </dt>
+            <dd class="col-sm-3">
+                {% for g in curriculum_unit.stud_groups %}
+                {{ g.num }}
+                {% if not loop.last %},{% endif %}
+                {% endfor %}
+            </dd>
+            <dt class="col-sm-3">
+                Преподаватель:
+            </dt>
+            <dd class="col-sm-3">
+                {{ curriculum_unit.teacher.rank }} {{ curriculum_unit.teacher.full_name_short }}
+            </dd>
+            <dt class="col-sm-3">
+                Семестр:
+            </dt>
+            <dd class="col-sm-3">
+                {{ curriculum_unit.semester }}
+            </dd>
+            <dt class="col-sm-3">
+                Курс:
+            </dt>
+            <dd class="col-sm-3">
+                {{ curriculum_unit.course }}
+            </dd>
+            <dt class="col-sm-3">
+                Отчётность:
+            </dt>
+            <dd class="col-sm-3">
+                {{ curriculum_unit.mark_types_name }}
+            </dd>
+            <dt class="col-sm-3">
+                Состояние на
+            </dt>
+            <dd class="col-sm-3">
+                <a href="#modalSelectTime" data-toggle="modal" data-target="#modalSelectTime">{{ stime.strftime(config.DATE_TIME_FORMAT) }}</a>
+            </dd>
+        </dl>
+
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>№</th>
+                    <th>ФИО</th>
+                    <th>Студ. билет №</th>
+                    {% for attr in attrs %}
+                    <th>
+                        {{ {'att_mark_1': '1 атт', 'att_mark_2': '2 атт', 'att_mark_3': '3 атт', 'att_mark_exam': 'экзамен', 'att_mark_append_ball': 'доп. балл', 'simple_mark_test_simple': 'зачет', 'simple_mark_exam': 'экзамен', 'simple_mark_test_diff': 'дифф. зачет', 'simple_mark_course_work': 'курсовая работа', 'simple_mark_course_project': 'курсовой проект' }[attr] }}
+                    </th>
+                    {% endfor %}
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for h in att_marks_hist %}
+                {% set h_pred = att_marks_hist_pred[loop.index0] %}
+                <tr>
+                    <th>
+                        {{ loop.index }}
+                    </th>
+                    <td>
+                        {{ h.att_mark.student.full_name }}
+                    </td>
+                    <td>
+                        {{ h.att_mark.student.id }}
+                    </td>
+                    {% for attr in attrs %}
+                    {% set col_class = None %}
+                    {% if h.stime == stime %}
+                        {% if h[attr] != None and (h_pred == None or h_pred[attr] == None) %}
+                        {% set col_class = 'col-added' %}
+                        {% endif %}
+                        {% if h[attr] != None and h_pred != None and h_pred[attr] != None and h[attr] != h_pred[attr] %}
+                        {% set col_class = 'col-changed' %}
+                        {% endif %}
+                        {% if h[attr] == None and h_pred != None and h_pred[attr] != None %}
+                        {% set col_class = 'col-removed' %}
+                        {% endif %}
+                    {% endif %}
+                    <td{% if col_class != None %} class="{{ col_class }}"{% endif %}>
+
+                        {% if h[attr] != None %}
+                            {% set v = h[attr] %}
+                            {% if attr == 'simple_mark_test_simple' %}
+                                {% if v == 0 %}
+                                    {% set v = 'неявка' %}
+                                {% endif %}
+                                {% if v == 2 %}
+                                    {% set v = 'не зачтено' %}
+                                {% endif %}
+                                {% if v == 5 %}
+                                    {% set v = 'зачтено' %}
+                                {% endif %}
+                            {% endif %}
+                            {% if attr in ('simple_mark_exam', 'simple_mark_test_diff', 'simple_mark_course_work', 'simple_mark_course_project') and v == 0 %}
+                                {% set v = 'неявка' %}
+                            {% endif %}
+                            {{ v }}
+                        {% endif %}
+                    </td>
+                    {% endfor %}
+                    <td>
+                        {% if h.stime == stime %}
+                        <a href="javascript:void(null)" title="Изменил: {{ h.user.full_name }}">&#9997;</a>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Modal select stime -->
+    <div class="modal fade" id="modalSelectTime" tabindex="-1" role="dialog" aria-labelledby="modalSelectTimeTitle" aria-hidden="true" data-keyboard="true">
+        <div class="modal-dialog modal-dialog-centered" role="document">
+            <div class="modal-content">
+                <form method="get">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="modalSelectTimeTitle">Выберите время:</h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="form-group mx-auto row">
+                            <div class="col-form-label col-sm-12 col-6">
+                                <select class="form-control" name="stime">
+                                    {% for t in stimes %}
+                                    <option{% if t == stime %} selected{% endif %}>{{ t.strftime(config.DATE_TIME_FORMAT) }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer justify-content-between">
+                        <div class="w-100">
+                            <input class="btn btn-block btn-primary col-md-4 float-right" type="submit" value="Показать">
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    <!-- End modal stime -->
+
+
+
+</body>
+</html>

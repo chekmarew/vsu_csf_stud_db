@@ -1,0 +1,11 @@
+<!doctype html><html lang="ru"><head><meta name="viewport" content="width=device-width,user-scalable=no,initial-scale=1,maximum-scale=1,minimum-scale=1"><meta charset="utf-8"/><title>ВГУ ФКН БРС Расписание экзаменов</title>
+	<script>
+        window.BASE_URL = '{{ url_for('index') }}';
+        window.BASE_URL_API = '{{ url_for('index') }}api';
+        window.BASE_URL_PAGE = '{{ url_for('schedule') }}';
+    </script>
+    <link rel="stylesheet" crossorigin href="{{ url_for('static', filename=index_css_file) }}">
+    <script defer="defer" type="module" crossorigin src="{{ url_for('static', filename=index_js_file) }}"></script></head>
+<body>
+    <div id="root"></div>
+</body></html>

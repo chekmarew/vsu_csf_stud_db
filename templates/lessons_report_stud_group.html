@@ -1,0 +1,407 @@
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>ВГУ ФКН БРС Свод оценок рубежных аттестаций по группе</title>
+    {% include '_header.html' %}
+    {% from "_mark_decorator.html" import macros_pct_attendance_class with context %}
+    {% include '_mark_decorator.html' %}
+    <style>
+        .header-fixed {
+            max-width: calc(100vw - 45px);
+            width: fit-content;
+            position: sticky;
+            left: 15px;
+        }
+        #button_marks {
+            position: sticky;
+            left: 15px;
+        }
+
+        .vertical-text {
+            writing-mode: vertical-lr;
+        }
+        .table-attendance
+        {
+            border-collapse: separate;
+            border-spacing: 0;
+        }
+
+        .table-attendance td, .table-attendance th
+        {
+           padding: 0.25rem
+        }
+        .table-attendance thead
+        {
+           background-color: #e9ecef;
+           position: sticky;
+           top: 0;
+           z-index: 1;
+        }
+        .cell-attendance
+        {
+            width: 42px;
+            min-width: 42px;
+            max-width: 42px;
+            font-size: small;
+        }
+        .cell-num
+        {
+            width: 30px;
+            min-width: 30px;
+            max-width: 30px;
+            position: sticky;
+            left: 15px;
+        }
+        {% if stud_group.active and stud_group.sub_count > 1 %}
+        .cell-subnum
+        {
+            width: 30px;
+            min-width: 30px;
+            max-width: 30px;
+            position: sticky;
+            left: 45px;
+        }
+        .cell-student-name
+        {
+            position: sticky;
+            left: 75px;
+        }
+        {% else %}
+        .cell-student-name
+        {
+            position: sticky;
+            left: 45px;
+        }
+        {% endif %}
+
+        .cell-avg-ball {
+            position: sticky;
+            left: 15px;
+        }
+
+        .cell-bg {
+            background-color: #ffffff;
+            z-index 0;
+        }
+        .cell-head
+        {
+            background-color: #e9ecef;
+        }
+
+        .cell-border-left
+        {
+            border-left-color: #343a40;
+            border-left-width: 1px;
+            border-left-style: solid;
+        }
+        .cell-border-left-2
+        {
+            border-left-color: #343a40;
+            border-left-width: 2px;
+            border-left-style: solid;
+        }
+        .cell-border-right
+        {
+            border-right-color: #343a40;
+            border-right-width: 1px;
+            border-right-style: solid;
+        }
+        .cell-border-right-2
+        {
+            border-right-color: #343a40;
+            border-right-width: 2px;
+            border-right-style: solid;
+        }
+        .cell-border-top
+        {
+            border-top-color: #343a40;
+            border-top-width: 1px;
+            border-top-style: solid;
+        }
+        .cell-border-top-2
+        {
+            border-top-color: #343a40;
+            border-top-width: 2px;
+            border-top-style: solid;
+        }
+        .cell-border-bottom
+        {
+            border-bottom-color: #343a40;
+            border-bottom-width: 1px;
+            border-bottom-style: solid;
+        }
+        .cell-border-bottom-2
+        {
+            border-bottom-color: #343a40;
+            border-bottom-width: 2px;
+            border-bottom-style: solid;
+        }
+        .cell-disabled
+        {
+            background-color: #a0a0a0;
+        }
+        .cell-fixed-left
+        {
+            position: sticky;
+            left: 15px;
+            z-index: 1;
+            background-color: #e9ecef;
+        }
+
+        .attendance1
+        {
+            background-color: rgba(0, 128, 0, 0.25);
+        }
+        .attendance2
+        {
+            background-color: rgba(255, 193, 7, 0.25);
+        }
+
+        .attendance0
+        {
+            background-color: rgba(255, 0, 0, 0.75);
+            color: rgb(255, 255, 255);
+        }
+
+        .attendance0 a
+        {
+            color: rgb(255, 255, 255);
+        }
+        .attendance0 .text-danger
+        {
+            color: rgb(255, 255, 255) !important;
+        }
+
+        #previous_stud_groups_ctrl.collapsed:after {
+            content: "\2193";
+        }
+        #previous_stud_groups_ctrl:after {
+            content: "\2192";
+        }
+
+    </style>
+</head>
+<body style="width: fit-content; min-width: 100vw;">
+    {% include '_menu.html' %}
+    {% include '_left_padding_div.html' %}
+    <div class="container-fluid">
+        <h2 class="header-fixed">Табель посещаемости занятий студенческой группы</h2>
+        <dl class="row header-fixed">
+            <dt class="col-sm-3 text-right">
+                Учебный год:
+            </dt>
+            <dd class="col-sm-3">
+                {{ stud_group.year_print }}
+            </dd>
+            <dt class="col-sm-3 text-right">
+                Курс:
+            </dt>
+            <dd class="col-sm-3">
+                {{ stud_group.course }}
+            </dd>
+            <dt class="col-sm-3 text-right">
+                Семестр:
+            </dt>
+            <dd class="col-sm-3">
+                {{ stud_group.semester }}
+                {% if previous_stud_groups_map|length > 0 %}
+                    <span class="collapse" id="previous_stud_groups">
+                        <span class="mx-2">Пред. семестры:</span>
+                        {% for semester, g in previous_stud_groups_map.items() %}
+                            <a href="{{ url_for('lessons_report_stud_group', id=g.id) }}" target="_blank" class="ml-2">{{ semester }}</a>
+                        {% endfor %}
+                    </span>
+                    <a id="previous_stud_groups_ctrl" data-toggle="collapse" href="#previous_stud_groups" role="button" aria-controls="previous_stud_groups" class="collapsed ml-4" title="Предыдущие семестры"></a>
+               {% endif %}
+            </dd>
+            <dt class="col-sm-3 text-right">
+                Группа:
+            </dt>
+            <dd class="col-sm-3">
+                {% if stud_group.get_rights(current_user)["write"] %}
+                <a href="{{ url_for('stud_group', id=stud_group.id, _anchor='curriculum_units') }}">
+                    {{ stud_group.num }}
+                </a>
+                {% else %}
+                <a href="{{ url_for('stud_group_leader', id=stud_group.id) }}" title="Сведения о старосте и кураторе группы">
+                    {{ stud_group.num }}
+                </a>
+                {% endif %}
+            </dd>
+            <dt class="col-sm-3 text-right">
+                Направление (специальность):
+            </dt>
+            <dd class="col-sm-9">
+                {{ stud_group.specialty.full_name }}
+            </dd>
+        </dl>
+        <table class="table-attendance table-hover">
+            <thead>
+                <tr>
+                    <th rowspan="6" class="cell-num cell-head cell-border-left-2 cell-border-top-2 text-center">
+                        №
+                    </th>
+                    {% if stud_group.active and stud_group.sub_count > 1 %}
+                    <th rowspan="6" class="cell-subnum cell-head cell-border-left cell-border-top-2 text-center" title="Подгруппа">
+                        {% if sort_key == "stud_group_subnum" %}
+                        Пг
+                        {% else %}
+                        <a href="?sort_key=stud_group_subnum">Пг</a>
+                        {% endif %}
+                    </th>
+                    {% endif %}
+                    <th rowspan="6" class="cell-student-name cell-head cell-border-left cell-border-right-2 cell-border-top-2 text-center">
+                        {% if sort_key == "student_name" %}
+                        Ф.И.О.
+                        {% else %}
+                        <a href="?">Ф.И.О.</a>
+                        {% endif %}
+                    </th>
+                    {% for l in lessons %}
+                        <th class="cell-border-top-2 cell-attendance text-center{% if not loop.last %} cell-border-right{% endif %}">
+                            {% set cu = curriculum_units[loop.index0] %}
+                            {% if cu.get_rights(current_user)["read"] %}
+                            <a href="{{ url_for('lessons', _anchor='/curriculum-unit/'+(cu.id|string)) }}">{{ l.date.strftime("%d.%m") }}</a>
+                            {% else %}
+                            {{ l.date.strftime("%d.%m") }}
+                            {% endif %}
+                        </th>
+                    {% endfor %}
+                    <th rowspan="6" class="cell-border-top-2 cell-attendance text-center cell-border-left-2 cell-border-right-2">
+                        %
+                    </th>
+
+                </tr>
+				<tr>
+					{% for l in lessons %}
+                        <th class="cell-border-top cell-attendance text-center{% if not loop.last %} cell-border-right{% endif %}" title="{{ l.time|string }}" >
+                            {% set cu = curriculum_units[loop.index0] %}
+                            {% if cu.get_rights(current_user)["read"] %}
+                            <a href="{{ url_for('lessons', _anchor='/curriculum-unit/'+(cu.id|string)) }}">{{ l.lesson_num }}</a>
+                            {% else %}
+                            {{ l.lesson_num }}
+                            {% endif %}
+                        </th>
+                    {% endfor %}
+				</tr>
+                <tr>
+                    {% for l in lessons %}
+                    <th class="cell-border-top cell-attendance text-center{% if not loop.last %} cell-border-right{% endif %}">
+                        {% if l.comment %}
+                        <span title="{{ l.comment }}" class="text-danger font-weight-bold">*</span>
+                        {% endif %}
+                    </th>
+                    {% endfor %}
+                </tr>
+                <tr>
+                    {% for cu in curriculum_units %}
+                        <th class="cell-border-top cell-attendance vertical-text{% if not loop.last %} cell-border-right{% endif %}" title="{{ cu.subject.name }}">
+                            {% set s_name = cu.subject.short_name or cu.subject.name %}
+                            {% if s_name|length > 8 %}
+                                {% set s_name = s_name[:6]+"..." %}
+                            {% endif %}
+                            {{ s_name }}
+                        </th>
+                    {% endfor %}
+                </tr>
+                <tr>
+                    {% for l in lessons %}
+                        <th class="cell-border-top text-center cell-attendance{% if not loop.last %} cell-border-right{% endif %}">
+                            {% if l.type == 'seminar' %}
+                            <span title="Практическое занятие">П</span>
+                            {% endif %}
+                            {% if l.type == 'lecture' %}
+                            <span title="Лекционное занятие">Лек</span>
+                            {% endif %}
+                        </th>
+                    {% endfor %}
+                </tr>
+                <tr>
+                    {% for l in lessons %}
+                        <th class="cell-border-top text-center cell-attendance{% if not loop.last %} cell-border-right{% endif %}">
+                            {% if l.form == 'in_class' %}
+                            <span title="Очное занятие">О</span>
+                            {% endif %}
+                            {% if l.form == 'remote' %}
+                            <span title="Дистанцонное занятие">Д/О</span>
+                            {% endif %}
+                        </th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for s in students %}
+                    <tr title="{{ s.full_name }}">
+                        {% set class_top = 'cell-border-top-2' if loop.first else 'cell-border-top' %}
+                        <td class="cell-num cell-bg cell-border-left-2 {{ class_top }}">
+                            {{ loop.index }}
+                        </td>
+                        {% if stud_group.active and stud_group.sub_count > 1 %}
+                        <td class="cell-subnum cell-bg cell-border-left {{ class_top }}">
+                            {% if s.stud_group_id == stud_group.id %}
+                            {{ s.stud_group_subnum }}
+                            {% endif %}
+                        </td>
+                        {% endif %}
+                        <td class="cell-student-name cell-bg cell-border-left cell-border-right-2 {{ class_top }}">
+                            <div class="text-nowrap">
+                                {% if s.get_rights(current_user)["read_marks"] %}
+                                <a href="{{ url_for('att_marks_report_student', id=s.id) }}">
+                                    {{ s.full_name_short }}
+                                </a>
+                                {% else %}
+                                    {{ s.full_name_short }}
+                                {% endif %}
+                            </div>
+                        </td>
+                        {% for l in lessons %}
+                            {% set lesson_student = lessons_attendance_map[l.id].get(s.id, None) %}
+                            <td class="text-center cell-attendance {{ class_top }}{% if lesson_student == None %} cell-disabled{% endif %}{% if not loop.last %} cell-border-right{% endif %} attendance{{ lesson_student.attendance }}">
+                                {% if lesson_student != None %}
+                                <span title="{{ lesson_student.attendance_str_comment }}">{{ lesson_student.attendance_str }}</span>
+                                {% if lesson_student.comment %}
+                                <span title="{{ lesson_student.comment }}" class="text-danger font-weight-bold">*</span>
+                                {% endif %}
+                                {% endif %}
+                            </td>
+                        {% endfor %}
+                        <td class="text-center {{ class_top }} cell-border-left-2 cell-border-right-2 {{ macros_pct_attendance_class(students_attendance_pct.get(s.id, None)) }}">
+                            {{ students_attendance_pct.get(s.id, '') }}
+                        </td>
+                    </tr>
+                {% endfor %}
+                <tfoot>
+                    <tr>
+                        <th colspan="{{ 3 if stud_group.active and stud_group.sub_count > 1 else 2 }}" class="cell-border-left-2 cell-border-right-2 cell-border-top-2 text-right cell-fixed-left">
+                            Преподаватель
+                        </th>
+                        {% for l in lessons %}
+                        <td class="vertical-text cell-attendance cell-border-top-2 text-right{% if not loop.last %} cell-border-right{% endif %}">
+                            {{ l.teacher.full_name_short }}
+                        </td>
+                        {% endfor %}
+                        <th class="cell-border-top-2 cell-border-left-2 cell-border-right-2 cell-disabled">
+                        </th>
+                    </tr>
+                    <tr>
+                        <th colspan="{{ 3 if stud_group.active and stud_group.sub_count > 1 else 2 }}" class="cell-border-left-2 cell-border-right-2 cell-border-top-2 cell-border-bottom-2 text-right cell-fixed-left">
+                            % посещ.
+                        </th>
+                        {% for pct in lessons_attendance_pct %}
+                            <th class="cell-border-top-2 cell-border-bottom-2 text-center cell-attendance{% if not loop.last %} cell-border-right{% endif %} {{ macros_pct_attendance_class(pct) }}">
+                                {{ pct if pct != None }}
+                            </th>
+                        {% endfor %}
+                        <th class="cell-border-top-2 cell-border-bottom-2 cell-border-left-2 cell-border-right-2 cell-disabled">
+                        </th>
+                    </tr>
+                </tfoot>
+            </tbody>
+        </table>
+        <div class="my-1">
+            <a id="button_marks" href="{{ url_for('att_marks_report_stud_group', id=stud_group.id, sort_key=sort_key) }}" class="btn btn-primary">Свод оценок рубежных аттестаций</a>
+        </div>
+    </div>
+
+</body>
+</html>

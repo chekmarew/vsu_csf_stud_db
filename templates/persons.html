@@ -1,0 +1,293 @@
+<html lang="ru">
+<head>
+    {% from "_macros_bootstrap" import bootstrap_form_input, bootstrap_form_button with context %}
+    <meta charset="UTF-8">
+    <title>ВГУ ФКН БРС Поиск пользователей</title>
+    {% include '_header.html' %}
+    <script src="{{ url_for('static', filename='jquery.maskedinput/jquery.maskedinput.js') }}"></script>
+    <script src="{{ url_for('static', filename='phone_format.js') }}"></script>
+</head>
+<body>
+    {% include '_menu.html' %}
+    <div class="container-fluid">
+        <h2>Пользователи</h2>
+        {% if current_user.admin_user != None and current_user.admin_user.active %}
+        <ul class="nav navbar-nav">
+            <li class="nav-item">
+                <a href="{{ url_for('students_unallocated') }}" class="nav-link">Нераспределённые студенты</a>
+            </li>
+            <!--
+            <li class="nav-item">
+                <a href="{{ url_for('students_transfer') }}" class="nav-link">Перевод студентов на следующий семестр</a>
+            </li>
+            -->
+        </ul>
+        {% endif %}
+        <h3>Поиск</h3>
+        <form method="get">
+	    {% autoescape false %}
+            {{ bootstrap_form_input(form.surname) }}
+            {{ bootstrap_form_input(form.firstname) }}
+            {{ bootstrap_form_input(form.middlename) }}
+            {{ bootstrap_form_input(form.gender) }}
+            {{ bootstrap_form_input(form.login) }}
+            {{ bootstrap_form_input(form.email) }}
+            {{ bootstrap_form_input(form.phone) }}
+            {{ bootstrap_form_input(form.card_number) }}
+            {% if form.allow_jwt_auth %}
+            {{ bootstrap_form_input(form.allow_jwt_auth) }}
+            {% endif %}
+            {{ bootstrap_form_input(form.role) }}
+
+            {# student #}
+            {{ bootstrap_form_input(form.student_id) }}
+            {{ bootstrap_form_input(form.student_status) }}
+            {{ bootstrap_form_input(form.student_alumnus_year) }}
+            {{ bootstrap_form_input(form.student_expelled_year) }}
+            {{ bootstrap_form_input(form.student_semester) }}
+            {{ bootstrap_form_input(form.student_group) }}
+            {{ bootstrap_form_input(form.student_subject_particular) }}
+
+            {# teacher #}
+            {{ bootstrap_form_input(form.teacher_status) }}
+            {{ bootstrap_form_input(form.teacher_department) }}
+
+            {# admin_user #}
+            {{ bootstrap_form_input(form.admin_user_status) }}
+
+            {{ bootstrap_form_button(form.button_search, class_="btn btn-success") }}
+        {% endautoescape %}
+        </form>
+        {% if persons != None %}
+        <h3 id="result">Результаты поиска</h3>
+        <h6>Найдено записей: {{ persons.total }}</h6>
+        {% if persons.pages > 1 %}
+            <ul class="pagination">
+                {% for p in persons.iter_pages() %}
+                    {% if p == None %}
+                        <li class="page-item"><span class="page-link">...</span></li>
+                    {% elif p == persons.page %}
+                        <li class="page-item active"><span class="page-link"> {{ p }}</span></li>
+                    {% else %}
+                        {% set args = dict(request.args) %}
+                        {% set _ = args.update({'page': p}) %}
+                        <li class="page-item"><a href="{{ url_for('persons', _anchor='result', **args) }}" class="page-link"> {{ p }}</a></li>
+                    {% endif %}
+                {% endfor %}
+            </ul>
+        {% endif %}
+        <table class="table">
+            <thead>
+            <tr>
+                <th>ФИО</th>
+                <th>login</th>
+                <th>E-mail</th>
+                <th>Телефон</th>
+                <th>{{'Другие роли' if role else 'Роли' }}</th>
+                {% if role == 'Student' %}
+                <th>№ Билета</th>
+                <th>Курс</th>
+                <th>Группа</th>
+                {% endif %}
+                {% if role == 'Teacher' %}
+                <th>Кафедра</th>
+                <th>Учёная степень</th>
+                <th>Должность</th>
+                {% endif %}
+            </tr>
+            </thead>
+            <tbody>
+                {% for p in persons.items %}
+                    <tr>
+                        <td rowspan="{{ p.students|length if role == 'Student' else 1 }}">
+                            {% if current_user.admin_user and current_user.admin_user.active %}
+                            <a href="{{ url_for('person', id=p.id) }}">{{ p.surname }} {{ p.firstname }}{% if p.middlename %} {{ p.middlename }}{% endif %}</a>
+                            {% else %}
+                            {{ p.surname }} {{ p.firstname }}{% if p.middlename %} {{ p.middlename }}{% endif %}
+                            {% endif %}
+                            {% if p.surname_old_all_time %}
+                            <br/>
+                            <span class="pt-1 text-secondary">{{ p.surname_old_all_time }}</span>
+                            {% endif %}
+                            {% if role == 'AdminUser' and not p.admin_user.active %}
+                            <br/>
+                            <span class="px-1 badge badge-secondary">отключен</span>
+                            {% endif %}
+                        </td>
+                        <td rowspan="{{ p.students|length if role == 'Student' else 1 }}">
+                            {{ p.login if p.login }}
+                        </td>
+                        <td rowspan="{{ p.students|length if role == 'Student' else 1 }}">
+                            {% if p.email %}
+                                <div class="text-nowrap">
+                                    <a href="mailto:{{ p.email }}">{{ p.email }}</a>
+                                </div>
+                            {% endif %}
+                        </td>
+                        <td rowspan="{{ p.students|length if role == 'Student' else 1 }}">
+                            {% if p.phone %}
+                                <div class="text-nowrap">
+                                    <a href="tel:{{ p.phone_str }}">{{ p.phone_format }}</a>
+                                </div>
+                            {% endif %}
+                        </td>
+                        <td rowspan="{{ p.students|length if role == 'Student' else 1 }}">
+                            {% for r in p.roles_all | rejectattr('role_name', 'equalto', role) %}
+                            {% if r.role_name == 'Student' %}
+                                {% set s_comment = '' %}
+                                {% if r.status == 'study' %}
+                                    {% if r.stud_group %}
+                                        {% set s_comment = r.stud_group.course|string + ' курс ' + ('маг. ' if r.stud_group.specialty.education_level == 'master' else '') + r.stud_group.num|string %}
+                                        {% if r.stud_group_subnum %}
+                                            {% set s_comment = s_comment +'.'+ r.stud_group_subnum|string %}
+                                        {% endif %}
+                                        {% set s_comment = s_comment + ' группа ' + r.stud_group.specialty.full_name %}
+                                    {% else %}
+                                        {% set s_comment = r.course|string + ' курс' + (' маг.' if r.stud_group.specialty.education_level == 'master' else '') %}
+                                    {% endif %}
+                                {% endif %}
+                                {% if r.status == 'alumnus' %}
+                                    {% set s_comment = 'Успешно закончил'+('а' if p.gender == 'W' else '')+' обучение в ' + r.alumnus_year|string + ' году' %}
+                                {% endif %}
+                                {% if r.status == 'expelled' %}
+                                    {% set s_comment = 'Отчислен'+('а' if p.gender == 'W' else '')+' в ' + r.expelled_year|string + ' году' %}
+                                {% endif %}
+                                {% if r.status == 'academic_leave' %}
+                                    {% set s_comment = 'В академическом отпуске с ' + r.expelled_year|string + ' года' %}
+                                {% endif %}
+                                <span class="badge{{' bg-secondary' if r.status != 'study' }}" title="{{ s_comment }}"><a {% if r.status != 'study' %}class="text-light"{% endif %} href="{{ url_for('student', id=r.id) if current_user.admin_user and current_user.admin_user.active else url_for('att_marks_report_student', id=r.id)}}" title="{{ s_comment }}">Студент {{ r.id }}</a></span>
+                            {% endif %}
+                            {% if r.role_name == 'Teacher' %}
+                                <span class="badge{{' bg-secondary' if not r.active }}" title="{{ r.department.full_name }}: {{ r.rank }}"><a {% if not r.active %}class="text-light"{% endif %} href="{{ url_for('teacher', id=r.id) if current_user.admin_user and current_user.admin_user.active else url_for('teacher_report', id=r.id) }}">Преподаватель</a></span>
+                            {% endif %}
+                            {% if r.role_name == 'AdminUser' %}
+                                <span class="badge{{' bg-secondary' if not r.active }}"><a {% if not r.active %}class="text-light"{% endif %} href="{{ url_for('admin_user', id=r.id) if current_user.admin_user and current_user.admin_user.active else 'javascript:void(null)' }}">Администратор</a></span>
+                            {% endif %}
+                            {% if not loop.last %}<br>{% endif %}
+                            {% endfor %}
+                        </td>
+                        {% if role == 'Student' %}
+                        {% for s in p.students %}
+                        {% if not loop.first %}<tr>{% endif %}
+                        <td>
+                            <a href="{{ url_for('student', id=s.id) if current_user.admin_user and current_user.admin_user.active else url_for('att_marks_report_student', id=s.id) }}" class="px-1{{ ' bg-secondary text-light' if s.status != 'study' }}">{{ s.id }}</a>
+                        </td>
+                        <td>
+                            {{ s.course if s.status == 'study' }}
+                        </td>
+                        <td>
+                            {% if s.stud_group %}
+                                <a href="{{ url_for('stud_group', id=s.stud_group.id) if current_user.admin_user and current_user.admin_user.active else url_for('att_marks_report_stud_group', id=s.stud_group.id) }}" title="{{ s.stud_group.specialty.full_name }}">{{ s.stud_group.num }}</a>{% if s.stud_group_subnum %} ({{ s.stud_group_subnum }}){% endif %}
+                            {% endif %}
+                            {% if s.status == 'alumnus' %}
+                                Успешно {{ 'закончила' if p.gender == 'W' else 'закончил' }} обучение в {{ s.alumnus_year }} году
+                            {% endif %}
+                            {% if s.status == 'expelled' %}
+                                {{ 'Отчислена' if p.gender == 'W' else 'Отчислен' }} в {{ s.expelled_year }} году
+                            {% endif %}
+                            {% if s.status == 'academic_leave' %}
+                                 В академическом отпуске с {{ s.expelled_year }} года
+                            {% endif %}
+                        </td>
+                        {% if not loop.last %}</tr>{% endif %}
+                        {% endfor %}
+                        {% endif %}
+                        {% if role == 'Teacher' %}
+                        <td>
+                            {% for d in p.teacher.departments %}
+                            <a href="{{ url_for('teacher', id=p.teacher.id) if current_user.admin_user and current_user.admin_user.active else 'javascript:void(null)'}} " class="px-1{{ ' px-1 bg-secondary text-light' if not p.teacher.active }}" title="{{ 'Не работает' if not p.teacher.active }}">{{ d.full_name }}</a>
+                            {% if not loop.last %}<br>{% endif %}
+                            {% endfor %}
+                        </td>
+                        <td>
+                            {% if p.teacher.academic_degree %}
+                                {{ p.teacher.academic_degree }}
+                            {% else %}
+                                &mdash;
+                            {% endif %}
+                        </td>
+                        <td>
+                            <a href="{{ url_for('teacher_report', id=p.teacher.id) }}" class="px-1{{ ' px-1 bg-secondary text-light' if not p.teacher.active }}" title="{{ 'Не работает' if not p.teacher.active }}">{{ p.teacher.rank }}</a>
+                        </td>
+                        {% endif %}
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% endif %}
+        {% if current_user.admin_user != None and current_user.admin_user.active %}
+        <div>
+            <a href="{{url_for('person', id='new')}}" class="btn btn-primary">Добавить пользователя</a>
+        </div>
+        {% endif %}
+    </div>
+    <script>
+        $(document).ready(function(){
+            var el_role = $('#role');
+
+            var el_student_status = $('#student_status');
+            var el_student_alumnus_year = $('#student_alumnus_year');
+            var el_student_expelled_year = $('#student_expelled_year');
+
+            var form = $(el_role[0].form);
+            var fn_role_elements_show = function(){
+                var role = el_role.val();
+
+                var names_map = {
+                    'Student': '[name^=student_]',
+                    'Teacher': '[name^=teacher_]',
+                    'AdminUser': '[name^=admin_user_]'
+                }
+                for (var _role in names_map)
+                {
+                    var name_pattern = names_map[_role];
+                    form.find(name_pattern).each(function(i, e){
+                        var elem = $(e);
+                        if (role == _role)
+                        {
+                            elem.parent().parent().show();
+                            elem.removeAttr('disabled');
+                        }
+                        else
+                        {
+                            elem.parent().parent().hide();
+                            elem.attr('disabled', 'disabled');
+                        }
+                    });
+                }
+
+                if (role == 'Student')
+                {
+                    var student_status = el_student_status.val();
+                    if (student_status == 'alumnus')
+                    {
+                        el_student_alumnus_year.parent().parent().show();
+                        el_student_alumnus_year.removeAttr('disabled');
+                    }
+                    else
+                    {
+                        el_student_alumnus_year.parent().parent().hide();
+                        el_student_alumnus_year.attr('disabled', 'disabled');
+                    }
+
+                    if ((student_status == 'expelled')||(student_status == 'academic_leave'))
+                    {
+                        el_student_expelled_year.parent().parent().show();
+                        el_student_expelled_year.removeAttr('disabled');
+                    }
+                    else
+                    {
+                        el_student_expelled_year.parent().parent().hide();
+                        el_student_expelled_year.attr('disabled', 'disabled');
+                    }
+                }
+            }
+
+            fn_role_elements_show();
+            el_role.change(fn_role_elements_show);
+            el_student_status.change(fn_role_elements_show);
+        });
+    </script>
+
+</body>
+</html>

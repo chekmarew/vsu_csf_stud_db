@@ -1,0 +1,12 @@
+<!doctype html><html lang="ru"><head><meta name="viewport" content="width=device-width,user-scalable=no,initial-scale=1,maximum-scale=1,minimum-scale=1"><meta charset="utf-8"/><title>ВГУ ФКН БРС Посещаемость</title>
+	<script>
+        window.BASE_URL = '{{ url_for('index') }}api';
+    </script>
+    <script defer="defer" type="module" crossorigin src="{{ url_for('static', filename=index_js_file) }}"></script></head>
+    {% include '_header.html' %}
+<body style="width: fit-content; min-width: 100vw;">
+    {% include '_menu.html' %}
+    {% set paddingLeft = 10 %}
+    {% include '_left_padding_div.html' %}
+    <div id="root"></div>
+</body></html>

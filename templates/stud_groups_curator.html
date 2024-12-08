@@ -1,0 +1,87 @@
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>ВГУ ФКН БРС Кураторы студенческих групп</title>
+    {% include '_header.html' %}
+</head>
+<body>
+    {% include '_menu.html' %}
+    <div class="container-fluid">
+        <h2>Кураторы студенческих групп</h2>
+        <table class="table">
+            <thead>
+            <tr>
+                <th>Курс</th>
+                <th>Группа</th>
+                <th>Направление (специальность)</th>
+                <th>Куратор</th>
+                <th>Телефон</th>
+                {% if stud_groups|rejectattr('curator', 'none')|rejectattr('curator.contacts', 'none')|list|length > 0 %}
+                <th>Доп. контакты</th>
+                {% endif %}
+                <th>E-mail</th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for g in stud_groups %}
+                <tr>
+                    <td>{{ g.course_print }}</td>
+                    <td>
+                        {% if g.get_rights(current_user)["write"] %}
+                        <a href="{{url_for('stud_group', id=g.id, _anchor='edit')}}">{{ g.num }}</a>
+                        {% else %}
+                        {{ g.num }}
+                        {% endif %}
+                    </td>
+                    <td>
+                        {{ g.specialty.name }}
+                        {% if g.specialty.specialization %}
+                        <br/>
+                        ({{ g.specialty.specialization }})
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if g.curator %}
+                            {{ g.curator.rank }}<br/>
+                            {% if current_user.admin_user and current_user.admin_user.active %}
+                                <a href="{{ url_for('teacher', id=g.curator.id) }}">{{ g.curator.full_name }}</a>
+                            {% else %}
+                                {{ g.curator.full_name }}
+                            {% endif %}
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if g.curator and g.curator.phone %}
+                        <div class="text-nowrap">
+                            <a href="tel:{{ g.curator.phone_str }}">{{ g.curator.phone_format }}</a>
+                        </div>
+                        {% endif %}
+                    </td>
+                    {% if stud_groups|rejectattr('curator', 'none')|rejectattr('curator.contacts', 'none')|list|length > 0 %}
+                    <td>
+                        {% if g.curator and g.curator.contacts %}
+                            <div class="text-nowrap">
+                            {{ g.curator.contacts }}
+                            </div>
+                        {% endif %}
+                    </td>
+                    {% endif %}
+                    <td>
+                        {% if g.curator and g.curator.email %}
+                        <div class="text-nowrap">
+                            <a href="mailto:{{ g.curator.email }}">{{ g.curator.email }}</a>
+                        </div>
+                        {% endif %}
+                    </td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        {% if current_user.user_rights["stud_groups"] %}
+        <div>
+            <a href="?print" target="_blank" class="btn btn-primary">Печать</a>
+        </div>
+        {% endif %}
+    </div>
+</body>
+</html>

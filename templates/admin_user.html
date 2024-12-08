@@ -1,0 +1,25 @@
+<html lang="ru">
+<head>
+    {% from "_macros_bootstrap" import bootstrap_form_input, bootstrap_form_button with context %}
+    <meta charset="UTF-8">
+    <title>ВГУ ФКН БРС Администратор</title>
+    {% include '_header.html' %}
+</head>
+<body>
+    {% include '_menu.html' %}
+    <div class="container">
+        <h2>Администратор</h2>
+        <h3><a href="{{ url_for('person', id=admin_user.person.id) }}">{{ admin_user.person.full_name }}</a></h3>
+        <form method="post">
+    	    {% autoescape false %}
+            {{ bootstrap_form_input(form.active) }}
+            {% if admin_user.id %}
+               {{ bootstrap_form_button(form.button_delete, class_="btn btn-danger") }}
+           {% endif %}
+           {{ bootstrap_form_button(form.button_save, class_="btn btn-success") }}
+           {% endautoescape %}
+        </form>
+    </div>
+
+</body>
+</html>

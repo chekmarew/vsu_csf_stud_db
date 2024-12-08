@@ -1,0 +1,71 @@
+<html lang="ru">
+<head>
+    {% from "_macros_bootstrap" import bootstrap_form_input, bootstrap_form_button with context %}
+    <meta charset="UTF-8">
+    <title>ВГУ ФКН Балльно-рейтинговая система</title>
+    {% include '_header.html' %}
+</head>
+<body>
+    <div class="container">
+        <h2>Воронежский государственный университет</h2>
+        <h2>Факультет компьютерных наук</h2>
+        <h2>Балльно-рейтинговая система</h2>
+        <h3>Вход</h3>
+        <div class="navbar navbar-expand-lg navbar-light bg-light">
+            <span class="navbar-brand">Тип входа:</span>
+            <ul class="navbar-nav">
+              <li class="nav-item active">
+                  <span class="nav-link font-weight-bold">По учётным данным как в классах ФКН</span>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link" href="{{ url_for('login_email', next=request.args.get('next', None)) }}">По E-mail</a>
+              </li>
+              {% if config.get('SMS_SENDER', None) != None %}
+              <li class="nav-item">
+                <a class="nav-link" href="{{ url_for('login_sms', next=request.args.get('next', None)) }}">По номеру телефона</a>
+              </li>
+              {% endif %}
+            </ul>
+        </div>
+        <form method="post">
+            {% autoescape false %}
+            {{ bootstrap_form_input(form.login) }}
+            {{ bootstrap_form_input(form.password) }}
+            {{ bootstrap_form_input(form.temporary_entrance) }}
+            {{ bootstrap_form_button(form.button_login, class_="btn btn-info") }}
+            {% endautoescape %}
+        </form>
+        <h6>Имя пользователя и пароль как в классах. Восстановить пароль => <a href="mailto:csadmins@sc.vsu.ru">csadmins@sc.vsu.ru</a></h6>
+        {#
+        <div class="p-3">
+            По вопросам, связанным с работой программы, можно писать на <a href="mailto:{{ config.MAIL_SUPPORT }}">{{ config.MAIL_SUPPORT }}</a>
+        </div>
+        #}
+    </div>
+    <script>
+        $(document).ready(function(){
+            var form = document.forms[0];
+            $(form).submit(function(){
+                var el_login = document.getElementById("login");
+                var el_password = document.getElementById("password");
+                var el_button_login = document.getElementById("button_login");
+                if (/^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}$/.test(el_login.value) && (el_password.value == ""))
+                {
+                    el_login.id="email";
+                    el_login.setAttribute("name","email");
+                    form.action = "{{ url_for('login_email', next=request.args.get('next', None)) }}";
+                    el_button_login.id = "button_send_email";
+                    el_button_login.setAttribute("name","button_send_email");
+                    el_button_login.value = "Отправить код на E-mail";
+                }
+                var i_hidden = $('<input type="hidden"/>');
+                el_button_login.disabled = true;
+                i_hidden.attr('name', el_button_login.name);
+                i_hidden.val(el_button_login.value);
+                $(form).append(i_hidden);
+            })
+
+        })
+    </script>
+</body>
+</html>

@@ -1,0 +1,88 @@
+<html lang="ru">
+<head>
+    {% from "_macros_bootstrap" import bootstrap_form_input, bootstrap_form_button with context %}
+    <meta charset="UTF-8">
+    <title>ВГУ ФКН БРС Преподаватель</title>
+    {% include '_header.html' %}
+</head>
+<body>
+    {% include '_menu.html' %}
+
+    <div class="container-fluid">
+        <h2>Личный кабинет преподавателя</h2>
+        <h4>{{ teacher.full_name }}</h4>
+        <h5>{{ teacher.rank }}</h5>
+        {% include '_periods_archive.html' %}
+        {% if curriculum_units|length >0 or curriculum_units_practice|length > 0 %}
+            {% include 'teacher_report_curriculum_units.html' %}
+        {% else %}
+            {% if archive_year != None and archive_semester != None %}
+            <h6>Занятий {{ 'по программам обучения бакалавриата и специалитета' if archive_year < 2024 else 'на' }} ФКН в учебном году {{ archive_year }}-{{ archive_year+1 }}({{ archive_semester }} семестр) у Вас не было</h6>
+            {% else %}
+            <h6>Занятий на ФКН в этом семестре у Вас нет</h6>
+            {% endif %}
+        {% endif %}
+        {% if (curriculum_units|length >0 or curriculum_units_practice|length > 0) and archive_year == None and archive_semester == None and current_user.teacher != None and current_user.teacher.id and current_user.teacher.id == teacher.id %}
+            <a class="btn btn-primary text-white" href="{{ url_for('lessons', _anchor='/new-lesson/'+(teacher.id|string)) }}">[+] Новое занятие</a>
+        {% endif %}
+
+        {% if stud_groups|length > 0 %}
+            <hr/>
+            <h3>Курируемые студенческие группы</h3>
+            {% include 'teacher_report_stud_groups_curator.html' %}
+        {% endif %}
+        </div>
+        <!-- modal news  -->
+        {% if curriculum_units|length >0 and archive_year == None and archive_semester == None and current_user.teacher != None and current_user.teacher.id and current_user.teacher.id == teacher.id %}
+            
+            <div class="modal fade" id="modalNews3" tabindex="-1" role="dialog" aria-labelledby="modalNews3Title" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered" role="document">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="modalNews3Title">Объявление</h5>
+                            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                <span aria-hidden="true">&times;</span>
+                            </button>
+                        </div>
+                        <div class="modal-body">
+                            <h3>Уважаемые преподаватели!</h3>
+                            <ul>
+                                <li>Напоминаем, что со второго семестра 2023-2024 учебного года необходимо в данной системе вести учёт посещаемости студентов.</li>
+                                <li>За каждые 10% процентов пропущенных занятий средневзвешенный балл у студента уменьшается на 1, но не более чем на 5.</li>
+                                <li>Добавьте для каждой группы преподавателей практических занятий (если они есть), в том числе магистров, проходящих педагогическую практику.</li>
+                                <li>Если преподаватель практических занятий в списке отсутствует, то напишите письмо на <a href="mailto:{{ config.MAIL_SUPPORT }}">{{ config.MAIL_SUPPORT }}</a> с указанием его ФИО, кафедры, должности, email и телефона.</li>
+                            </ul>
+
+                             <div class="modal-footer">
+                                <button id="modalNews3ButtonOK" class="btn btn-primary col-4">OK</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+        <!-- end modal news  -->
+
+    <script>
+        $(document).ready(function(){
+            /* news */
+            var read_news = {1: false, 2:false, 3: false};
+            if (localStorage.getItem("read_news"))
+            {
+                read_news = JSON.parse(localStorage.getItem("read_news"));
+            }
+            {% if curriculum_units|length >0 and archive_year == None and archive_semester == None and current_user.teacher != None and current_user.teacher.id and current_user.teacher.id == teacher.id %}
+            if (!read_news[3])
+            {
+                $('#modalNews3').modal({show:true, backdrop: 'static', keyboard: false});
+            }
+            $("#modalNews3ButtonOK").click(function(){
+                read_news[3]= true;
+                localStorage.setItem("read_news", JSON.stringify(read_news));
+                $('#modalNews3').modal('hide');
+            });
+            {% endif %}
+        });
+    </script>
+</body>
+</html>

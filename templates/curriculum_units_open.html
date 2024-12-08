@@ -1,0 +1,85 @@
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>ВГУ ФКН БРС Открытые ведомости</title>
+    {% include '_header.html' %}
+    <style>
+        .fixed {
+            background-color: #f8f9fa;
+            position: sticky;
+        }
+
+        .fixed_top {
+            top: 0;
+            border-bottom: 3px solid #dee2e6 !important;
+        }
+    </style>
+</head>
+<body>
+    {% include '_menu.html' %}
+    <div class="container-fluid">
+        <h2>Панель администратора</h2>
+        <h3>Выберите курс</h3>
+        <nav>
+            <ul class="pagination">
+                {% for level, s in semesters %}
+                <li class="page-item">
+                     <a class="page-link" href="{{ url_for('admin_panel', education_level_order=level, semester=s) }}">{{ ((s - 1) // 2) + 1 }}{% if level==2 %} (маг.){% endif %}</a>
+                </li>
+                {% endfor %}
+                <li class="page-item active">
+                    <span class="page-link">
+                        Незакрытые ведомости
+                        <span class="sr-only">(current)</span>
+                    </span>
+                </li>
+            </ul>
+        </nav>
+
+        <table class="table">
+            <thead class="fixed fixed_top">
+                <tr>
+                    <th>Преподаватель</th>
+                    <th>Предмет</th>
+                    <th>Курс</th>
+                    <th>Группа</th>
+                    <th>Отчётность</th>
+                    <th>Состояние</th>
+                    <th>% неуд.</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for cu in curriculum_units_open %}
+                    <tr>
+                        <td><a href="{{ url_for('teacher_report', id=cu.teacher.id) }}">{{ cu.teacher.full_name_short }}</a></td>
+                        <td>{{ cu.subject_name_print }}</td>
+                        <td>{{ cu.stud_group.course_print }}</td>
+                        <td title="{{ cu.stud_group.specialty.full_name }}">{{ cu.stud_group.num }}</td>
+                        <td>{{ cu.mark_types_name }}</td>
+                        <td>
+                            <a href="{{ url_for('att_marks', id=cu.id) }}">
+                                {{ cu.status_name }}
+
+                                {% if cu.pass_department %}
+                                    <span class="font-weight-bold" title="Ведомость сдана на кафедру">каф.</span>
+                                {% endif %}
+                            </a>
+                        </td>
+                        <td>
+                            {% if cu.result_failed != None %}
+                            <span {% if cu.result_failed > config['RESULT_FAIL_WARNING'] %}class="bg-danger text-white"{% else %}class="bg-success text-white"{% endif %}>&nbsp;{{ cu.result_failed }} %&nbsp;</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+            <tfoot>
+                <tr>
+                    <th colspan="7">Всего: {{ curriculum_units_open|length }}</th>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+
+</body>
+</html>

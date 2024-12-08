@@ -1,0 +1,1219 @@
+<html lang="ru">
+<head>
+    {% from "_macros_bootstrap" import bootstrap_form_input, bootstrap_form_button with context %}
+    {% from "_mark_decorator.html" import macros_mark_class, macros_mark_simple_class, macros_pct_attendance_class with context %}
+    <meta charset="UTF-8">
+    <title>ВГУ ФКН БРС Аттестационная ведомость</title>
+    {% include '_header.html' %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='bootstrap/fractional-grid.min.css') }}"/>
+    {% include '_mark_decorator.html' %}
+    <style>
+        @media (max-width: 1280px){
+            input[type='number'] {
+                -moz-appearance:textfield;
+            }
+
+            input::-webkit-outer-spin-button,
+            input::-webkit-inner-spin-button {
+                -webkit-appearance: none;
+            }
+        }
+        .input-mark
+        {
+            width: 100%;
+            padding: 0;
+            margin: 0;
+            max-width: 42px;
+
+        }
+        .input-mark-sel
+        {
+            width: auto;
+            padding: 0;
+            margin: 0;
+        }
+
+        .row-disabled
+        {
+            text-decoration: line-through;
+        }
+        #containerMain
+        {
+            min-width: 960px !important;
+        }
+        .table-header-fixed
+        {
+            position: sticky;
+            top: 0;
+            background-color: #f8f9fa;
+            z-index: 1;
+        }
+    </style>
+</head>
+<body>
+    {% include '_menu.html' %}
+    <div id="containerMain" class="container">
+        <h2>Аттестационная ведомость</h2>
+        <dl class="row">
+            <dt class="col-sm-3 text-right">
+                Учебный год:
+            </dt>
+            <dd class="col-sm-3">
+                {{ curriculum_unit.stud_group.year_print }}
+            </dd>
+            <dt class="col-sm-3 text-right">
+                Дисциплина:
+            </dt>
+            <dd class="col-sm-3">
+                {% if (current_user.admin_user and current_user.admin_user.active) or (current_user.teacher and current_user.teacher.id == curriculum_unit.teacher.id) %}
+                    <a href="{{ url_for('curriculum_unit', id=curriculum_unit.id) }}">{{ curriculum_unit.subject_name_print }}</a>
+                {% else %}
+                    {{ curriculum_unit.subject_name_print }}
+                {% endif %}
+            </dd>
+            <dt class="col-sm-3 text-right">
+                Группа:
+            </dt>
+            <dd class="col-sm-3">
+                {% if curriculum_unit.stud_group.get_rights(current_user)["write"] %}
+                <a href="{{ url_for('stud_group', id=curriculum_unit.stud_group.id, _anchor='curriculum_units') }}">
+                    {{ curriculum_unit.stud_group.num }}
+                </a>
+                {% else %}
+                    {{ curriculum_unit.stud_group.num }}
+                {% endif %}
+            </dd>
+            <dt class="col-sm-3 text-right">
+                Преподаватель:
+            </dt>
+            <dd class="col-sm-3">
+                {% if (current_user.admin_user and current_user.admin_user.active) or (current_user.teacher and current_user.teacher.id == curriculum_unit.teacher.id) %}
+                <a href="{{ url_for('teacher_report', id=curriculum_unit.teacher.id) }}">{{ curriculum_unit.teacher.rank }} {{ curriculum_unit.teacher.full_name_short }}</a>
+                {% else %}
+                {{ curriculum_unit.teacher.rank }} {{ curriculum_unit.teacher.full_name_short }}
+                {% endif %}
+            </dd>
+            <dt class="col-sm-3 text-right">
+                Направление (специальность):
+            </dt>
+            <dd class="col-sm-9">
+                {{ curriculum_unit.stud_group.specialty.full_name }}
+            </dd>
+            <dt class="col-sm-3 text-right">
+                Семестр:
+            </dt>
+            <dd class="col-sm-3">
+                {{ curriculum_unit.stud_group.semester }}
+            </dd>
+            <dt class="col-sm-3 text-right">
+                Курс:
+            </dt>
+            <dd class="col-sm-3">
+                {{ curriculum_unit.stud_group.course }}
+            </dd>
+            <dt class="col-sm-3 text-right">
+                Отчётность:
+            </dt>
+            <dd class="col-sm-3">
+                {{ curriculum_unit.mark_types_name }}
+            </dd>
+            <dt class="col-sm-3 text-right">
+                Состояние ведомости:
+            </dt>
+            <dd class="col-sm-3">
+                {{ 'Закрыта' if curriculum_unit.closed else 'Открыта' }}
+            </dd>
+        </dl>
+        {% if curriculum_unit.pass_department %}
+        <div class="container bg-warning font-weight-bold">
+            Ведомость сдана на кафедру
+            {% if curriculum_unit.get_rights(current_user)["pass_department"] %}
+            <a id="button_pass_department_cancel" class="btn btn-sm btn-primary" href="javascript:void(null)">Снять отметку</a>
+            {% endif %}
+        </div>
+        {% else %}
+            {% if curriculum_unit.get_rights(current_user)["pass_department"] %}
+                <div class="container bg-warning font-weight-bold">
+                    <a id="button_pass_department" class="btn btn-sm btn-primary" href="javascript:void(null)">Поставить отметку о сдаче ведомости на кафедру</a>
+                </div>
+            {% endif %}
+        {% endif %}
+
+        {% set show_group_subnum = (curriculum_unit.stud_group.sub_count > 1) and curriculum_unit.stud_group.active %}
+        <form method="post" id="formAttMarks">
+            <div class="row align-items-strech font-weight-bold border-top border-right border-left table-header-fixed">
+                <div class="col-0-half">№</div>
+                {% if show_group_subnum %}
+                <div class="col-0-half"><a href="javascript:void(null)" data-sort-students-keys="stud_group_subnum,full_name">Пг</a></div>
+                {% endif %}
+                <div class="col-2"><a href="javascript:void(null)" data-sort-students-keys="full_name">ФИО</a></div>
+                <div class="col-1-half"><a href="javascript:void(null)" data-sort-students-keys="id">Студ. билет №</a></div>
+                {% if 'att_mark_1' in curriculum_unit.visible_attrs %}
+                <div class="col-0-3qtr">1 атт</div>
+                {% endif %}
+                {% if 'att_mark_2' in curriculum_unit.visible_attrs %}
+                <div class="col-0-3qtr">2 атт</div>
+                {% endif %}
+                {% if 'att_mark_3' in curriculum_unit.visible_attrs %}
+                <div class="col-0-3qtr">3 атт</div>
+                {% endif %}
+                {% if curriculum_unit.calc_attendance %}
+                <div class="col-0-3qtr" title="% посещаемости"><a href="{{ url_for('lessons', _anchor='/curriculum-unit/'+(curriculum_unit.id|string)) }}">% посещ.</a></div>
+                {% endif %}
+
+
+                {% if curriculum_unit.visible_ball_average %}
+                    <div class="col-0-3qtr" title="Средневзешенный балл">взвеш. балл</div>
+                {% endif %}
+                {% if curriculum_unit.mark_type == 'exam' %}
+                    <div class="col-1">экзамен</div>
+                {% endif %}
+                {% if curriculum_unit.mark_type in ('exam', 'test_diff') %}
+                    <div class="col-0-3qtr">
+                        доп. балл
+                    </div>
+                    <div class="col-0-3qtr">балл</div>
+                {% endif %}
+                {% if curriculum_unit.mark_type != 'no_att' %}
+                <div class="col-1-1qtr">итог</div>
+                {% endif %}
+
+                {% if curriculum_unit.has_simple_mark_test_simple %}
+                    <div class="col-0-3qtr">зачет</div>
+                {% endif %}
+                {% if curriculum_unit.has_simple_mark_exam %}
+                    <div class="col-0-3qtr">экзамен</div>
+                {% endif %}
+                {% if curriculum_unit.has_simple_mark_test_diff %}
+                    <div class="col-0-3qtr">дифф. зачет</div>
+                {% endif %}
+                {% if curriculum_unit.has_simple_mark_course_work %}
+                    <div class="col-0-3qtr">курсовая работа</div>
+                {% endif %}
+                {% if curriculum_unit.has_simple_mark_course_project %}
+                    <div class="col-0-3qtr">курсовой проект</div>
+                {% endif %}
+            </div>
+
+            <div class="d-flex flex-column">
+            {% for att_mark in form.att_marks %}
+                {% set m = att_mark.object_data %}
+                {% set disabled_row = m.exclude != 2 and m.att_mark_id in curriculum_unit.att_marks_readonly_ids %}
+                <div class="row py-1 align-items-strech border-top border-right border-left{% if disabled_row %} row-disabled{% endif %}" data-student-id="{{ m.student_id }}" data-student-row="">
+                    <div class="col-0-half d-flex font-weight-bold">
+                        <div class="align-self-center">
+                            <a href="#modalHistoryAttMark{{ m.att_mark_id }}" data-toggle="modal" data-target="#modalHistoryAttMark{{ m.att_mark_id }}" data-loop-index="{{ loop.index }}" tabindex="-1">{{ loop.index }}</a>
+                        </div>
+                    </div>
+                    {% if show_group_subnum %}
+                    <div class="col-0-half d-flex">
+                        {% if not disabled_row %}
+                        <div class="align-self-center">
+                        {{ m.student.stud_group_subnum if m.student.stud_group_subnum }}
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                    <div class="col-2">
+                        {{ att_mark.att_mark_id|safe }}
+                        {{ att_mark.object_data.student.full_name }}
+                    </div>
+                    <div class="col-1-half d-flex">
+                        <div class="align-self-center">
+                            {% if att_mark.object_data.student.get_rights(current_user)["read_marks"] %}
+                            <a href="{{ url_for('att_marks_report_student', id=att_mark.object_data.student.id) }}" tabindex="-1">{{ att_mark.object_data.student.id }}</a>
+                            {% else %}
+                            {{ att_mark.object_data.student.id }}
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% if m.exclude == 2 %}
+                        <div class="col-4-1qtr d-flex font-weight-bold">
+                            <div class="align-self-center">
+                                перезачтено
+                            </div>
+                        </div>
+                    {% else %}
+                    {% set col_num = -1 %}
+                    {% if 'att_mark_1' in curriculum_unit.visible_attrs %}
+                    {% set col_num = col_num + 1 %}
+
+                    <div class="col-0-3qtr d-flex {{ macros_mark_class(m.att_mark_1) }}">
+                        <div class="align-self-center">
+                        {{ att_mark.att_mark_1(class_='input-mark', type="number", min=0, max=50, tabindex=(form.att_marks|length*col_num)+loop.index, disabled=disabled_row or not m.check_edit_attr('att_mark_1', current_user), autocomplete="off", **{'data-student-id': m.student_id, 'data-att-mark-1': m.att_mark_1 if m.att_mark_1 else ''})|safe }}
+                        {% if att_mark.att_mark_1.errors %}
+                            <span class="badge badge-danger">
+                                {{ ', '.join(att_mark.att_mark_1.errors ) }}
+                            </span>
+                        {% endif %}
+                        </div>
+                    </div>
+                    {% endif %}
+                    {% if 'att_mark_2' in curriculum_unit.visible_attrs %}
+                    {% set col_num = col_num + 1 %}
+                    <div class="col-0-3qtr d-flex {{ macros_mark_class(m.att_mark_2) }}">
+                        <div class="align-self-center">
+                        {{ att_mark.att_mark_2(class_='input-mark', type="number", min=0, max=50, tabindex=(form.att_marks|length*col_num)+loop.index, disabled=disabled_row or not m.check_edit_attr('att_mark_2', current_user), autocomplete="off", **{'data-student-id': m.student_id, 'data-att-mark-2': m.att_mark_2 if m.att_mark_2 else ''})|safe }}
+                        {% if att_mark.att_mark_2.errors %}
+                            <span class="badge badge-danger">
+                                {{ ', '.join(att_mark.att_mark_2.errors ) }}
+                            </span>
+                        {% endif %}
+                        </div>
+                    </div>
+                    {% endif %}
+                    {% if 'att_mark_3' in curriculum_unit.visible_attrs %}
+                    {% set col_num = col_num + 1 %}
+                     <div class="col-0-3qtr d-flex {{ macros_mark_class(m.att_mark_3) }}">
+                         <div class="align-self-center">
+                         {{ att_mark.att_mark_3(class_='input-mark', type="number", min=0, max=50, tabindex=(form.att_marks|length*col_num)+loop.index, disabled=disabled_row or not m.check_edit_attr('att_mark_3', current_user), autocomplete="off", **{'data-student-id': m.student_id, 'data-att-mark-3': m.att_mark_3 if m.att_mark_3 else ''})|safe }}
+                         {% if att_mark.att_mark_3.errors %}
+                            <span class="badge badge-danger">
+                                {{ ', '.join(att_mark.att_mark_3.errors ) }}
+                            </span>
+                         {% endif %}
+                         </div>
+                    </div>
+                    {% endif %}
+                    {% if curriculum_unit.calc_attendance %}
+                        {% set attendance_pct_title = '' %}
+                        {% if m.attendance_pct != None and m.ball_attendance_add != None %}
+                            {% if m.ball_attendance_add < 0 %}
+                                {% set attendance_pct_title = 'Штрафной балл за посещаемость: ' + (m.ball_attendance_add|string) %}
+                            {% endif %}
+                        {% endif %}
+                        <div class="col-0-3qtr d-flex {{ macros_pct_attendance_class(m.attendance_pct) }}" title="{{ attendance_pct_title }}">
+                            <div class="align-self-center">
+                                {% if m.attendance_pct != None %}
+                                {{ m.attendance_pct}}
+                                {% else %}
+                                {% if not disabled_row %}&mdash;{% endif %}
+                                {% endif %}
+                            </div>
+                        </div>
+                    {% endif %}
+                    {% if curriculum_unit.visible_ball_average %}
+                        <div class="col-0-3qtr d-flex {{ macros_mark_class(m.ball_average, total=(curriculum_unit.mark_type == 'test_diff')) }}">
+                            <div class="align-self-center">
+                                {{ m.ball_average if m.ball_average != None }}
+                            </div>
+                        </div>
+                    {% endif %}
+                    {% if curriculum_unit.mark_type == 'exam' %}
+                        {% set col_num = col_num + 1 %}
+                        <div class="col-1 d-flex {{ macros_mark_class(m.att_mark_exam) }}">
+                            <div class="align-self-center">
+                            {{ att_mark.att_mark_exam(class_='input-mark', type="number", min=0, max=50, tabindex=(form.att_marks|length*col_num)+loop.index, disabled=disabled_row or not m.check_edit_attr('att_mark_exam', current_user), autocomplete="off", **{'data-student-id': m.student_id, 'data-att-mark-exam': m.att_mark_exam if m.att_mark_exam else ''})|safe }}
+                            {% if att_mark.att_mark_exam.errors %}
+                                <span class="badge badge-danger">
+                                    {{ ', '.join(att_mark.att_mark_exam.errors ) }}
+                                </span>
+                            {% endif %}
+                            </div>
+                        </div>
+                    {% endif %}
+                    {% if curriculum_unit.mark_type in ('exam', 'test_diff') %}
+                        {% set col_num = col_num + 1 %}
+                        <div class="col-0-3qtr d-flex">
+                            <div class="align-self-center">
+                            {{ att_mark.att_mark_append_ball(class_='input-mark', type="number", min=0, max=10, tabindex=(form.att_marks|length*col_num)+loop.index, disabled=disabled_row or not m.check_edit_attr('att_mark_append_ball', current_user), autocomplete="off", **{'data-student-id': m.student_id, 'data-att-mark-append-ball': m.att_mark_append_ball if m.att_mark_append_ball else '' })|safe }}
+                            {% if att_mark.att_mark_append_ball.errors %}
+                                <span class="badge badge-danger">
+                                    {{ ', '.join(att_mark.att_mark_append_ball.errors ) }}
+                                </span>
+                            {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-0-3qtr d-flex{% if m.result_print %} {{ macros_mark_class(m.result_print[0], total=True) }}{% endif %}">
+                            {% if m.result_print %}
+                                <div class="align-self-center font-weight-bold">
+                                {{ m.result_print[0] }}
+                                </div>
+
+                            {% endif %}
+                        </div>
+                    {% endif %}
+                    {% if curriculum_unit.mark_type != 'no_att' %}
+                        <div class="col-1-1qtr d-flex{% if m.result_print %} {{ macros_mark_class(m.result_print[0], total=True) }}{% endif %}">
+                            {% if m.result_print %}
+                                <div class="align-self-center font-weight-bold">
+                                {{ m.result_print[1]['value_text'] }}
+                                </div>
+                            {% endif %}
+                        </div>
+                    {% endif %}
+                    {% if curriculum_unit.has_simple_mark_test_simple %}
+                        {% set col_num = col_num + 1 %}
+                        <div class="col-0-3qtr d-flex {{ macros_mark_simple_class(m.simple_mark_test_simple) }}">
+                            <div class="align-self-center">
+                                {{ att_mark.simple_mark_test_simple(class_='input-mark-sel', tabindex=(form.att_marks|length*col_num)+loop.index, disabled=disabled_row or not m.check_edit_attr('simple_mark_test_simple', current_user), **{'data-student-id': m.student_id, 'data-simple-mark-test-simple': m.simple_mark_test_simple if m.simple_mark_test_simple else ''})|safe }}
+                            </div>
+                        </div>
+                    {% endif %}
+                    {% if curriculum_unit.has_simple_mark_exam %}
+                        {% set col_num = col_num + 1 %}
+                        <div class="col-0-3qtr d-flex {{ macros_mark_simple_class(m.simple_mark_exam) }}">
+                            <div class="align-self-center">
+                                {{ att_mark.simple_mark_exam(class_='input-mark-sel', tabindex=(form.att_marks|length*col_num)+loop.index, disabled=disabled_row or not m.check_edit_attr('simple_mark_exam', current_user), **{'data-student-id': m.student_id, 'data-simple-mark-exam': m.simple_mark_exam if m.simple_mark_exam else ''})|safe }}
+                            </div>
+                        </div>
+                    {% endif %}
+                    {% if curriculum_unit.has_simple_mark_test_diff %}
+                        {% set col_num = col_num + 1 %}
+                        <div class="col-0-3qtr d-flex {{ macros_mark_simple_class(m.simple_mark_test_diff) }}">
+                            <div class="align-self-center">
+                                {{ att_mark.simple_mark_test_diff(class_='input-mark-sel', tabindex=(form.att_marks|length*col_num)+loop.index, disabled=disabled_row or not m.check_edit_attr('simple_mark_test_diff', current_user), **{'data-student-id': m.student_id, 'data-simple-mark-test-diff': m.simple_mark_test_diff if m.simple_mark_test_diff else ''})|safe }}
+                            </div>
+                        </div>
+                    {% endif %}
+                    {% if curriculum_unit.has_simple_mark_course_work %}
+                        {% set col_num = col_num + 1 %}
+                        <div class="col-0-3qtr d-flex {{ macros_mark_simple_class(m.simple_mark_course_work) }}">
+                            <div class="align-self-center">
+                                {{ att_mark.simple_mark_course_work(class_='input-mark-sel', tabindex=(form.att_marks|length*col_num)+loop.index, disabled=disabled_row or not m.check_edit_attr('simple_mark_course_work', current_user), **{'data-student-id': m.student_id, 'data-simple-mark-course-work': m.simple_mark_course_work if m.simple_mark_course_work else ''})|safe }}
+                            </div>
+                        </div>
+                    {% endif %}
+                    {% if curriculum_unit.has_simple_mark_course_project %}
+                        {% set col_num = col_num + 1 %}
+                        <div class="col-0-3qtr d-flex {{ macros_mark_simple_class(m.simple_mark_course_project) }}">
+                            <div class="align-self-center">
+                                {{ att_mark.simple_mark_course_project(class_='input-mark-sel', tabindex=(form.att_marks|length*col_num)+loop.index, disabled=disabled_row or not m.check_edit_attr('simple_mark_course_project', current_user), **{'data-student-id': m.student_id, 'data-simple-mark-course-project': m.simple_mark_course_project if m.simple_mark_course_project else ''})|safe }}
+                            </div>
+                        </div>
+                    {% endif %}
+                    {% endif %}
+                </div>
+            {% endfor %}
+            </div>
+            {% if curriculum_unit.mark_type != 'no_att' %}
+            <div class="row align-items-strech border-top border-bottom border-right border-left mb-2">
+                <div class="text-right font-weight-bold {% if show_group_subnum %}col-4-half{% else %}col-4{% endif %}">Часы</div>
+                {% if curriculum_unit.hours_att_1 %}
+                    <div class="col-0-3qtr text-center">{{ curriculum_unit.hours_att_1 }}</div>
+                {% endif %}
+                {% if curriculum_unit.hours_att_2 %}
+                    <div class="col-0-3qtr text-center">{{ curriculum_unit.hours_att_2 }}</div>
+                {% endif %}
+                {% if curriculum_unit.hours_att_3 %}
+                    <div class="col-0-3qtr text-center">{{ curriculum_unit.hours_att_3 }}</div>
+                {% endif %}
+                <div class="col-4-half font-weight-bold">Всего: {{ curriculum_unit.hours_sum }}</div>
+            </div>
+            {% endif %}
+            {% if curriculum_unit.result_failed != None %}
+            <div id="result_failed" class="px-1 mb-2 text-white {% if curriculum_unit.result_failed > config['RESULT_FAIL_WARNING']%}bg-danger{% else %}bg-success{% endif %}">
+                Неудовлетворительных оценок: {{ curriculum_unit.result_failed }} %
+            </div>
+            {% endif %}
+
+            {% if current_user.admin_user and current_user.admin_user.active %}
+                {% if curriculum_unit.status not in ('exam', 'closed') %}
+                    {{ bootstrap_form_button(form.button_clear, class_="btn btn-danger")|safe }}
+                {% endif %}
+            {% endif %}
+
+            {% if curriculum_unit.get_rights(current_user)["open"] %}
+                {{ bootstrap_form_button(form.button_open, class_="btn btn-primary")|safe }}
+            {% endif %}
+
+            {% if curriculum_unit.get_rights(current_user)["close"] %}
+                {{ bootstrap_form_button(form.button_close, class_="btn btn-primary")|safe }}
+            {% endif %}
+
+            {% if curriculum_unit.get_rights(current_user)["write"] %}
+            <div class="form-group">
+                <a class="btn btn-primary text-white" data-toggle="modal" data-target="#modalFormCSVImport">Импорт из CSV</a>
+            </div>
+            {% endif %}
+            <div class="form-group">
+                <a class="btn btn-primary text-white" data-toggle="modal" data-target="#modalHistory">История изменения состояния ведомости</a>
+            </div>
+            <div class="form-group">
+                <a href="{{ url_for('lessons', _anchor='/curriculum-unit/'+(curriculum_unit.id|string)) }}" class="btn btn-primary text-white">Посещаемость</a>
+            </div>
+            <div class="form-group">
+                <a class="btn btn-primary text-white" href="{{ url_for('att_marks_history', id=curriculum_unit.id) }}" target="_blank">История изменения оценок</a>
+            </div>
+            {% if curriculum_unit.get_rights(current_user)["write"] %}
+            {{ bootstrap_form_button(form.button_save, class_="btn btn-success")|safe }}
+            {% endif %}
+            {% if curriculum_unit.mark_type != "no_att" %}
+            {{ bootstrap_form_button(form.button_print, class_="btn btn-primary btn-print")|safe }}
+            {% endif %}
+            {% if curriculum_unit.has_simple_mark_test_simple %}
+            {{ bootstrap_form_button(form.button_print_simple_marks_test_simple, class_="btn btn-primary btn-print")|safe }}
+            {% endif %}
+            {% if curriculum_unit.has_simple_mark_exam %}
+            {{ bootstrap_form_button(form.button_print_simple_marks_exam, class_="btn btn-primary btn-print")|safe }}
+            {% endif %}
+            {% if curriculum_unit.has_simple_mark_test_diff %}
+            {{ bootstrap_form_button(form.button_print_simple_marks_test_diff, class_="btn btn-primary btn-print")|safe }}
+            {% endif %}
+            {% if curriculum_unit.has_simple_mark_course_work %}
+            {{ bootstrap_form_button(form.button_print_simple_marks_course_work, class_="btn btn-primary btn-print")|safe }}
+            {% endif %}
+            {% if curriculum_unit.has_simple_mark_course_project %}
+            {{ bootstrap_form_button(form.button_print_simple_marks_course_project, class_="btn btn-primary btn-print")|safe }}
+            {% endif %}
+        </form>
+    </div>
+
+
+     <!-- Modal History -->
+    <div class="modal fade" id="modalHistory" tabindex="-1" role="dialog" aria-labelledby="modalHistoryTitle" aria-hidden="true" data-keyboard="true">
+        <div class="modal-dialog modal-dialog-centered" role="document">
+            <div class="modal-content" style="width: auto;">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalHistoryTitle">История изменения состояния ведомости</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Время начала</th>
+                                <th>Время окончания</th>
+                                <th>Состояние</th>
+                                <th>Изменил</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        {% for h in curriculum_unit.status_history %}
+                        <tr>
+                            <td>
+                                {{ h.stime.strftime(config.DATE_TIME_FORMAT) }}
+                            </td>
+                            <td>
+                                {{ h.etime.strftime(config.DATE_TIME_FORMAT) if h.etime }}
+                            </td>
+                            <td>
+                                {{ 'закрыта' if h.closed else 'открыта' }}
+                                {% if h.pass_department %}
+                                (на кафедре)
+                                {% endif %}
+                            </td>
+                            <td>
+                                {{ h.user.full_name_short }}
+                            </td>
+                            <td>
+                                {% if h.doc != None %}
+                                    <a href="{{ url_for('curriculum_unit_history_doc', id=h.curriculum_unit_id, stime=h.stime.strftime(config.DATE_TIME_FORMAT)) }}" target="_blank">[документ]</a>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- End modal History -->
+
+
+    <!-- Modal History AttMark -->
+    {% for m in curriculum_unit.att_marks %}
+    <div class="modal fade" id="modalHistoryAttMark{{ m.att_mark_id }}" tabindex="-1" role="dialog" aria-labelledby="modalHistoryAttMark{{ m.att_mark_id }}Title" aria-hidden="true" data-keyboard="true">
+        <div class="modal-dialog modal-dialog-centered" role="document">
+            <div class="modal-content" style="width: auto;">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalHistoryAttMark{{ m.att_mark_id }}Title">История изменения аттестационной оценки</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <h6>Студент: {{ m.student.full_name }} ({{ m.student.id }})</h6>
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Время начала</th>
+                                <th>Время окончания</th>
+                                {% if 'att_mark_1' in curriculum_unit.visible_attrs %}
+                                <th>1 атт</th>
+                                {% endif %}
+                                {% if 'att_mark_2' in curriculum_unit.visible_attrs %}
+								<th>2 атт</th>
+                                {% endif %}
+                                {% if 'att_mark_3' in curriculum_unit.visible_attrs %}
+								<th>3 атт</th>
+                                {% endif %}
+								{% if curriculum_unit.mark_type == 'exam' %}
+									<th>экзамен</th>
+								{% endif %}
+								{% if curriculum_unit.mark_type in ('exam', 'test_diff') %}
+									<th>доп. балл</th>
+								{% endif %}
+                                {% if curriculum_unit.has_simple_mark_test_simple %}
+                                    <th>зачет</th>
+                                {% endif %}
+                                {% if curriculum_unit.has_simple_mark_exam %}
+                                    <th>экзамен</th>
+                                {% endif %}
+                                {% if curriculum_unit.has_simple_mark_test_diff %}
+                                    <th>дифф. зачет</th>
+                                {% endif %}
+                                {% if curriculum_unit.has_simple_mark_course_work %}
+                                    <th>курсовая работа</th>
+                                {% endif %}
+                                {% if curriculum_unit.has_simple_mark_course_project %}
+                                    <th>курсовой проект</th>
+                                {% endif %}
+                                <th>Изменил</th>
+                            </tr>
+                        </thead>
+                        {% for h in m.history %}
+                        <tr>
+                            <td>
+                                {{ h.stime.strftime(config.DATE_TIME_FORMAT) }}
+                            </td>
+                            <td>
+                                {{ h.etime.strftime(config.DATE_TIME_FORMAT) if h.etime }}
+                            </td>
+                            {% if 'att_mark_1' in curriculum_unit.visible_attrs %}
+                            <td class="{{ macros_mark_class(h.att_mark_1) }}">
+                                {{ h.att_mark_1 if h.att_mark_1 != None }}
+                            </td>
+                            {% endif %}
+                            {% if 'att_mark_2' in curriculum_unit.visible_attrs %}
+							<td class="{{ macros_mark_class(h.att_mark_2) }}">
+                                {{ h.att_mark_2 if h.att_mark_2 != None }}
+                            </td>
+                            {% endif %}
+                            {% if 'att_mark_3' in curriculum_unit.visible_attrs %}
+							<td class="{{ macros_mark_class(h.att_mark_3) }}">
+                                {{ h.att_mark_3 if h.att_mark_3 != None }}
+                            </td>
+                            {% endif %}
+							{% if curriculum_unit.mark_type == 'exam' %}
+								<td class="{{ macros_mark_class(h.att_mark_exam) }}">{{ h.att_mark_exam if h.att_mark_exam != None }}</td>
+							{% endif %}
+							{% if curriculum_unit.mark_type in ('exam', 'test_diff') %}
+								<td>{{ h.att_mark_append_ball if h.att_mark_append_ball != None }}</td>
+							{% endif %}
+                            {% if curriculum_unit.has_simple_mark_test_simple %}
+                                <td class="{{ macros_mark_simple_class(h.simple_mark_test_simple) }}">
+                                    {% if h.simple_mark_test_simple == 0 %}неявка{% endif %}
+                                    {% if h.simple_mark_test_simple == 2 %}не зачтено{% endif %}
+                                    {% if h.simple_mark_test_simple == 5 %}зачтено{% endif %}
+                                </td>
+                            {% endif %}
+                            {% if curriculum_unit.has_simple_mark_exam %}
+                                <td class="{{ macros_mark_simple_class(h.simple_mark_exam) }}">{% if h.simple_mark_exam != None %}{{ h.simple_mark_exam if h.simple_mark_exam != 0 else 'неявка' }}{% endif %}</td>
+                            {% endif %}
+                            {% if curriculum_unit.has_simple_mark_test_diff %}
+                                <td class="{{ macros_mark_simple_class(h.simple_mark_test_diff) }}">{% if h.simple_mark_test_diff != None %}{{ h.simple_mark_test_diff if h.simple_mark_test_diff != 0 else 'неявка' }}{% endif %}</td>
+                            {% endif %}
+                            {% if curriculum_unit.has_simple_mark_course_work %}
+                                <td class="{{ macros_mark_simple_class(h.simple_mark_course_work) }}">{% if h.simple_mark_course_work != None %}{{ h.simple_mark_course_work if h.simple_mark_course_work != 0 else 'неявка' }}{% endif %}</td>
+                            {% endif %}
+                            {% if curriculum_unit.has_simple_mark_course_project %}
+                                <td class="{{ macros_mark_simple_class(h.simple_mark_course_project) }}">{% if h.simple_mark_course_project != None %}{{ h.simple_mark_course_project if h.simple_mark_course_project != 0 else 'неявка' }}{% endif %}</td>
+                            {% endif %}
+                            <td>
+                                {{ h.user.full_name_short if h.user }}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </table>
+                </div>
+                {% if current_user.admin_user and current_user.admin_user.active and (not curriculum_unit.closed) %}
+                <div class="modal-footer justify-content-between">
+                    {% if m.att_mark_id not in curriculum_unit.att_marks_readonly_ids %}
+                    <a href="{{ url_for('att_mark_exclude2', id=m.att_mark_id, value=1) }}" class="btn btn-block btn-primary float-right btn-att-mark-exclude2-set">Поставить отметку "Перезачтено"</a>
+                    {% elif m.exclude == 2 %}
+                    <a href="{{ url_for('att_mark_exclude2', id=m.att_mark_id) }}" class="btn btn-block btn-primary float-right btn-att-mark-exclude2-unset">Снять отметку "Перезачтено"</a>
+                    {% endif %}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+    <!-- End modal History AttMark -->
+
+
+    {% if curriculum_unit.get_rights(current_user)["write"] %}
+    <!-- Modal CSV Import -->
+    <div class="modal fade" id="modalFormCSVImport" tabindex="-1" role="dialog" aria-labelledby="modalFormCSVImportTitle" aria-hidden="true" data-keyboard="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalFormCSVImportTitle">Импорт данных из CSV</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+					<div class="form-group mx-auto row">
+                        <div class="col-6">
+                            <label class="col-form-label" for="formCSVImportSplitter">Разделитель:</label>
+							<select class="form-control" id="formCSVImportSplitter">
+								<option value="tab">Табуляция</option>
+                                <option value="space">Пробел</option>
+								<option value="comma">,</option>
+                                <option value="semicolon">;</option>
+							</select>
+                        </div>
+                        <div class="col-6">
+							<label class="col-form-label" for="formCSVImportStudentNameFormat">Формат имени:</label>
+							<select class="form-control" id="formCSVImportStudentNameFormat">
+								<option value="full_name">Иванов Иван Иванович</option>
+								<option value="full_name_short">Иванов И. И.</option>
+								<option value="full_name_2">Иванов Иван</option>
+                                <option value="id">Номер студенческого билета</option>
+							</select>
+						</div>
+                    </div>
+                    <div class="mx-auto row">
+                        Столбцы для импорта:
+                    </div>
+                    <div class="form-row mx-auto">
+                        {% if 'att_mark_1' in curriculum_unit.visible_attrs %}
+                        <div class="form-group col-2">
+						    <label class="py-0 form-label d-block text-center" for="formCSVImportColumnAtt1">1 атт:</label>
+						    <input class="form-control" id="formCSVImportColumnAtt1" type="checkbox"/>
+                        </div>
+                        {% endif %}
+                        {% if 'att_mark_2' in curriculum_unit.visible_attrs %}
+                        <div class="form-group col-2">
+						    <label class="py-0 form-label d-block text-center" for="formCSVImportColumnAtt2">2 атт:</label>
+						    <input class="form-control" id="formCSVImportColumnAtt2" type="checkbox"/>
+                        </div>
+                        {% endif %}
+                        {% if 'att_mark_3' in curriculum_unit.visible_attrs %}
+                        <div class="form-group col-2">
+						    <label class="py-0 form-label d-block text-center" for="formCSVImportColumnAtt3">3 атт:</label>
+						    <input class="form-control" id="formCSVImportColumnAtt3" type="checkbox"/>
+                        </div>
+                        {% endif %}
+                        {% if 'att_mark_exam' in curriculum_unit.visible_attrs %}
+                        <div class="form-group col-2">
+                            <label class="py-0 form-label d-block text-center" for="formCSVImportColumnExam">Экзамен:</label>
+						    <input class="form-control" id="formCSVImportColumnExam" type="checkbox"/>
+                        </div>
+                        {% endif %}
+                        {% if 'att_mark_append_ball' in curriculum_unit.visible_attrs %}
+                        <div class="form-group col-2">
+                            <label class="py-0 form-label d-block text-center" for="formCSVImportColumnAppendBall">Доп. балл:</label>
+						    <input class="form-control" id="formCSVImportColumnAppendBall" type="checkbox"/>
+                        </div>
+                        {% endif %}
+                    </div>
+                    <div class="form-group mx-auto row">
+                        <label for="formCSVImportData">Данные в формате CSV:</label>
+                        <textarea class="form-control rounded-0" id="formCSVImportData" rows="{{ curriculum_unit.att_marks|length - curriculum_unit.att_marks_readonly_ids|length }}"></textarea>
+                    </div>
+                    <div class="form-group mx-auto row">
+                        <label for="formCSVImportFeedback" id="formCSVImportFeedbackLabel" style="display:none;">Результат импорта:</label>
+                        <textarea readonly class="form-control rounded-0 text-white" id="formCSVImportFeedback" rows="1" style="display:none;"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer justify-content-between">
+					<div class="w-100">
+                        <button id="formCSVImportButtonImport" class="btn btn-primary col-4">Импорт</button>
+                        <button id="formCSVImportButtonOK" class="btn btn-success col-4" style="display:none;">ОК</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- End modal CSV Import -->
+    {% endif %}
+    <!-- modal news  -->
+    <div class="modal fade" id="modalNews2" tabindex="-1" role="dialog" aria-labelledby="modalNews2Title" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalNews2Title">Оценки за аттестацию</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <h3>Уважаемые преподаватели!</h3>
+                    <div class="container">
+                        Напоминаем, что оценки за аттестации выставляются по 50-балльной шкале:
+                    </div>
+                    <hr/>
+                    <div class="container">
+                        <ul>
+                            <li><b>0 баллов</b> &mdash; неявка;</li>
+                            <li><b>от 1 до 24 баллов</b> &mdash; неудовлетворительно;</li>
+                            <li><b>от 25 до 34 баллов</b> &mdash; удовлетворительно;</li>
+                            <li><b>от 35 до 44 баллов</b> &mdash; хорошо;</li>
+                            <li><b>от 45 до 50 баллов</b> &mdash; отлично.</li>
+                        </ul>
+                    </div>
+                </div>
+                 <div class="modal-footer">
+                     <button id="modalNews2ButtonOK" class="btn btn-primary col-4">OK</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- end modal news  -->
+
+    <!-- Modal Submit -->
+    <div class="modal fade" id="modalSubmit" tabindex="-1" role="dialog" aria-labelledby="modalSubmitTitle" aria-hidden="true" data-keyboard="false">
+        <div class="modal-dialog modal-dialog-centered" role="document">
+            <div class="modal-content" style="width: auto;">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalSubmitTitle">Отправка данных</h5>
+                </div>
+                <div class="modal-body">
+                    <h2>Пожалуйста, подождите...</h2>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- End modal Submit -->
+
+
+    <script>
+        $(document).ready(function(){
+            /* news */
+            var read_news = {1: false, 2:false};
+            if (localStorage.getItem("read_news"))
+            {
+                read_news = JSON.parse(localStorage.getItem("read_news"));
+            }
+            if (!read_news[2])
+            {
+                $('#modalNews2').modal({show:true, backdrop: 'static', keyboard: false});
+            }
+            $("#modalNews2ButtonOK").click(function(){
+                read_news[2]= true;
+                localStorage.setItem("read_news", JSON.stringify(read_news));
+                $('#modalNews2').modal('hide');
+            });
+
+            {% if (not curriculum_unit.closed) and current_user.admin_user and current_user.admin_user.active %}
+                /*Вставка javascript предупреждение об очистке ведомости*/
+
+                $('#formAttMarks [name=button_clear]').click(function(){
+                    return confirm("Все данные об оценках в ведомости будут удалены. Продолжить ?");
+                });
+                $('.btn-att-mark-exclude2-set').click(function(){
+                    return confirm("Вы действительно хотите поставить отметку 'Перезачтено' ?");
+                });
+
+            {% endif %}
+
+
+
+            $('.btn-print').click(function(){
+                setTimeout(function(){
+                    $('#modalSubmit').modal('hide');
+                }, 1000);
+            });
+
+            var is_changed_input_mark = false;
+            /* При изменении оценок запретить изменение состояния ведомости и печать */
+            var fn_change_mark = function(){
+                if (is_changed_input_mark) return;
+                is_changed_input_mark = true;
+                $('#button_open').parent().hide();
+                $('#button_close').parent().hide();
+                $('.btn-print').parent().hide();
+                $('[data-toggle="modal"][data-target="#modalFormView"]').hide();
+                {% if curriculum_unit.result_failed != None %}
+                    $('#result_failed').hide();
+                {% endif %}
+                {% if curriculum_unit.get_rights(current_user)["pass_department"] %}
+                {% if curriculum_unit.pass_department %}
+                $('#button_pass_department_cancel').parent().hide();
+                {% else %}
+                $('#button_pass_department').parent().hide();
+                {% endif %}
+                {% endif %}
+            }
+
+            $('.input-mark,.input-mark-sel').change(function(evt){
+
+                fn_change_mark();
+            });
+
+
+            window.addEventListener('beforeunload', function(evt) {
+                if (!is_changed_input_mark) return;
+                return evt.returnValue = 'Изменения аттестационной ведомости не будут сохранены. Закрыть ?';
+            });
+
+            //Модальное окно отправка данных
+            $('#formAttMarks').submit(function(e){
+                is_changed_input_mark = false;
+                $('#modalSubmit').modal({
+                    show:true,
+                    keyboard: false,
+                    backdrop: 'static'
+                });
+                return true;
+            });
+
+            {% if curriculum_unit.get_rights(current_user)["pass_department"] %}
+            {% if curriculum_unit.pass_department %}
+                $('#button_pass_department_cancel').click(function(){
+                    if (!confirm('Вы действительно хотите снять отметку о сдаче ведомости на кафедру ?')) return;
+
+                    $.post( "{{ url_for('api_pass_department') }}", {curriculumUnitId: {{ curriculum_unit.id }} })
+                    .done(function(data){
+                        if(data.ok){
+                            alert( "Отметка снята" );
+                            $('[data-toggle="modal"][data-target="#modalFormView"]').hide();
+                            document.location.reload();
+                        }
+                        else
+                        {
+                            alert( "Произошла ошибка" );
+                        }
+                    })
+                    .fail(function() {
+                        alert( "Произошла ошибка" );
+                    });
+                });
+            {% else %}
+                $('#button_pass_department').click(function(){
+                    if (!confirm('Вы действительно хотите поставить отметку о сдаче ведомости на кафедру ?')) return;
+
+                    $.post( "{{ url_for('api_pass_department') }}", {curriculumUnitId: {{ curriculum_unit.id }}, value: true })
+                    .done(function(data){
+                        if(data.ok){
+                            alert( "Отметка поставлена" );
+                            $('[data-toggle="modal"][data-target="#modalFormView"]').hide();
+                            document.location.reload();
+                        }
+                        else
+                        {
+                            alert( "Произошла ошибка" );
+                        }
+                    })
+                    .fail(function() {
+                        alert( "Произошла ошибка" );
+                    });
+                });
+            {% endif %}
+            {% endif %}
+        });
+    </script>
+    <script>
+        students_all = [
+        {% for att_mark in curriculum_unit.att_marks %}
+
+            {% set s = att_mark.student %}
+            {id: {{ s.id }}, full_name: "{{ s.full_name }}", full_name_short: "{{ s.full_name_short }}", full_name_2: "{{ s.surname }} {{ s.firstname }}", enable: {% if att_mark.att_mark_id not in curriculum_unit.att_marks_readonly_ids %}true{% else %}false{% endif %}{% if show_group_subnum %}, stud_group_subnum: {% if (att_mark.att_mark_id not in curriculum_unit.att_marks_readonly_ids or att_mark.exclude == 2 ) and s.stud_group_subnum %}{{ s.stud_group_subnum }}{% else %}null{% endif %} {% endif %} }{% if not loop.last %},{% endif %}
+        {% endfor %}
+        ];
+        $(document).ready(function(){
+            var fn_sort_students = function(sortStudentsKeys){
+                students_all.sort(function(s1, s2){
+                    for (var i=0; i< sortStudentsKeys.length; i++)
+                    {
+                        if ((s1[sortStudentsKeys[i]] === undefined) || (s2[sortStudentsKeys[i]] === undefined)) continue;
+                        if ((s1[sortStudentsKeys[i]] !== null) && (s2[sortStudentsKeys[i]] === null)) return -1;
+                        if ((s1[sortStudentsKeys[i]] === null) && (s2[sortStudentsKeys[i]] !== null)) return 1;
+
+                        if (s1[sortStudentsKeys[i]] < s2[sortStudentsKeys[i]]) return -1;
+                        if (s1[sortStudentsKeys[i]] > s2[sortStudentsKeys[i]]) return 1;
+                    }
+                    return 0;
+                });
+
+                var attrs = ['{{ "', '".join(curriculum_unit.visible_attrs)|safe }}'];
+
+                for (var i=0; i<students_all.length; i++){
+                    var s = students_all[i];
+                    var elem = $('[data-student-row][data-student-id="'+s.id.toString()+'"]');
+                    elem.css('order', i+1);
+                    {% if curriculum_unit.mark_type == 'no_att' %}
+                    elem.removeClass("border-bottom");
+                    elem.removeClass("mb-2");
+                    {% endif %}
+                    var elem_order = elem.find('[data-loop-index]');
+                    elem_order.text(i+1);
+                    elem_order.attr('data-loop-index', i+1);
+                    {% if curriculum_unit.mark_type == 'no_att' %}
+                    if (i == students_all.length - 1)
+                    {
+                        elem.addClass("border-bottom");
+                        elem.addClass("mb-2");
+                    }
+                    {% endif %}
+
+                    for (var j=0; j<attrs.length; j++)
+                    {
+                        var attr = attrs[j];
+                        var elem = $('[data-'+attr.replaceAll('_', '-')+'][data-student-id="'+s.id.toString()+'"]');
+                        elem.attr('tabindex', j*students_all.length + i + 1);
+                    }
+                }
+            }
+
+            $('[data-sort-students-keys]').click(function(evt){
+                var sortStudentsKeys = $(evt.target).data().sortStudentsKeys.split(",");
+                fn_sort_students(sortStudentsKeys);
+                localStorage.setItem("sort_students_keys", sortStudentsKeys.join(","));
+            });
+
+            if (localStorage.getItem("sort_students_keys"))
+            {
+                var sortStudentsKeys = localStorage.getItem("sort_students_keys").split(",");
+                fn_sort_students(sortStudentsKeys);
+            }
+            else
+            {
+                fn_sort_students(["full_name"]);
+            }
+        });
+
+    </script>
+
+    {% if curriculum_unit.get_rights(current_user)["write"] %}
+    <!-- CSV Import -->
+    <script>
+        var mark_type = "{{ curriculum_unit.mark_type }}";
+
+        var students = [];
+        for (var i=0; i<students_all.length; i++)
+        {
+            if (students_all[i].enable){
+                students.push(students_all[i]);
+            }
+        }
+
+        var csv_ui = {
+            splitter: $('#formCSVImportSplitter'),
+            studentNameFormat: $('#formCSVImportStudentNameFormat'),
+            colsInclude: {
+                "attMark-1": $('#formCSVImportColumnAtt1'),
+                "attMark-2": $('#formCSVImportColumnAtt2'),
+                "attMark-3": $('#formCSVImportColumnAtt3'),
+                attMarkExam: $('#formCSVImportColumnExam'),
+                attMarkAppendBall: $('#formCSVImportColumnAppendBall')
+            },
+            data: $('#formCSVImportData'),
+            feedback: {
+                label: $('#formCSVImportFeedbackLabel'),
+                data: $('#formCSVImportFeedback')
+            },
+            buttons: {
+                import: $('#formCSVImportButtonImport'),
+                ok: $('#formCSVImportButtonOK')
+            }
+        }
+        /* Disable csv_ui.colsInclude*/
+        for (var key in csv_ui.colsInclude)
+        {
+            var data_attr = key.replace(/([A-Z])/g, function(x){return '-' + x.toLowerCase()});
+            if ($('[data-'+ data_attr +']:enabled').length == 0) csv_ui.colsInclude[key].attr('disabled', 'disabled').prop('checked', false);
+        }
+
+        var csv_data = null
+        csv_ui.buttons.import.click(function(){
+            csv_data = {}
+            var csv_errors = []
+            var cols_import = []
+            for (var col in csv_ui.colsInclude)
+            {
+                if (csv_ui.colsInclude[col].prop("checked")) cols_import.push(col);
+            }
+            if (cols_import.length == 0)
+            {
+                alert("Не выбран ни один столбец для импорта");
+                return;
+
+            }
+            var lines = csv_ui.data.val().split("\n");
+            var split_symb = null;
+            switch (csv_ui.splitter.val())
+            {
+                case "tab":
+                    split_symb="\t";
+                    break;
+                case "space":
+                    split_symb=" ";
+                    break;
+                case "comma":
+                    split_symb=",";
+                    break;
+                case "semicolon":
+                    split_symb=";";
+                    break;
+            }
+            var studentNameFormat = csv_ui.studentNameFormat.val()
+            for (var row=0; row<lines.length; row++)
+            {
+                var line = lines[row];
+                if (line.trim() == "") continue;
+                var split_pos = []
+                for (j=0; j<line.length; j++)
+                {
+                    if (line[j] == split_symb) split_pos.push(j);
+                }
+                split_pos = split_pos.slice(-1*cols_import.length);
+                if (split_pos.length<cols_import.length)
+                {
+                    csv_errors.push({row:row+1, message: "Недостаточно столбцов в строке"});
+                    continue;
+                }
+                split_pos.push(line.length)
+
+                var student_name = line.substring(0,split_pos[0]).trim();
+                var student_id = null
+                for (var j in students)
+                {
+                    var student = students[j];
+                    var fn_val_eq = function(studentNameFormat, v1, v2)
+                    {
+                        if ((studentNameFormat == "full_name")||(studentNameFormat == "full_name_2"))
+                        {
+                            var v1_ = v1.toUpperCase().replaceAll('Ё','Е');
+                            var v2_ = v2.toUpperCase().replaceAll('Ё','Е');
+                            return (v1_ == v2_);
+                        }
+                        else
+                        {
+                            return (v1 == v2);
+                        }
+                    }
+
+                    if (fn_val_eq(studentNameFormat, student[studentNameFormat], student_name))
+                    {
+                        if (student_id === null)
+                        {
+                            student_id = student.id;
+                        }
+                        else
+                        {
+                            csv_errors.push({row:row+1, message: "Не возможно однозначно определить студента '" + student_name+"'"});
+                            student_id = undefined;
+                            break;
+                        }
+                    }
+                }
+                if (student_id === undefined) continue;
+                if (student_id === null) {
+                    csv_errors.push({row:row+1, message: "Не найден студент '" + student_name+"'"});
+                    continue;
+                }
+                var line_res={}
+                for (var j=0; j<cols_import.length;j++)
+                {
+                    var col_import = cols_import[j];
+                    var val = line.substring(split_pos[j]+1, split_pos[j+1]);
+                    if ((val.trim() == "") && (col_import == "attMarkAppendBall"))
+                    {
+                        val = "";
+                        line_res[col_import] = val;
+                    }
+                    else
+                    {
+                        var val_i = parseInt(val);
+                        if (isNaN(val_i))
+                        {
+                            csv_errors.push({row:row+1, student_id:student_id, message: "Значение '"+val+"' не является целым числом"});
+                        }
+                        else
+                        {
+                            var is_valid = ((val_i>=0) && (val_i <= (col_import == "attMarkAppendBall" ? 10 : 50 )));
+                            if (!is_valid)
+                            {
+                                csv_errors.push({row:row+1, student_id:student_id, message: "Указано недопустимое значение '"+col_import+"'"});
+                            }
+                            else
+                            {
+                                line_res[col_import] = val_i;
+                            }
+                        }
+                    }
+                }
+                if (Object.keys(line_res).length<cols_import.length) continue;
+                csv_data[student_id] = line_res;
+            }
+            for (var j in students)
+            {
+                var student = students[j];
+                if (csv_data[student.id] === undefined)
+                {
+                    var has_err_student_id = false;
+                    for (var k in csv_errors)
+                    {
+                        if ((csv_errors[k].student_id !== undefined) && (csv_errors[k].student_id == student.id))
+                        {
+                            has_err_student_id = true;
+                            break;
+                        }
+                    }
+                    if (has_err_student_id)
+                    {
+                        csv_errors.push({message: "Не обработана из-за ошибок запись '"+student.id.toString()+"': '"+student[studentNameFormat]+"'"});
+                    }
+                    else
+                    {
+                        csv_errors.push({message: "Не найдена запись '"+student.id.toString()+"': '"+student[studentNameFormat]+"'"});
+                    }
+                }
+            }
+
+            csv_ui.feedback.label.show()
+            csv_ui.feedback.data.show();
+            if (csv_errors.length > 0)
+            {
+                csv_ui.feedback.data.attr("rows", csv_errors.length);
+
+                csv_ui.feedback.data.val(csv_errors.map(function(v){
+                    return (v.row ? "Строка "+v.row.toString()+": ": "")+v.message;
+                }).join("\n"));
+                csv_ui.feedback.data.removeClass('bg-success');
+                csv_ui.feedback.data.addClass('bg-danger');
+            }
+            else
+            {
+                csv_ui.feedback.data.attr("rows", csv_errors.length);
+                csv_ui.feedback.data.removeClass('bg-danger');
+                csv_ui.feedback.data.addClass('bg-success');
+                csv_ui.feedback.data.val("Успешно");
+            }
+
+            if (Object.keys(csv_data).length > 0)
+            {
+                csv_ui.buttons.ok.show();
+            }
+        });
+        csv_ui.buttons.ok.click(function(){
+            if (csv_data)
+            {
+                for (var student_id in csv_data){
+                    var row = csv_data[student_id]
+                    $('[data-student-id="'+student_id+'"]').each(function(i,e){
+                        if (e.disabled) return;
+                        var data = $(e).data();
+                        for (var key in data)
+                        {
+                            if (row[key] !== undefined){
+                                $(e).data(key, row[key]);
+                                $(e).val( row[key]);
+                                $(e).change();
+                            }
+                        }
+                    });
+                }
+            }
+             $('#modalFormCSVImport').modal('hide');
+        });
+        /*
+        $('#modalFormCSVImport').on('hidden.bs.modal', function () {
+            csv_ui.feedback.label.hide()
+            csv_ui.feedback.data.hide();
+            csv_ui.buttons.ok.hide();
+            csv_ui.data.val("");
+        });
+        */
+
+    </script>
+    <!-- End CSV Import -->
+    {% endif %}
+</body>
+</html>

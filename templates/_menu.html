@@ -1,0 +1,120 @@
+<style>
+    {% if config['DEBUG'] or config['DEBUG_MESSAGE'] %}
+        body {
+            margin-bottom: 46px;
+        }
+    {% endif %}
+    .menu-spacer, .navbar {
+        min-height: 58px;
+    }
+    .navbar {
+          position: fixed;
+          left: 10px;
+          z-index: 999;
+          border: 2px solid #dee2e6;
+          border-radius: 6px;
+    }
+
+    @media (min-width: 992px) {
+        .navbar {
+            max-width: calc(100vw - 38px);
+            position: sticky;
+            border: none;
+        }
+        .menu-spacer {
+            display: none;
+        }
+    }
+</style>
+{% if config['DEBUG'] or config['DEBUG_MESSAGE'] %}
+    <div class="alert alert-warning text-center font-weight-bold border" role="alert" style="position: fixed; z-index:9999;  margin: 0; bottom: 0px; right: 0; left: 0; height: 45px;">
+        {{ config['DEBUG_MESSAGE'] if config['DEBUG_MESSAGE'] else 'Отладочная версия' }}
+    </div>
+{% endif %}
+<nav class="navbar navbar-expand-lg navbar-light bg-light">
+    <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarMenu" aria-controls="navbarMenu" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse justify-content-lg-between" id="navbarMenu">
+     <ul class="navbar-nav nav-tabs">
+         <li class="nav-item">
+            <a href="{{ url_for('index') }}" class="nav-link{{' active' if request.endpoint == 'index' or (current_user.teacher and request.endpoint == 'teacher_report' and request.view_args['id'] == current_user.teacher.id) or (current_user.students|length > 0 and request.endpoint == 'att_marks_report_student' and request.view_args['id'] in (current_user.students | map(attribute='id'))) }}">Главная</a>
+         </li>
+         <li class="nav-item">
+             <a href="{{ url_for('stud_groups_print') }}" class="nav-link{{' active' if request.endpoint == 'stud_groups_print' }}">Списки студентов</a>
+         </li>
+         {% if current_user.user_rights["stud_groups"] %}
+         <li class="nav-item">
+             <a href="{{ url_for('stud_groups') }}" class="nav-link{{' active' if request.endpoint in ('stud_group', 'stud_groups', 'att_marks_report_stud_group') }}">Студенческие группы</a>
+         </li>
+         {% endif %}
+
+         {% set stud_groups = current_user.students | rejectattr('stud_group', 'none') | map(attribute='stud_group') | list %}
+
+         {% if stud_groups|length == 1 %}
+            {% set stud_group = stud_groups|first %}
+            <li class="nav-item">
+                <a href="{{ url_for('stud_group_leader', id=stud_group.id) }}" class="nav-link{{' active' if request.endpoint == 'stud_group_leader' and request.view_args['id'] == stud_group.id }}">Староста / Куратор</a>
+            </li>
+         {% endif %}
+
+         {% if current_user.teacher != None and current_user.teacher.favorite_students|length > 0 %}
+            <li class="nav-item">
+                <a href="{{ url_for('favorite_teacher_students', id=current_user.teacher.id) }}" class="nav-link{{' active' if request.endpoint == 'favorite_teacher_students' and request.view_args['id'] == current_user.teacher.id }}">Мой список студентов</a>
+            </li>
+         {% endif %}
+         {% if current_user.user_rights["rating"] %}
+         <li class="nav-item">
+             <a href="{{ url_for('rating') }}" class="nav-link{{' active' if request.endpoint == 'rating' }}">Рейтинг студентов</a>
+         </li>
+         {% endif %}
+         {% if current_user.admin_user != None and current_user.admin_user.active %}
+            <li class="nav-item">
+                <a href="{{ url_for('admin_panel') }}" class="nav-link{{' active' if request.endpoint == 'admin_panel' }}">Панель администратора</a>
+            </li>
+            <li class="nav-item">
+                <a href="{{ url_for('department_panel') }}" class="nav-link{{' active' if request.endpoint == 'department_panel' }}">Кафедры</a>
+            </li>
+         {% endif %}
+         {% if current_user.user_rights["persons"] %}
+            <li class="nav-item">
+                <a href="{{ url_for('persons') }}" class="nav-link{{' active' if request.endpoint in ('persons', 'person', 'student', 'teacher', 'admin_user') }}">Поиск</a>
+            </li>
+         {% endif %}
+         {% if current_user.admin_user != None and current_user.admin_user.active %}
+            <li class="nav-item">
+                <a href="{{ url_for('subjects') }}" class="nav-link{{' active' if request.endpoint in ('subject', 'subjects') }}">Предметы</a>
+            </li>
+         {% endif %}
+         {% if current_user.admin_user == None and current_user.teacher != None and (current_user.teacher.department_secretary or current_user.teacher.department_leader) %}
+            <li class="nav-item">
+                <a href="{{ url_for('department_panel', department_id=current_user.teacher.department_id) }}" class="nav-link{{' active' if request.endpoint == 'department_panel' }}">Кафедра</a>
+            </li>
+         {% endif %}
+         {% if current_user.admin_user != None or current_user.teacher != None %}
+
+            <li class="nav-item">
+                <a href="{{ url_for('stud_groups_curator') }}" class="nav-link{{' active' if request.endpoint == 'stud_groups_curator' }}">Кураторы</a>
+            </li>
+            <li class="nav-item">
+                <a href="{{ url_for('stud_groups_leader') }}" class="nav-link{{' active' if request.endpoint == 'stud_groups_leader' }}">Старосты</a>
+            </li>
+            <li class="nav-item">
+                <a href="{{ url_for('help') }}" class="nav-link{{' active' if request.endpoint == 'help' }}">Помощь</a>
+            </li>
+         {% endif %}
+     </ul>
+     <ul class="navbar-nav ml-lg-4">
+            <li class="nav-item mx-1 py-2">
+                <a href="{{ url_for('profile', id=current_user.id) }}">{{ current_user.full_name_short }}</a>
+            </li>
+            <li class="nav-item mx-1 py-2">
+                <a href="{{ url_for('logout') }}">Выход</a>
+            </li>
+     </ul>
+     </div>
+</nav>
+<div class="menu-spacer">
+</div>
+
+

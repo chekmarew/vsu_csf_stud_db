@@ -1,0 +1,97 @@
+<html lang="ru">
+<head>
+    {% from "_macros_bootstrap" import bootstrap_form_input, bootstrap_form_button with context %}
+    <meta charset="UTF-8">
+    <title>Единица учебного плана: копирование</title>
+    {% include '_header.html' %}
+</head>
+<body>
+    {% include '_menu.html' %}
+    <div class="container">
+        <h2>Единица учебного плана</h2>
+        <h3>Копирование</h3>
+        <div class="row">
+            <div class="col font-weight-bold">Курс</div>
+            <div class="col">{{ curriculum_unit.stud_group.course_print }}</div>
+        </div>
+        <div class="row">
+            <div class="col font-weight-bold">Предмет</div>
+            <div class="col"><a href="{{ url_for('subject', id=curriculum_unit.subject.id) }}">{{ curriculum_unit.subject_name_print }}</a></div>
+        </div>
+        <div class="row">
+            <div class="col font-weight-bold">Группа</div>
+            <div class="col"><a href="{{ url_for('stud_group', id=curriculum_unit.stud_group.id) }}">{{ curriculum_unit.stud_group.num }}</a></div>
+        </div>
+        <div class="row">
+            <div class="col font-weight-bold">Преподаватель</div>
+            <div class="col"><a href="{{ url_for('teacher', id=curriculum_unit.teacher.id) }}">{{ curriculum_unit.teacher.full_name }} ({{ curriculum_unit.teacher.rank }})</a></div>
+        </div>
+        <div class="row">
+            <div class="col font-weight-bold">Тип отчётности</div>
+            <div class="col">
+                {{ curriculum_unit.mark_types_name }}
+            </div>
+        </div>
+        <div class="row">
+            <div class="col font-weight-bold">Часы по аттестациям</div>
+            <div class="col">{{ curriculum_unit.hours_att_1 }} {{ curriculum_unit.hours_att_2 }} {{ curriculum_unit.hours_att_3 }}</div>
+        </div>
+        {% if curriculum_units_other|length > 0 %}
+        <hr/>
+        <h4>Наличие предмета в других группах</h4>
+        <table class="table">
+            <thead>
+                <tr>
+                    <th rowspan="2">Группа</th>
+                    <th rowspan="2">Преподаватель</th>
+                    <th colspan="3">Часы на аттестации</th>
+                    <th rowspan="2">Тип отчётности</th>
+                    <th rowspan="2">Шифр по УП</th>
+                    <th rowspan="2"></th>
+                </tr>
+                <tr>
+                    <th>1</th>
+                    <th>2</th>
+                    <th>3</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for cu in curriculum_units_other %}
+                <tr>
+                    <td><a href="{{ url_for('stud_group', id=cu.stud_group.id) }}">{{ cu.stud_group.num }}</a></td>
+                    <td><a href="{{ url_for('teacher', id=cu.teacher.id) }}">{{ cu.teacher.full_name }} ({{ cu.teacher.rank }})</a></td>
+                    <td><a href="{{ url_for('curriculum_unit', id=cu.id) }}">{{ cu.hours_att_1 }}</a></td>
+                    <td><a href="{{ url_for('curriculum_unit', id=cu.id) }}">{{ cu.hours_att_2 }}</a></td>
+                    <td><a href="{{ url_for('curriculum_unit', id=cu.id) }}">{{ cu.hours_att_3 }}</a></td>
+                    <td><a href="{{ url_for('curriculum_unit', id=cu.id) }}">{{ cu.mark_types_name }}</a></td>
+                    <td><a href="{{ url_for('curriculum_unit', id=cu.id) }}">{{ cu.code }}</a></td>
+                    <td>
+                        {% if cu.stud_group.id in stud_group_ids %}
+                        <span class="badge badge-info">Скопировано</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% endif %}
+        <hr/>
+        <h4>Выберите группы для копирования</h4>
+        <form method="post">
+            {% autoescape false %}
+            {% for stud_group_selected in form.stud_groups_selected %}
+            {% if (stud_group_selected.data | int) not in stud_group_ids %}
+                {{ bootstrap_form_input(stud_group_selected) }}
+            {% endif %}
+            {% endfor %}
+            {{ bootstrap_form_button(form.button_copy) }}
+            {% endautoescape %}
+        </form>
+        <a href="{{ url_for('curriculum_unit', id=curriculum_unit.id) }}" class="btn btn-info">Назад</a>
+
+
+    </div>
+
+
+</body>
+</html>

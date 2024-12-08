@@ -1,0 +1,111 @@
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>ВГУ ФКН БРС Панель администратора</title>
+    {% include '_header.html' %}
+    <style>
+        .fixed {
+            background-color: #fff3cd;
+            position: sticky;
+        }
+
+        .fixed_top {
+            top: 0;
+            z-index: 1;
+            border-bottom: 3px solid #dee2e6 !important;
+        }
+        .fixed_left {
+            left: 0;
+            z-index: 0;
+            border-right: 3px solid #dee2e6 !important;
+        }
+
+        .fixed_header {
+            left: 15px;
+            width: fit-content;
+            position: sticky;
+        }
+
+    </style>
+</head>
+<body style="width: fit-content; min-width: 100vw;">
+    {% include '_menu.html' %}
+    <div class="container-fluid">
+        <h2 class="fixed_header">Панель администратора</h2>
+        <h3 class="fixed_header">Выберите курс</h3>
+        <nav class="fixed_header">
+            <ul class="pagination">
+                {% for level, s in semesters %}
+                {% if level == education_level_order and s == semester %}
+                <li class="page-item active">
+                    <span class="page-link">
+                        {{ ((s - 1) // 2) + 1 }}{% if level==2 %} (маг.){% endif %}
+                        <span class="sr-only">(current)</span>
+                    </span>
+                </li>
+                {% else %}
+                <li class="page-item">
+                     <a class="page-link" href="{{ url_for('admin_panel',education_level_order=level, semester=s) }}">{{ ((s - 1) // 2) + 1 }}{% if level==2 %} (маг.){% endif %}</a>
+                </li>
+                {% endif %}
+                {% endfor %}
+                <li class="page-item">
+                     <a class="page-link" href="{{ url_for('curriculum_units_open') }}">Незакрытые ведомости</a>
+                </li>
+            </ul>
+        </nav>
+
+        {% if semester != None %}
+        <table class="table table-bordered">
+            <thead class="fixed fixed_top">
+                <tr>
+                    <th rowspan="2" class="fixed fixed_left">Студенческая группа</th>
+                    {% for col in columns %}
+                    <th colspan="{{ col[1]|length }}" class="text-nowrap text-center"><a href="{{ url_for('teacher_report', id=col[0].id) }}">{{ col[0].full_name_short }}</a></th>
+                    {% endfor %}
+                </tr>
+                <tr>
+                    {% for col in columns %}
+                    {% for s in col[1] %}
+                        <th class="text-center">{{ s.name }}</th>
+                    {% endfor %}
+                    {% endfor %}
+                </tr>
+
+            </thead>
+            <tbody>
+                {% for row in rows %}
+                {% set group = groups[loop.index0] %}
+                <tr>
+                    <th class="fixed fixed_left" title="{{ group.specialty.full_name }}">
+                        <a href="{{ url_for('att_marks_report_stud_group', id=group.id) }}">{{ group.num }}</a>
+                    </th>
+                    {% for cu in row %}
+                    <td class="text-center">
+                        {% if cu != None %}
+                            <span class="text-nowrap">
+                            <a href="{{ url_for('att_marks', id=cu.id) }}">{{ cu.status_name }}</a>
+                            </span>
+                            {% if cu.pass_department %}
+                                <br/>
+                                <span class="font-weight-bold" title="Ведомость сдана на кафедру">каф.</span>
+                            {% endif %}
+                            {% if cu.result_failed != None %}
+                            <br/>
+                            <span title="Процент неудовлетворительных оценок" {% if cu.result_failed > config['RESULT_FAIL_WARNING'] %}class="bg-danger text-white text-nowrap"{% else %}class="bg-success text-white text-nowrap"{% endif %}>&nbsp;{{ cu.result_failed }} %&nbsp;</span>
+                            {% endif %}
+                        {% else %}
+                            &#8212;
+                        {% endif %}
+                    </td>
+                    {% endfor %}
+                </tr>
+                {% endfor %}
+
+            </tbody>
+        </table>
+        {% endif %}
+    </div>
+
+</body>
+</html>

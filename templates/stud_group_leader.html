@@ -1,0 +1,166 @@
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>ВГУ ФКН БРС Студенческая группа староста / куратор</title>
+    {% include '_header.html' %}
+</head>
+<body>
+    {% include '_menu.html' %}
+    <div class="container">
+        <h2>Студенческая группа</h2>
+        <h3>Сведения о старосте и кураторе</h3>
+        <dl class="row">
+            <dt class="col-sm-3 text-right">
+                Учебный год:
+            </dt>
+            <dd class="col-sm-3">
+                {{ stud_group.year_print }}
+            </dd>
+            <dt class="col-sm-3 text-right">
+                Курс:
+            </dt>
+            <dd class="col-sm-3">
+                {{ stud_group.course }}
+            </dd>
+            <dt class="col-sm-3 text-right">
+                Семестр:
+            </dt>
+            <dd class="col-sm-3">
+                {{ stud_group.semester }}
+            </dd>
+            <dt class="col-sm-3 text-right">
+                Группа:
+            </dt>
+            <dd class="col-sm-3">
+                {% if stud_group.get_rights(current_user)["write"] %}
+                <a href="{{ url_for('stud_group', id=stud_group.id, _anchor='curriculum_units') }}">
+                    {{ stud_group.num }}
+                </a>
+                {% else %}
+                    {{ stud_group.num }}
+                {% endif %}
+            </dd>
+            <dt class="col-sm-3 text-right">
+                Направление / специальность:
+            </dt>
+            <dd class="col-sm-9">
+                {{ stud_group.specialty.full_name }}
+            </dd>
+        </dl>
+        <table class="table">
+            <thead>
+            <tr>
+                <th></th>
+                <th></th>
+                {% if show_contact_leader or show_contact_curator %}
+                <th>Телефон</th>                
+                <th>Доп. контакты</th>                
+                <th>E-mail</th>
+                {% endif %}
+            </tr>
+            </thead>
+            <tbody> 
+                {% if stud_group.group_leader %}
+                <tr>                    
+                    <th>Староста</th>
+                    <td>
+                        {% if stud_group.get_rights(current_user)["write"] %}
+                            <a href="{{ url_for('student', id=stud_group.group_leader.id) }}">{{ stud_group.group_leader.full_name2 }}</a>
+                        {% elif stud_group.group_leader.get_rights(current_user)["read_marks"] %}
+                        	<a href="{{ url_for('att_marks_report_student', id=stud_group.group_leader.id) }}">{{ stud_group.group_leader.full_name2 }}</a>
+                        {% else %}
+                            {{ stud_group.group_leader.full_name2 }}
+                        {% endif %}
+                    </td>
+                    {% if show_contact_leader or show_contact_curator %}
+                    <td>
+                        {% if show_contact_leader and stud_group.group_leader.phone %}
+                            <a href="tel:{{ stud_group.group_leader.phone_str }}">{{ stud_group.group_leader.phone_format }}</a>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if show_contact_leader and stud_group.group_leader.contacts %}
+                            {{ stud_group.group_leader.contacts }}
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if show_contact_leader and stud_group.group_leader.email %}
+                            <a href="mailto:{{ stud_group.group_leader.email }}">{{ stud_group.group_leader.email }}</a>
+                        {% endif %}
+                    </td>
+                    {% endif %}
+                </tr>
+                {% endif %}
+                {% if stud_group.group_leader2 %}
+                <tr>
+                    <th>Староста (зам.)</th>
+                    <td>
+                        {% if current_user.admin_user and current_user.admin_user.active %}
+                            <a href="{{ url_for('student', id=stud_group.group_leader2.id) }}">{{ stud_group.group_leader2.full_name2 }}</a>
+                        {% elif stud_group.group_leader2.get_rights(current_user)["read_marks"] %}
+                            <a href="{{ url_for('att_marks_report_student', id=stud_group.group_leader2.id) }}">{{ stud_group.group_leader2.full_name2 }}</a>
+                        {% else %}
+                            {{ stud_group.group_leader2.full_name2 }}
+                        {% endif %}
+                    </td>
+                    {% if show_contact_leader or show_contact_curator %}
+                    <td>
+                        {% if show_contact_leader and stud_group.group_leader2.phone %}
+                            <a href="tel:{{ stud_group.group_leader2.phone_str }}">{{ stud_group.group_leader2.phone_format }}</a>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if show_contact_leader and stud_group.group_leader2.contacts %}
+                            {{ stud_group.group_leader2.contacts }}
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if show_contact_leader and stud_group.group_leader2.email %}
+                            <a href="mailto:{{ stud_group.group_leader2.email }}">{{ stud_group.group_leader2.email }}</a>
+                        {% endif %}
+                    </td>
+                    {% endif %}
+                </tr>
+                {% endif %}
+                {% if stud_group.curator %}
+                <tr>
+                    <th>Куратор</th>
+                    <td>
+                        {{ stud_group.curator.rank }}
+                        <br/>
+                        {% if current_user.admin_user and current_user.admin_user.active %}
+                            <a href="{{ url_for('teacher', id=stud_group.curator.id) }}">{{ stud_group.curator.full_name }}</a>
+                        {% else %}
+                            {{ stud_group.curator.full_name }}
+                        {% endif %}
+                    </td>
+                    {% if show_contact_leader or show_contact_curator %}
+                    <td>
+                        {% if show_contact_curator and stud_group.curator.phone %}
+                            <a href="tel:{{ stud_group.curator.phone_str }}">{{ stud_group.curator.phone_format }}</a>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if show_contact_curator and stud_group.curator.contacts %}
+                            {{ stud_group.curator.contacts }}
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if show_contact_curator and stud_group.curator.email %}
+                            <a href="mailto:{{ stud_group.curator.email }}">{{ stud_group.curator.email }}</a>
+                        {% endif %}
+                    </td>
+                    {% endif %}
+                </tr>
+                {% endif %}
+            </tbody>
+        </table>
+        {% if stud_group.get_rights(current_user)["read_marks"] %}
+        <div class="py-1">
+            <a href="{{ url_for('att_marks_report_stud_group', id=stud_group.id) }}" class="btn btn-primary">Свод оценок рубежных аттестаций</a>
+            <a href="{{ url_for('lessons_report_stud_group', id=stud_group.id) }}" class="btn btn-primary">Табель посещаемости занятий</a>
+        </div>
+        {% endif %}
+    </div>
+</body>
+</html>

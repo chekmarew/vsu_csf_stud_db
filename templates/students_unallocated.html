@@ -1,0 +1,105 @@
+<html lang="ru">
+<head>
+    {% from "_macros_bootstrap" import bootstrap_form_input, bootstrap_form_button with context %}
+    <meta charset="UTF-8">
+    <title>ВГУ ФКН БРС Нераспределённые студенты</title>
+    {% include '_header.html' %}
+</head>
+<body>
+    {% include '_menu.html' %}
+    <div class="container">
+        <h2>Нераспределённые студенты</h2>
+        {% if result %}
+        <div class="container">
+            <h4>Следующие студенты {{ result['semester'] }} семестра были распределены в группу <a href="{{ url_for('stud_group', id=result['stud_group'].id) }}" target="_blank">{{ result['stud_group'].num }}</a>{% if result['stud_group_subnum'] %}({{ result['stud_group_subnum'] }} подгруппа){% endif %}</h4>
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>№ п/п</th>
+                        <th>№ студ. билета</th>
+                        <th>ФИО</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for s in result['students'] %}
+                    <tr>
+                        <td>{{ loop.index }}</td>
+                        <td><a href="{{ url_for('student', id=s.id) }}" target="_blank">{{ s.id }}</a></td>
+                        <td><a href="{{ url_for('student', id=s.id) }}" target="_blank">{{ s.full_name }}</a></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endif %}
+        <ul class="nav nav-tabs" role="tablist">
+            {% for semester in semesters %}
+            <li class="nav-item"><a class="nav-link{% if loop.index0 == 0 %} active{% endif %}" href="#semester_{{semester}}" role="tab" data-toggle="tab">{{semester}} семестр</a></li>
+            {% endfor %}
+        </ul>
+        <div class="tab-content">
+            {% for form in forms %}
+            {% set semester = semesters[loop.index0] %}
+            <div role="tabpanel" class="tab-pane fade{% if loop.index0 == 0 %} show active{% endif %}" id="semester_{{semester}}">
+                <h3>{{semester}} семестр</h3>
+                <form method="post" action="#semester_{{semester}}">
+            	    {% autoescape false %}
+                    {{ form.semester }}
+                    {% for student_selected in form.students_selected %}
+                        {% if result == None or student_selected.data not in result['student_ids'] %}
+                        {{ bootstrap_form_input(student_selected) }}
+                        {% endif %}
+                    {% endfor %}
+                    {{ bootstrap_form_input(form.stud_group) }}
+                    {{ bootstrap_form_input(form.stud_group_subnum, type='number') }}
+                    {{ bootstrap_form_button(form.button_transfer) }}
+                    {% endautoescape %}
+                </form>
+            </div>
+            {% endfor %}
+        </div>
+
+    </div>
+    <script type="text/javascript">
+        $(document).ready(function(){
+            var stud_group_map = {
+                {% for sg in stud_groups %}
+                {{ sg.id }}: { "id": {{sg.id}}, "semester": {{ sg.semester }}, "num": {{ sg.num }}, "subnum": {{ sg.subnum }}, "sub_count": {{ sg.sub_count }} }{% if not loop.last %},{% endif %}
+                {% endfor %}
+            }
+            $("select[name*='stud_group']").change(function(evt){
+                var stud_group_select = $(evt.target);
+                var stud_group_subnum = $(evt.target.form).find("[name*='stud_group_subnum']");
+                var stud_group_subnum_parent = stud_group_subnum.parent().parent();
+
+                if (stud_group_select.val() == "__None"){
+                    stud_group_subnum_parent.hide();
+                    stud_group_subnum.val("");
+                    stud_group_subnum.attr("min", 0);
+                    stud_group_subnum.attr("max", 0);
+                }
+                else
+                {
+                    var stud_group = stud_group_map[stud_group_select.val()];
+                    if (stud_group.sub_count == 0)
+                    {
+                        stud_group_subnum_parent.hide();
+                        stud_group_subnum.val(0);
+                        stud_group_subnum.attr("min", 0);
+                        stud_group_subnum.attr("max", 0);
+                    }
+                    else
+                    {
+                        stud_group_subnum_parent.show();
+                        stud_group_subnum.attr("min", 1);
+                        stud_group_subnum.attr("max", stud_group.sub_count);
+                    }
+                }
+            });
+            $("select[name*='stud_group']").change();
+        });
+    </script>
+
+
+</body>
+</html>

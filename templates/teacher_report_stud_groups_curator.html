@@ -1,0 +1,32 @@
+    {% if stud_groups|length > 0 %}
+        <table class="table">
+            <thead>
+            <tr>
+                <th>Курс</th>
+                <th>Группа</th>
+                <th>Направление (специальность)</th>
+                <th></th>
+                <th></th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for g in stud_groups %}
+                <tr>
+                    <td>{{ g.course_print }}</td>
+                    <td>
+                        {% if g.get_rights(current_user)["write"] %}
+                            <a href="{{url_for('stud_group', id=g.id)}}">{{ g.num }}</a>
+                        {% else %}
+                            <a href="{{ url_for('stud_group_leader', id=g.id) }}">{{ g.num }}</a>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {{ g.specialty.full_name }}
+                    </td>
+                    <td><a href="{{url_for('lessons_report_stud_group', id=g.id)}}">Посещаемость</a></td>
+                    <td><a href="{{url_for('att_marks_report_stud_group', id=g.id)}}">Оценки</a></td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    {% endif %}

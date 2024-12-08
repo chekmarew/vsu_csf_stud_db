@@ -1,0 +1,126 @@
+<html lang="ru">
+<head>
+    {% from "_macros_bootstrap" import bootstrap_form_input, bootstrap_form_button with context %}
+    <meta charset="UTF-8">
+    <title>Пользователь</title>
+    {% include '_header.html' %}
+    <script src="{{ url_for('static', filename='jquery.maskedinput/jquery.maskedinput.js') }}"></script>
+    <script src="{{ url_for('static', filename='phone_format.js') }}"></script>
+</head>
+<body>
+    {% include '_menu.html' %}
+    <div class="container">
+        <h2>ВГУ ФКН БРС Профиль</h2>
+        <h3>Информация</h3>
+        <form method="post">
+    	    {% autoescape false %}
+            {{ bootstrap_form_input(form.surname) }}
+            {{ bootstrap_form_input(form.firstname) }}
+            {{ bootstrap_form_input(form.middlename) }}
+            {{ bootstrap_form_input(form.gender) }}
+            {{ bootstrap_form_input(form.birthday) }}
+            {{ bootstrap_form_input(form.login) }}
+            {{ bootstrap_form_input(form.card_number) }}
+            {{ bootstrap_form_input(form.email) }}
+            {{ bootstrap_form_input(form.phone) }}
+            {{ bootstrap_form_input(form.contacts) }}
+
+            {% if person.id and person.roles_all|length == 0 %}
+                {{ bootstrap_form_button(form.button_delete, class_="btn btn-danger") }}
+            {% endif %}
+            {{ bootstrap_form_button(form.button_save, class_="btn btn-success") }}
+            {% endautoescape %}
+        </form>
+        {% if person.id %}
+            <hr/>
+
+            <h4>Учётная запись студента</h4>
+            {% if person.students | length > 0 %}
+            <table class="table">
+                <thead>
+                <tr>
+                    <th>№ Билета</th>
+                    <th>Курс</th>
+                    <th>Группа</th>
+                </tr>
+                </thead>
+                <tbody>
+                    {% for s in person.students %}
+                    <tr>
+                        <td>
+                            <a href="{{ url_for('student', id=s.id) }}" class="px-1{{ ' bg-secondary text-light' if s.status != 'study' }}">{{ s.id }}</a>
+                        </td>
+                        <td>
+                            {% if s.status == 'study' %}
+                            {{ s.course }}{% if s.stud_group and s.stud_group.specialty.education_level == 'master' %} (маг.){% endif %}
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if s.stud_group %}
+                                <a href="{{ url_for('stud_group', id=s.stud_group.id) }}" title="{{ s.stud_group.specialty.full_name }}">{{ s.stud_group.num }}</a>{% if s.stud_group_subnum %} ({{ s.stud_group_subnum }}){% endif %}
+                            {% endif %}
+                            {% if s.status == 'alumnus' %}
+                                Успешно {{ 'закончила' if person.gender == 'W' else 'закончил' }} обучение в {{ s.alumnus_year }} году
+                            {% endif %}
+                            {% if s.status == 'expelled' %}
+                                {{ 'Отчислена' if person.gender == 'W' else 'Отчислен' }} в {{ s.expelled_year }} году
+                            {% endif %}
+                            {% if s.status == 'academic_leave' %}
+                                 В академическом отпуске с {{ s.expelled_year }} года
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% endif %}
+            <a href="{{url_for('student', id='new', person_id=person.id)}}" class="btn btn-primary">Добавить учётную запись студента</a>
+            <hr/>
+            <h4>Учётная запись преподавателя</h4>
+            {% if person.teacher %}
+            <table class="table">
+                <thead>
+                <tr>
+                    <th>Кафедра</th>
+                    <th>Должность</th>
+                </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>
+                            {% for d in person.teacher.departments %}
+                            <a href="{{ url_for('teacher', id=person.teacher.id) }}" class="px-1{{ ' px-1 bg-secondary text-light' if not person.teacher.active }}" title="{{ 'Не работает' if not person.teacher.active }}">{{ d.full_name }}</a>
+                            {% if not loop.last %}<br>{% endif %}
+                            {% endfor %}
+                        </td>
+                        <td>
+                            <a href="{{ url_for('teacher_report', id=person.teacher.id) }}" class="px-1{{ ' px-1 bg-secondary text-light' if not person.teacher.active }}" title="{{ 'Не работает' if not person.teacher.active }}">{{ person.teacher.rank }}</a>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+            {% else %}
+            <a href="{{url_for('teacher', id='new', person_id=person.id)}}" class="btn btn-primary">Добавить учётную запись преподавателя</a>
+            {% endif %}
+            <hr/>
+            <h4>Учётная запись администратора</h4>
+            {% if person.admin_user %}
+            <a href="{{url_for('admin_user', id=person.admin_user.id)}}" class="px-1{{ ' bg-secondary text-light' if not person.admin_user.active }}" title="{{ 'Не работает' if not person.admin_user.active }}">
+                Есть учётная запись администратора
+            </a>
+            {% else %}
+            <a href="{{url_for('admin_user', id='new', person_id=person.id)}}" class="btn btn-primary">Добавить учётную запись администратора</a>
+            {% endif %}
+            {% if config_use_allow_jwt_auth %}
+            <hr/>
+            Согласие на поручение оператором (ФГБОУ ВО «Воронежский государственный университет») другому лицу (ООО «Цифровые Технологии») обработки персональных данных
+            <a href="{{ url_for('profile', id=person.id) }}">{{ "Есть" if person.allow_jwt_auth else "Нет" }}</a>
+            {% endif %}
+        {% endif %}
+
+
+    </div>
+
+
+</body>
+</html>

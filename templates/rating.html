@@ -1,0 +1,120 @@
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>ВГУ ФКН БРС Рейтинг студентов</title>
+    {% include '_header.html' %}
+    {% from "_macros_bootstrap" import bootstrap_form_input with context %}
+    {% from "_mark_decorator.html" import macros_mark_class with context %}
+    {% include '_mark_decorator.html' %}
+	<style>
+		.table-header-fixed {
+			position: sticky;
+			top: 0;
+			z-index: 1;
+		}
+	</style>
+</head>
+<body>
+    {% include '_menu.html' %}
+    <div class="container">
+        <h2>Рейтинг студентов</h2>
+        <form method="get" id="ratingForm">
+            {{ bootstrap_form_input(form.education_level_order) }}
+            {{ bootstrap_form_input(form.year) }}
+            {{ bootstrap_form_input(form.semester) }}
+            {% if form.course %}
+            {{ bootstrap_form_input(form.course) }}
+            {% endif %}
+            {{ bootstrap_form_input(form.specialty) }}
+            {% if form.stud_group %}
+            {{ bootstrap_form_input(form.stud_group) }}
+            {% endif %}
+            {{ bootstrap_form_input(form.stage) }}
+        </form>
+        {% with errors = get_flashed_messages(category_filter=["error"]) %}
+        {% if errors %}
+        <div class="alert alert-danger" role="alert">
+            <ul>
+            {%- for msg in errors %}
+                <li>{{ msg }}</li>
+            {% endfor -%}
+            </ul>
+        </div>
+        {% endif %}
+        {% endwith %}
+        {% if data != None %}
+        <table class="table table-sm table-bordered">
+            <thead class="thead-light table-header-fixed">
+                <tr>
+                    <th>Место</th>
+                    <th>Студент</th>
+                    {% if form.stud_group == None or form.stud_group.data == None %}
+                    <th>Группа</th>
+                    {% endif %}
+                    <th>Средний балл</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in data %}
+                    <tr class="{{ macros_mark_class(row['avg_ball'], total=(stage=='total')) }}">
+                        <td>{{ row['rating'] }}</td>
+                        <td>
+                            {% if row['student'].get_rights(current_user)["read_marks"] %}
+                            <a href="{{ url_for('att_marks_report_student', id=row['student'].id) }}">
+                                {{ row['student'].full_name }}
+                            </a>
+                            {% else %}
+                                {{ row['student'].full_name }}
+                            {% endif %}
+                        </td>
+                        {% if form.stud_group == None or form.stud_group.data == None %}
+                        <td title="{{ row['stud_group'].specialty.full_name }}">{{ row['stud_group'].num }}</td>
+                        {% endif %}
+                        <td>{{ row['avg_ball'] }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% endif %}
+        {% if avg_ball != None %}
+            <div class="alert {{ macros_mark_class(avg_ball, total=(stage=='total')) }}" role="alert">
+                Средний балл: <b>{{ avg_ball }}</b>
+            </div>
+        {% endif %}
+    </div>
+    <!-- Modal Submit -->
+    <div class="modal fade" id="modalSubmit" tabindex="-1" role="dialog" aria-labelledby="modalSubmitTitle" aria-hidden="true" data-keyboard="false">
+        <div class="modal-dialog modal-dialog-centered" role="document">
+            <div class="modal-content" style="width: auto;">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalSubmitTitle">Идёт построение рейтинга</h5>
+                </div>
+                <div class="modal-body">
+                    <h2>Пожалуйста, подождите...</h2>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- End modal Submit -->
+
+
+    <script>
+        $(document).ready(function(){
+            var f = $("#ratingForm");
+            $("#ratingForm select").each(function(i,e){
+                $(e).change(function(){
+                    f.submit();
+                });
+            });
+            f.submit(function(){
+                $('#modalSubmit').modal({
+                    show:true,
+                    keyboard: false,
+                    backdrop: 'static'
+                });
+                return true;
+            })
+        });
+    </script>
+</body>
+</html>

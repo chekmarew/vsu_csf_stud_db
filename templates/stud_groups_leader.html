@@ -1,0 +1,125 @@
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>ВГУ ФКН БРС Старосты студенческих групп</title>
+    {% include '_header.html' %}
+</head>
+<body>
+    {% include '_menu.html' %}
+    <div class="container-fluid">
+        <h2>Старосты студенческих групп</h2>
+        <table class="table">
+            <thead>
+            <tr>
+                <th>Курс</th>
+                <th>Группа</th>
+                <th>Направление (специальность)</th>
+                <th>Староста</th>
+                <th>Телефон</th>
+                {% if stud_groups|rejectattr('group_leader', 'none')|rejectattr('group_leader.contacts', 'none')|list|length > 0 or stud_groups|rejectattr('group_leader2', 'none')|rejectattr('group_leader2.contacts', 'none')|list|length > 0 %}
+                <th>Доп. контакты</th>
+                {% endif %}
+                <th>E-mail</th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for g in stud_groups %}
+                <tr>
+                    <td {% if g.group_leader2 %} rowspan="2"{% endif %}>{{ g.course_print }}</td>
+                    <td {% if g.group_leader2 %} rowspan="2"{% endif %}>
+                        {% if g.get_rights(current_user)["write"] %}
+                        <a href="{{url_for('stud_group', id=g.id, _anchor='edit')}}">{{ g.num }}</a>
+                        {% else %}
+                        {{ g.num }}
+                        {% endif %}
+                    </td>
+                    <td {% if g.group_leader2 %} rowspan="2"{% endif %}>
+                        {{ g.specialty.name }}
+                        {% if g.specialty.specialization %}
+                        <br/>
+                        ({{ g.specialty.specialization }})
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if g.group_leader %}
+                            {% if g.group_leader.get_rights(current_user)["write"] %}
+                                <a href="{{ url_for('student', id=g.group_leader.id) }}">{{ g.group_leader.full_name2 }}</a>
+                            {% elif g.group_leader.get_rights(current_user)["read_marks"] %}
+                                <a href="{{ url_for('att_marks_report_student', id=g.group_leader.id) }}">{{ g.group_leader.full_name2 }}</a>
+                            {% else %}
+                                {{ g.group_leader.full_name2 }}
+                            {% endif %}
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if g.group_leader and g.group_leader.phone %}
+                            <div class="text-nowrap">
+                                <a href="tel:{{ g.group_leader.phone_str }}">{{ g.group_leader.phone_format }}</a>
+                            </div>
+                        {% endif %}
+                    </td>
+                    {% if stud_groups|rejectattr('group_leader', 'none')|rejectattr('group_leader.contacts', 'none')|list|length > 0 or stud_groups|rejectattr('group_leader2', 'none')|rejectattr('group_leader2.contacts', 'none')|list|length > 0 %}
+                    <td>
+                        {% if g.group_leader and g.group_leader.contacts %}
+                            <div class="text-nowrap">
+                                {{ g.group_leader.contacts }}
+                            </div>
+                        {% endif %}
+                    </td>
+                    {% endif %}
+                    <td>
+                        {% if g.group_leader and g.group_leader.email %}
+                            <div class="text-nowrap">
+                                <a href="mailto:{{ g.group_leader.email }}">{{ g.group_leader.email }}</a>
+                            </div>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% if g.group_leader2 %}
+                <tr>
+                    <td>
+                        {% if g.group_leader2.get_rights(current_user)["write"] %}
+                            <a href="{{ url_for('student', id=g.group_leader2.id) }}">{{ g.group_leader2.full_name2 }}</a>
+                        {% elif g.group_leader2.get_rights(current_user)["read_marks"] %}
+                            <a href="{{ url_for('att_marks_report_student', id=g.group_leader2.id) }}">{{ g.group_leader2.full_name2 }}</a>
+                        {% else %}
+                            {{ g.group_leader2.full_name2 }}
+                        {% endif %}
+                        (зам.)
+                    </td>
+                    <td>
+                        {% if g.group_leader2.phone %}
+                            <div class="text-nowrap">
+                                <a href="tel:{{ g.group_leader2.phone_str }}">{{ g.group_leader2.phone_format }}</a>
+                            </div>
+                        {% endif %}
+                    </td>
+                    {% if stud_groups|rejectattr('group_leader', 'none')|rejectattr('group_leader.contacts', 'none')|list|length > 0 or stud_groups|rejectattr('group_leader2', 'none')|rejectattr('group_leader2.contacts', 'none')|list|length > 0 %}
+                    <td>
+                        {% if g.group_leader2.contacts %}
+                            <div class="text-nowrap">
+                                {{ g.group_leader2.contacts }}
+                            </div>
+                        {% endif %}
+                    </td>
+                    {% endif %}
+                    <td>
+                        {% if g.group_leader2.email %}
+                            <div class="text-nowrap">
+                                <a href="mailto:{{ g.group_leader2.email }}">{{ g.group_leader2.email }}</a>
+                            </div>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endif %}
+            {% endfor %}
+            </tbody>
+        </table>
+        {% if current_user.user_rights["stud_groups"] %}
+        <div>
+            <a href="?print" target="_blank" class="btn btn-primary">Печать</a>
+        </div>
+        {% endif %}
+    </div>
+</body>
+</html>

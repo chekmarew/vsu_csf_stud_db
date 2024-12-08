@@ -1,0 +1,125 @@
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>ВГУ ФКН БРС Кафедра</title>
+    {% include '_header.html' %}
+    <style>
+        .fixed {
+            background-color: #f8f9fa;
+            position: sticky;
+        }
+
+        .fixed_top {
+            top: 0;
+            border-bottom: 3px solid #dee2e6 !important;
+        }
+    </style>
+</head>
+<body>
+    {% include '_menu.html' %}
+    <div class="container-fluid">
+        {% if departments %}
+        <h3>Выберите кафедру</h3>
+        <nav>
+            <ul class="pagination">
+                    {% for d in departments %}
+                    {% if department != None and d.id == department.id %}
+                    <li class="page-item active">
+                        <span class="page-link">
+                            {{ d.full_name }}
+                            <span class="sr-only">(current)</span>
+                        </span>
+                    </li>
+                    {% else %}
+                    <li class="page-item">
+                         <a class="page-link" href="{{ url_for('department_panel', department_id=d.id) }}">{{ d.full_name }}</a>
+                    </li>
+                    {% endif %}
+                    {% endfor %}
+            </ul>
+        </nav>
+        {% endif %}
+        {% if department %}
+        {% if departments == None %}
+        <h2>{{ department.full_name }}</h2>
+        {% endif %}
+        <h3>Аттестационные ведомости</h3>
+        <table class="table">
+            <thead class="fixed fixed_top">
+                <tr>
+                    <th>Преподаватель</th>
+                    <th>Предмет</th>
+                    <th>Курс</th>
+                    <th>Группа</th>
+                    <th>Отчётность</th>
+                    <th>Состояние</th>
+                    <th>Кол-во занятий</th>
+                    <th>% неуд.</th>
+                    <th>Отметка о сдаче ведомости на кафедру</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for cu in curriculum_units_department %}
+                    <tr>
+                        <td><a href="{{ url_for('teacher_report', id=cu.teacher.id) }}">{{ cu.teacher.full_name_short }}</a></td>
+                        <td>{{ cu.subject_name_print }}</td>
+                        <td>{{ cu.stud_group.course_print }}</td>
+                        <td title="{{ cu.stud_group.specialty.full_name }}">{{ cu.stud_group.num }}</td>
+                        <td>{{ cu.mark_types_name }}</td>
+                        <td>
+                            <a href="{{ url_for('att_marks', id=cu.id) }}">
+                                {{ cu.status_name }}
+                            </a>
+                        </td>
+                        <td>
+                            <a href="{{ url_for('lessons', _anchor='/curriculum-unit/'+(cu.id|string)) }}" title="Посещаемость">
+                                {{ cu.count_lessons }}
+                            </a>
+                        </td>
+                        <td>
+                            {% if cu.result_failed != None %}
+                            <span {% if cu.result_failed > config['RESULT_FAIL_WARNING'] %}class="bg-danger text-white"{% else %}class="bg-success text-white"{% endif %}>&nbsp;{{ cu.result_failed }} %&nbsp;</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if cu.pass_department or cu.status == "exam" or cu.closed %}
+                                <input type="checkbox" class="input_pass_department form-control" data-curriculum-unit-id="{{ cu.id }}" {% if cu.pass_department %} checked {% endif %}{% if not cu.get_rights(current_user)["pass_department"] %} disabled {% endif %} />
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% endif %}
+        {% if curriculum_units|length >0 or curriculum_units_practice|length > 0 %}
+            <h3>Ваши занятий по программам обучения бакалавриата и специалитета ФКН в этом семестре</h3>
+            {% include 'teacher_report_curriculum_units.html' %}
+        {% endif %}
+        {% if stud_groups|length > 0 %}
+            <h3>Ваши курируемые студенческие группы</h3>
+            {% include 'teacher_report_stud_groups_curator.html' %}
+        {% endif %}
+    </div>
+    {% if department %}
+    <script>
+        $(document).ready(function(){
+            $('.input_pass_department').change(function(evt){
+                var e = $(evt.target);
+                var data = {};
+                data.curriculumUnitId = e.data().curriculumUnitId;
+                if (e.prop('checked')){
+                    data.value = true;
+                }
+
+                $.post( "{{ url_for('api_pass_department') }}", data)
+                  .fail(function() {
+                    alert( "Произошла ошибка. Пожалуйста, обновите страницу" );
+                    document.location.reload();
+
+                });
+            });
+        });
+    </script>
+    {% endif %}
+</body>
+</html>

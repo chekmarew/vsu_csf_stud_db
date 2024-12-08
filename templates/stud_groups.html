@@ -1,0 +1,108 @@
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>ВГУ ФКН БРС Студенческие группы</title>
+    {% include '_header.html' %}
+     <style>
+        .fixed {
+            background-color: #f8f9fa;
+            position: sticky;
+        }
+
+        .fixed_top {
+            top: 0;
+            border-bottom: 3px solid #dee2e6 !important;
+        }
+    </style>
+</head>
+<body>
+    {% include '_menu.html' %}
+    <div class="container">
+        <h2>Список студенческих групп</h2>
+        {% include '_periods_archive.html' %}
+        {% set ns = namespace(stud_count=None) %}
+        <table class="table table-hover">
+            <thead class="fixed fixed-top">
+            <tr>
+                <th>Учебный год</th>
+                <th>Курс</th>
+                <th>Семестр</th>
+                <th>Группа</th>
+                <th></th>
+                <th>Направление (специальность)</th>
+                {% if archive_year == None or archive_semester == None %}
+                    {% set ns.stud_count = 0 %}
+                    {% if stud_groups|length > 0 %}
+                        {% set ns.stud_group_max_sub_count = stud_groups | map(attribute='sub_count')|max %}
+                        {% for i in range(1, ns.stud_group_max_sub_count+1) %}
+                            <th>{{ i }}</th>
+                        {% endfor %}
+                        <th>Всего</th>
+                    {% endif %}
+                {% endif %}
+                <th>Дата начала занятий</th>
+                <th>Дата начала сессии</th>
+                <th>Дата окончания сессии</th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for g in stud_groups %}
+                <tr>
+                    <td>{{ g.year_print }}</td>
+                    <td>{{ g.course_print }}</td>
+                    <td>{{ g.semester }}</td>
+                    <td>
+                        {% if g.get_rights(current_user)["write"] %}
+                        <a href="{{url_for('stud_group', id=g.id)}}">{{ g.num }}</a>
+                        {% else %}
+                        {{ g.num }}
+                        {% endif %}
+                    </td>
+                    <td>
+                        <a href="{{url_for('att_marks_report_stud_group', id=g.id)}}">Оценки</a>
+                        <br/>
+                        <a href="{{url_for('lessons_report_stud_group', id=g.id)}}" title="Посещаемость">Посещ.</a>
+                    </td>
+                    <td>
+                        {{ g.specialty.full_name }}
+                    </td>
+                    {% if archive_year == None or archive_semester == None %}
+                        {% for k in g.students_subgroup_count_map[1:ns.stud_group_max_sub_count+1] %}
+                            <td>
+                                {{ k if k != None else '-' }}
+                            </td>
+                        {% endfor %}
+                        <td>{{ g.students|length }}</td>
+                        {% set ns.stud_count = ns.stud_count + g.students|length %}
+                    {% endif %}
+                    <td>{{ g.lessons_start_date.strftime('%d.%m.%Y') if g.lessons_start_date }}</td>
+                    <td>{{ g.session_start_date.strftime('%d.%m.%Y') if g.session_start_date }}</td>
+                    <td>{{ g.session_end_date.strftime('%d.%m.%Y') if g.session_end_date }}</td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        {% if archive_year == None or archive_semester == None %}
+        <h4>Всего студентов: {{ stud_count }}</h4>
+        {% if ns.stud_count != stud_count %}
+        <h4>
+            Не распределено студентов в группы:
+            {% if current_user.admin_user %}
+            <a href="{{ url_for('students_unallocated') }}">{{ (stud_count - ns.stud_count)  }}</a>
+            {% else %}
+                {{ (stud_count - ns.stud_count)  }}
+            {% endif %}
+        </h4>
+        {% endif %}
+        {% endif %}
+        {% if current_user.admin_user and current_user.admin_user.active %}
+            {% if archive_year == None or archive_semester == None %}
+            <div>
+                <a href="{{url_for('stud_group', id='new', _anchor='edit')}}" class="btn btn-primary">Добавить группу</a>
+            </div>
+            {% endif %}
+        {% endif %}
+    </div>
+
+</body>
+</html>

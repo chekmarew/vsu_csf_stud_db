@@ -1,0 +1,35 @@
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>ВГУ ФКН БРС Список дисциплин</title>
+    {% include '_header.html' %}
+</head>
+<body>
+    {% include '_menu.html' %}
+    <div class="container">
+    <h2>Список дисциплин</h2>
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Название</th>
+                <th>Сокращ. название</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for s in subjects %}
+                <tr>
+                    <td><a href="{{ url_for('subject', id=s.id) }}">{{ s.name }}</a></td>
+                    <td>{% if s.short_name != None %}<a href="{{ url_for('subject', id=s.id) }}">{{ s.short_name }}</a>{% endif %}</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div class="container">
+        <a href="{{ url_for('subject', id='new') }}" class="btn btn-primary">Добавить предмет</a>
+    </div>
+    </div>
+
+
+</body>
+</html>

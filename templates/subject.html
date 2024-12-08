@@ -1,0 +1,57 @@
+<html lang="ru">
+<head>
+    {% from "_macros_bootstrap" import bootstrap_form_input, bootstrap_form_button with context %}
+    <meta charset="UTF-8">
+    <title>ВГУ ФКН БРС Дисциплина</title>
+    {% include '_header.html' %}
+</head>
+<body>
+    {% include '_menu.html' %}
+    <div class="container">
+        <h2>Дисциплина</h2>
+        {% if subject.id %}
+            <h3>{{ subject.name }}</h3>
+        {% endif %}
+        <form method="post">
+    	    {% autoescape false %}
+            {{ bootstrap_form_input(form.name) }}
+            {{ bootstrap_form_input(form.short_name) }}
+            {% if subject.id %}
+               {{ bootstrap_form_button(form.button_delete, class_="btn btn-danger") }}
+           {% endif %}
+           {{ bootstrap_form_button(form.button_save, class_="btn btn-success") }}
+           {% endautoescape %}
+        </form>
+        {% if subject.id %}
+            <h4>Единицы учебного плана</h4>
+            {% include '_periods_archive.html' %}
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Шифр по УП</th>
+                        <th>Курс</th>
+                        <th>Группа</th>
+                        <th>Отчётность</th>
+                        <th>Преподаватель</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for cu in curriculum_units %}
+                    <tr>
+
+                        <td><a href="{{ url_for('curriculum_unit', id=cu.id) }}">{{ cu.code }}</a></td>
+                        <td>{{ cu.stud_group.course_print }}</td>
+                        <td title="{{ cu.stud_group.specialty.full_name }}">{% if cu.stud_group.active %}<a href="{{ url_for('stud_group', id=cu.stud_group.id, _anchor='curriculum_units') }}">{{ cu.stud_group.num }}</a>{% else %}{{ cu.stud_group.num }}{% endif %}</td>
+                        <td><a href="{{ url_for('att_marks', id=cu.id) }}">{{ cu.mark_types_name }}</a></td>
+                        <td><a href="{{ url_for('teacher_report', id=cu.teacher.id, archive_year=archive_year, archive_semester=archive_semester) }}">{{ cu.teacher.person.full_name_short }}</a></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% if archive_year == None and archive_semester == None %}
+                <a href="{{url_for('curriculum_unit', id='new', subject_id=subject.id)}}" class="btn btn-primary">Добавить единицу учебного плана</a>
+            {% endif %}
+        {% endif %}
+    </div>
+</body>
+</html>

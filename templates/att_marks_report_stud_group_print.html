@@ -1,0 +1,504 @@
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>ВГУ ФКН БРС Свод оценок рубежных аттестаций по группе</title>
+    <style>
+        @media print {
+		    @page {
+				size: 297mm 210mm ;
+				margin-left: 10mm;
+				margin-right: 10mm;
+				margin-top: 10mm;
+				margin-bottom: 10mm;
+			}
+			body {
+			    padding: 0;
+			    margin: 0;
+			}
+		}
+        .table {
+            border-collapse: collapse;
+        }
+        .table td, .table th {
+            border-style: solid;
+            border-width: 0.1mm;
+            padding: 0.75mm;
+        }
+        .table tfoot {
+            font-size: 7pt;
+        }
+        .table thead {
+            font-size: 9pt;
+        }
+
+        .table {
+            font-size: 11pt;
+        }
+
+        .table tbody tr:nth-child(even)
+        {
+            background-color: #d3d3d3;
+        }
+        .table tbody tr:nth-child(odd)
+        {
+            background-color: #fff;
+        }
+
+        .cell-mark
+        {
+            width: 5mm;
+            min-width: 5mm;
+            max-width: 5mm;
+        }
+        .cell-mark-total
+        {
+            width: 7mm;
+            min-width: 7mm;
+            max-width: 7mm;
+        }
+        .cell-border-left
+        {
+            border-left-width: 0.75mm !important;
+        }
+        .cell-border-right
+        {
+            border-right-width: 0.75mm !important;
+        }
+        .cell-border-top
+        {
+            border-top-width: 0.75mm !important;
+        }
+        .cell-border-bottom
+        {
+            border-bottom-width: 0.75mm !important;
+        }
+        .cell-disabled
+        {
+            background-color: #3f3f3f !important;
+            color: #fff;
+            border-color: #000;
+        }
+
+        .text-right {
+            text-align: right;
+        }
+        .head {
+            font-size: 12pt;
+            text-align: center;
+            margin:0;
+            padding:0;
+        }
+        .small {
+            font-size: 7pt;
+        }
+    </style>
+</head>
+<body>
+    <div>
+        <div class="head">
+            Учебный год: <b>{{ stud_group.year_print }}</b>
+            Курс: <b>{{ stud_group.course }} ({{ stud_group.session_type }})</b>
+            Группа: <b>{{ stud_group.num }}</b>
+            Направление (специальность): <b>{{ stud_group.specialty.full_name }}</b>
+        </div>
+        <table class="table">
+            <thead>
+                <tr>
+                    <th rowspan="3" class="cell-border-left cell-border-top">
+                        №
+                    </th>
+                    {% if stud_group.active and stud_group.sub_count > 1 %}
+                    <th rowspan="3" class="cell-border-top" title="Подгруппа">
+                        Пг
+                    </th>
+                    {% endif %}
+                    <th rowspan="3" class="cell-border-right cell-border-top">
+                        Ф.И.О.
+                    </th>
+                    {% for cu in stud_group.curriculum_units %}
+                        <th colspan="{{ cu.visible_attrs|length + cu.visible_ball_average|int + cu.calc_attendance|int + (2 if cu.mark_type != 'no_att' else 0)  }}" class="cell-border-right cell-border-top">{{ cu.subject_name_print }}</th>
+                    {% endfor %}
+                </tr>
+                <tr>
+                    {% for cu in stud_group.curriculum_units %}
+                        <th colspan="{{ cu.visible_attrs|length + cu.visible_ball_average|int + cu.calc_attendance|int + (2 if cu.mark_type != 'no_att' else 0) }}" class="cell-border-right">
+                            {{ cu.mark_types_name }}
+                        </th>
+                    {% endfor %}
+                </tr>
+                <tr>
+                    {% for cu in stud_group.curriculum_units %}
+                        {% if "att_mark_1" in cu.visible_attrs %}
+                        <th class="cell-mark">1</th>
+                        {% endif %}
+                        {% if "att_mark_2" in cu.visible_attrs %}
+                        <th class="cell-mark">2</th>
+                        {% endif %}
+                        {% if "att_mark_3" in cu.visible_attrs %}
+                        <th class="cell-mark">3</th>
+                        {% endif %}
+                        {% if cu.calc_attendance %}
+                        <th class="cell-mark-total small{% if cu.visible_attrs | length == 0 %} cell-border-right{% endif %}" title="% посещаемости">% посещ.</th>
+                        {% endif %}
+                        {% if cu.visible_ball_average %}
+                        <th class="cell-mark-total" title="Средневзешенный балл">Взеш</th>
+                        {% endif %}
+                        {% if "att_mark_exam" in cu.visible_attrs %}
+                        <th class="cell-mark" title="Экзамен">Э</th>
+                        {% endif %}
+                        {% if "att_mark_append_ball" in cu.visible_attrs %}
+                        <th class="cell-mark" title="Дополнительный балл">Д</th>
+                        {% endif %}
+                        {% if cu.mark_type != 'no_att' %}
+                        <th class="cell-mark-total" title="Итог по 100-балльной шкале">И100</th>
+                        <th class="cell-mark-total cell-border-right" title="Итог по 5-балльной шкале">И5</th>
+                        {% endif %}
+                        {% if cu.has_simple_mark_test_simple %}
+                            <th class="cell-mark-total cell-border-right" title="Зачет">Зач</th>
+                        {% endif %}
+                        {% if cu.has_simple_mark_exam %}
+                            <th class="cell-mark-total cell-border-right" title="Экзамен">Эк</th>
+                        {% endif %}
+                        {% if cu.has_simple_mark_test_diff %}
+                            <th class="cell-mark-total cell-border-right" title="Дифференцированный зачет">ЗаО</th>
+                        {% endif %}
+                        {% if cu.has_simple_mark_course_work %}
+                            <th class="cell-mark-total cell-border-right" title="Курсовая работа">КР</th>
+                        {% endif %}
+                        {% if cu.has_simple_mark_course_project %}
+                            <th class="cell-mark-total cell-border-right" title="Курсовой проект">КП</th>
+                        {% endif %}
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for r in result %}
+                    <tr title="{{ r['student'].full_name }}">
+                        <td class="cell-border-left">
+                            {{ loop.index }}
+                        </td>
+                        {% if stud_group.active and stud_group.sub_count > 1 %}
+                        <td class="">
+                            {% if r['student'].stud_group_id == stud_group.id %}
+                            {{ r['student'].stud_group_subnum }}
+                            {% endif %}
+                        </td>
+                        {% endif %}
+                        <td class="cell-border-right">
+                            <div>
+                                {{ r['student'].full_name_short }}
+                            </div>
+                        </td>
+                        {% for mark in r['att_marks'] %}
+                            {% set cu = stud_group.curriculum_units[loop.index0] %}
+                            {% if mark %}
+                                {% if mark.exclude == 2 %}
+                                    <th colspan="{{ cu.visible_attrs|length + cu.visible_ball_average|int + cu.calc_attendance|int + (2 if cu.mark_type != 'no_att' else 0) }}" class="cell-mark-total cell-border-right">
+                                        Перезачтено
+                                    </th>
+                                {% else %}
+                                {% set m_disabled = mark.att_mark_id in cu.att_marks_readonly_ids %}
+                                {% if "att_mark_1" in cu.visible_attrs %}
+                                <td class="cell-mark{% if m_disabled %} cell-disabled{% endif %}">
+                                    {% if mark.att_mark_1 != None %}
+                                        {{ mark.att_mark_1 }}
+                                    {% endif %}
+                                </td>
+                                {% endif %}
+                                {% if "att_mark_2" in cu.visible_attrs %}
+                                <td class="cell-mark{% if m_disabled %} cell-disabled{% endif %}">
+                                   {% if mark.att_mark_2 != None %}
+                                        {{ mark.att_mark_2 }}
+                                   {% endif %}
+                                </td>
+                                {% endif %}
+                                {% if "att_mark_3" in cu.visible_attrs %}
+                                <td class="cell-mark{% if m_disabled %} cell-disabled{% endif %}">
+                                   {% if mark.att_mark_3 != None %}
+                                        {{ mark.att_mark_3 }}
+                                    {% endif %}
+                                </td>
+                                {% endif %}
+                                {% if cu.calc_attendance %}
+                                <td class="cell-mark-total small{% if m_disabled %} cell-disabled{% endif %}{% if cu.visible_attrs | length == 0 %} cell-border-right{% endif %}">
+                                    {% if mark.attendance_pct != None %}
+                                        {{ mark.attendance_pct }}
+                                    {% endif %}
+                                </td>
+                                {% endif %}
+                                {% if cu.visible_ball_average %}
+                                <td class="cell-mark-total{% if m_disabled %} cell-disabled{% endif %}">
+                                    {% if mark.ball_average != None %}
+                                        {{ mark.ball_average }}
+                                    {% endif %}
+                                </td>
+                                {% endif %}
+                                {% if "att_mark_exam" in cu.visible_attrs %}
+                                <td class="cell-mark{% if m_disabled %} cell-disabled{% endif %}">
+                                    {% if mark.att_mark_exam != None %}
+                                        {{ mark.att_mark_exam }}
+                                    {% endif %}
+                                </td>
+                                {% endif %}
+                                {% if "att_mark_append_ball" in cu.visible_attrs %}
+                                <td class="cell-mark{% if m_disabled %} cell-disabled{% endif %}">
+                                    {% if not mark.is_available_att_mark_append_ball %}
+                                        &mdash;
+                                    {% elif mark.att_mark_append_ball != None %}
+                                        {{ mark.att_mark_append_ball }}
+                                    {% endif %}
+                                </td>
+                                {% endif %}
+                                {% if cu.mark_type != 'no_att' %}
+                                <td class="cell-mark-total{% if m_disabled %} cell-disabled{% endif %}">
+                                    {% if mark.result_print %}
+                                        {{ mark.result_print[0] }}
+                                    {% endif %}
+                                </td>
+                                <td class="cell-mark-total cell-border-right{% if m_disabled %} cell-disabled{% endif %}">
+                                    {% if mark.result_print %}
+                                    <b>{{ mark.result_print[1]["value_text_short"] }}</b>
+                                    {% endif %}
+                                </td>
+                                {% endif %}
+                                {% if cu.has_simple_mark_test_simple %}
+                                    <td class="cell-mark-total cell-border-right{% if m_disabled %} cell-disabled{% endif %}">
+                                            {% if mark.simple_mark_test_simple != None %}
+                                            {% if mark.simple_mark_test_simple == 0 %}н.я.{% endif %}
+                                            {% if mark.simple_mark_test_simple == 2 %}н.з.{% endif %}
+                                            {% if mark.simple_mark_test_simple == 5 %}зач{% endif %}
+                                            {% endif %}
+                                    </td>
+                                {% endif %}
+                                {% if cu.has_simple_mark_exam %}
+                                    <td class="cell-mark-total cell-border-right{% if m_disabled %} cell-disabled{% endif %}">
+                                         {% if mark.simple_mark_exam != None %}
+                                         {% if mark.simple_mark_exam == 0 %}н.я.{% else %}{{ mark.simple_mark_exam }}{% endif %}
+                                         {% endif %}
+                                    </td>
+                                {% endif %}
+                                {% if cu.has_simple_mark_test_diff %}
+                                        <td class="cell-mark-total cell-border-right{% if m_disabled %} cell-disabled{% endif %}">
+                                            {% if mark.simple_mark_test_diff != None %}
+                                            {% if mark.simple_mark_test_diff == 0 %}н.я.{% else %}{{ mark.simple_mark_test_diff }}{% endif %}
+                                            {% endif %}
+                                        </td>
+                                {% endif %}
+                                {% if cu.has_simple_mark_course_work %}
+                                        <td class="cell-mark-total cell-border-right{% if m_disabled %} cell-disabled{% endif %}">
+                                            {% if mark.simple_mark_course_work != None %}
+                                            {% if mark.simple_mark_course_work == 0 %}н.я.{% else %}{{ mark.simple_mark_course_work }}{% endif %}
+                                            {% endif %}
+                                        </td>
+                                {% endif %}
+                                {% if cu.has_simple_mark_course_project %}
+                                        <td class="cell-mark-total cell-border-right{% if m_disabled %} cell-disabled{% endif %}">
+                                            {% if mark.simple_mark_course_project != None %}
+                                            {% if mark.simple_mark_course_project == 0 %}н.я.{% else %}{{ mark.simple_mark_course_project }}{% endif %}
+                                            {% endif %}
+                                        </td>
+                                {% endif %}
+                                {% endif %}
+                            {% else %}
+                                {% if "att_mark_1" in cu.visible_attrs %}
+                                <td class="cell-mark">
+                                </td>
+                                {% endif %}
+                                {% if "att_mark_2" in cu.visible_attrs %}
+                                <td class="cell-mark">
+                                </td>
+                                {% endif %}
+                                {% if "att_mark_3" in cu.visible_attrs %}
+                                <td class="cell-mark">
+                                </td>
+                                {% endif %}
+                                {% if cu.calc_attendance %}
+                                <td class="cell-mark-total{% if cu.visible_attrs | length == 0 %} cell-border-right{% endif %}">
+                                </td>
+                                {% endif %}
+                                {% if cu.visible_ball_average %}
+                                <td class="cell-mark-total">
+                                </td>
+                                {% endif %}
+                                {% if "att_mark_exam" in cu.visible_attrs %}
+                                <td class="cell-mark"></td>
+                                {% endif %}
+                                {% if "att_mark_append_ball" in cu.visible_attrs %}
+                                <td class="cell-mark"></td>
+                                {% endif %}
+                                {% if cu.mark_type != 'no_att' %}
+                                <td class="cell-mark-total">
+                                </td>
+                                <td class="cell-mark-total cell-border-right">
+                                </td>
+                                {% endif %}
+                                {% if cu.has_simple_mark_test_simple %}
+                                    <td class="cell-mark-total cell-border-right">
+                                    </td>
+                                {% endif %}
+                                {% if cu.has_simple_mark_exam %}
+                                    <td class="cell-mark-total cell-border-right">
+                                    </td>
+                                {% endif %}
+                                {% if cu.has_simple_mark_test_diff %}
+                                    <td class="cell-mark-total cell-border-right">
+                                    </td>
+                                {% endif %}
+                                {% if cu.has_simple_mark_course_work %}
+                                    <td class="cell-mark-total cell-border-right">
+                                    </td>
+                                {% endif %}
+                                {% if cu.has_simple_mark_course_project %}
+                                    <td class="cell-mark-total cell-border-right">
+                                    </td>
+                                {% endif %}
+                            {% endif %}
+                        {% endfor %}
+                    </tr>
+                {% endfor %}
+                <tfoot>
+                    <tr>
+                        <th colspan="{{ 3 if stud_group.active and stud_group.sub_count > 1 else 2 }}" class="cell-border-left cell-border-right cell-border-bottom text-right">
+                            Среднее
+                        </th>
+                        {% for ball_avg_col in ball_avg %}
+                            {% set cu = stud_group.curriculum_units[loop.index0] %}
+                            {% if "att_mark_1" in cu.visible_attrs %}
+                            <th class="cell-mark cell-border-bottom">
+                                {% if ball_avg_col['att_mark_1'] != None %}
+                                    {{ ball_avg_col['att_mark_1'] }}
+                                {% endif %}
+                            </th>
+                            {% endif %}
+                            {% if "att_mark_2" in cu.visible_attrs %}
+                            <th class="cell-mark cell-border-bottom">
+                                {% if ball_avg_col['att_mark_2'] != None %}
+                                    {{ ball_avg_col['att_mark_2'] }}
+                                {% endif %}
+                            </th>
+                            {% endif %}
+                            {% if "att_mark_3" in cu.visible_attrs %}
+                            <th class="cell-mark cell-border-bottom">
+                                {% if ball_avg_col['att_mark_3'] != None %}
+                                    {{ ball_avg_col['att_mark_3'] }}
+                                {% endif %}
+                            </th>
+                            {% endif %}
+                            {% if cu.calc_attendance %}
+                            <th class="cell-mark cell-border-bottom{% if cu.visible_attrs | length == 0 %} cell-border-right{% endif %}">
+                                {% if ball_avg_col['attendance_pct'] != None %}
+                                    {{ ball_avg_col['attendance_pct'] }}
+                                {% endif %}
+                            </th>
+                            {% endif %}
+                            {% if cu.visible_ball_average %}
+                            <th class="cell-mark-total cell-border-bottom">
+                                {% if ball_avg_col['ball_average'] != None %}
+                                    {{ ball_avg_col['ball_average'] }}
+                                {% endif %}
+                            </th>
+                            {% endif %}
+                            {% if "att_mark_exam" in cu.visible_attrs %}
+                            <th class="cell-mark cell-border-bottom">
+                                {% if ball_avg_col['att_mark_exam'] != None %}
+                                    {{ ball_avg_col['att_mark_exam'] }}
+                                {% endif %}
+                            </th>
+                            {% endif %}
+                            {% if "att_mark_append_ball" in cu.visible_attrs %}
+                            <td class="cell-mark cell-border-bottom"></td>
+                            {% endif %}
+                            {% if cu.mark_type != 'no_att' %}
+                            <th class="cell-mark-total cell-border-bottom">
+                                {% if ball_avg_col['total']  != None %}
+                                    {{ ball_avg_col['total'] }}
+                                {% endif %}
+                            </th>
+                            <th class="cell-mark-total cell-border-right cell-border-bottom">
+                            </th>
+                            {% endif %}
+                            {% if cu.has_simple_mark_test_simple %}
+                                <th class="cell-mark-total cell-border-right cell-border-bottom">
+                                </th>
+                            {% endif %}
+                            {% if cu.has_simple_mark_exam %}
+                                <th class="cell-mark-total cell-border-right cell-border-bottom">
+                                    {{ ball_avg_col['simple_mark_exam'] if ball_avg_col['simple_mark_exam'] != None }}
+                                </th>
+                            {% endif %}
+                            {% if cu.has_simple_mark_test_diff %}
+                                <th class="cell-mark-total cell-border-right cell-border-bottom">
+                                    {{ ball_avg_col['simple_mark_test_diff'] if ball_avg_col['simple_mark_test_diff'] != None }}
+                                </th>
+                            {% endif %}
+                            {% if cu.has_simple_mark_course_work %}
+                                <th class="cell-mark-total cell-border-right cell-border-bottom">
+                                    {{ ball_avg_col['simple_mark_course_work'] if ball_avg_col['simple_mark_course_work'] != None }}
+                                </th>
+                            {% endif %}
+                            {% if cu.has_simple_mark_course_project %}
+                                <th class="cell-mark-total cell-border-right cell-border-bottom">
+                                    {{ ball_avg_col['simple_mark_course_project'] if ball_avg_col['simple_mark_course_project'] != None }}
+                                </th>
+                            {% endif %}
+                        {% endfor %}
+                    </tr>
+                    <tr>
+                        <th colspan="{{ 3 if stud_group.active and stud_group.sub_count > 1 else 2 }}" class="cell-border-left cell-border-right cell-border-bottom text-right">
+                            Часы
+                        </th>
+                        {% for cu in stud_group.curriculum_units %}
+                            {% if "att_mark_1" in cu.visible_attrs %}
+                            <th class="cell-mark cell-border-bottom">
+                                {{ cu.hours_att_1 }}
+                            </th>
+                            {% endif %}
+                            {% if "att_mark_2" in cu.visible_attrs %}
+                            <th class="cell-mark cell-border-bottom">
+                                {{ cu.hours_att_2 }}
+                            </th>
+                            {% endif %}
+                            {% if "att_mark_3" in cu.visible_attrs %}
+							<th class="cell-mark cell-border-bottom">
+                                {{ cu.hours_att_3 }}
+                            </th>
+                            {% endif %}
+                            {% if cu.calc_attendance %}
+                            <th class="cell-mark-total cell-border-bottom{% if cu.visible_attrs | length == 0 %} cell-border-right{% endif %}"></th>
+                            {% endif %}
+                            {% if cu.visible_ball_average %}
+                            <th class="cell-mark-total cell-border-bottom"></th>
+                            {% endif %}
+                            {% if "att_mark_exam" in cu.visible_attrs %}
+                            <th class="cell-mark cell-border-bottom"></th>
+                            {% endif %}
+                            {% if "att_mark_append_ball" in cu.visible_attrs %}
+                            <th class="cell-mark cell-border-bottom"></th>
+                            {% endif %}
+                            {% if cu.mark_type != 'no_att' %}
+                            <th class="cell-mark-total cell-border-bottom"></th>
+                            <th class="cell-mark-total cell-border-right cell-border-bottom"></th>
+                            {% endif %}
+                            {% if cu.has_simple_mark_test_simple %}
+                                <th class="cell-mark-total cell-border-right cell-border-bottom"></th>
+                            {% endif %}
+                            {% if cu.has_simple_mark_exam %}
+                                <th class="cell-mark-total cell-border-right cell-border-bottom"></th>
+                            {% endif %}
+                            {% if cu.has_simple_mark_test_diff %}
+                                <th class="cell-mark-total cell-border-right cell-border-bottom"></th>
+                            {% endif %}
+                            {% if cu.has_simple_mark_course_work %}
+                                <th class="cell-mark-total cell-border-right cell-border-bottom"></th>
+                            {% endif %}
+                            {% if cu.has_simple_mark_course_project %}
+                                <th class="cell-mark-total cell-border-right cell-border-bottom"></th>
+                            {% endif %}
+                        {% endfor %}
+                    </tr>
+                </tfoot>
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>

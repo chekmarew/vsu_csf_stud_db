@@ -1,0 +1,101 @@
+<html lang="ru">
+<head>
+    {% from "_macros_bootstrap" import bootstrap_form_input, bootstrap_form_button with context %}
+    <meta charset="UTF-8">
+    <title>ВГУ ФКН Балльно-рейтинговая система</title>
+    {% include '_header.html' %}
+</head>
+<body>
+    <div class="container">
+        <h2>Воронежский государственный университет</h2>
+        <h2>Факультет компьютерных наук</h2>
+        <h2>Балльно-рейтинговая система</h2>
+        <h3>Вход</h3>
+        <div class="navbar navbar-expand-lg navbar-light bg-light">
+            <span class="navbar-brand">Тип входа:</span>
+            <ul class="navbar-nav">
+              <li class="nav-item">
+                  <a class="nav-link" href="{{ url_for('login', next=request.args.get('next', None)) }}">По учётным данным как в классах ФКН</a>
+              </li>
+              <li class="nav-item active">
+                <span class="nav-link font-weight-bold">По E-mail</span>
+              </li>
+              {% if config.get('SMS_SENDER', None) != None %}
+              <li class="nav-item">
+                <a class="nav-link" href="{{ url_for('login_sms', next=request.args.get('next', None)) }}">По номеру телефона</a>
+              </li>
+              {% endif %}
+            </ul>
+        </div>
+        <form method="post" id="loginEmailForm">
+    	    {% autoescape false %}
+            {{ bootstrap_form_input(form.email) }}
+            {{ bootstrap_form_input(form.temporary_entrance) }}
+            {% if wait_sec == None %}
+            {{ bootstrap_form_button(form.button_send_email, class_="btn btn-info") }}
+            {% else %}
+            {{ bootstrap_form_input(form.code) }}
+            {{ bootstrap_form_button(form.button_login, class_="btn btn-info") }}
+            {% endif %}
+            {% endautoescape %}
+        </form>
+        {% if wait_sec != None %}
+        <p id="timer_text" class="text-info">
+            {% if second_factor %}
+                Для входа в систему введите код, отправленный на Ваш e-mail. Осталось времени:
+            {% else %}
+                Код отправлен на e-mail. Запросить новый код можно через:
+            {% endif %}
+            <span id="timer"></span>
+        </p>
+        {% endif %}
+        {% if wait_sec == None %}
+        <h6>
+            <span class="bg-warning">Вход по e-mail доступен только для преподавателей.</span>
+        </h6>
+        <h6>Не удалось войти? Пишите на <a href="mailto:{{ config.MAIL_SUPPORT }}">{{ config.MAIL_SUPPORT }}</a></h6>
+        {% endif %}
+    </div>
+    <script>
+        $(document).ready(function(){
+            $('#loginEmailForm').submit(function(evt){
+                var i_submit = $('#loginEmailForm input[type=submit]')
+                var i_hidden = $('<input type="hidden"/>');
+                i_submit.attr('disabled', 'disabled');
+                i_hidden.attr('name', i_submit.attr('name'));
+                i_hidden.val(i_submit.val());
+                $('#loginEmailForm').append(i_hidden);
+            });
+        });
+    </script>
+    {% if wait_sec != None %}
+    <script>
+        var wait_sec = {{ wait_sec }};
+        var stop_time = (new Date()).valueOf() + (wait_sec * 1000);
+        var timer_handler =
+        setInterval(function(){
+            dt_diff = Math.floor((stop_time - (new Date()).valueOf())/1000);
+            if (dt_diff >= 0){
+                var m = Math.floor(dt_diff/60);
+	            var s = dt_diff % 60;
+	            $('#timer').text((m<10 ? '0' :'')+m.toString()+':'+(s<10 ? '0' :'')+s.toString());
+            }
+            else
+            {
+                clearInterval(timer_handler);
+                var t_text = $('#timer_text');
+                t_text.empty();
+                t_text.text("Время ожидания истекло. ");
+                $('#code').attr('disabled', 'disabled');
+                $('#button_login').attr('disabled', 'disabled');
+                var a = $("<a></a>");
+                a.text("Войти заново");
+                a.attr('href', '{{ url_for('login_email') }}');
+                t_text.append(a);
+            }
+        }, 500);
+
+    </script>
+    {% endif %}
+</body>
+</html>

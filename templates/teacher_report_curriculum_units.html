@@ -1,0 +1,123 @@
+    <style>
+        tr.row-border-top-split td, tr.row-border-top-split th {
+		    border-top-width: 6px;
+		}
+		tr.row-border-bottom-split td, tr.row-border-bottom-split th {
+		    border-bottom-width: 6px;
+		}
+    </style>
+    {% macro curriculum_unit_4_teacher_row(cu, cu_pred=None, loop_last=False, teacher_practice=False) -%}
+        {% set tr_classes = [] %}
+        {% if loop_last %}
+            {% set _ = tr_classes.append('row-border-bottom-split') %}
+        {% endif %}
+        {% if cu_pred == None or (cu.subject_id != cu_pred.subject_id if cu.curriculum_unit_group_id == None else cu.curriculum_unit_group_id != cu_pred.curriculum_unit_group_id) %}
+            {% set _ = tr_classes.append('row-border-top-split') %}
+        {% endif %}
+        <tr class="{{ tr_classes|join(' ') }}">
+            <td>
+                {% if (current_user.admin_user and current_user.admin_user.active) or (current_user.teacher and cu.teacher_id == current_user.teacher.id ) %}
+                    <a href="{{ url_for('curriculum_unit', id=cu.id) }}">{{ cu.subject_name_print }}</a>
+                {% else %}
+                    {{ cu.subject_name_print }}
+                {% endif %}
+            </td>
+            <td>{{ cu.stud_group.course_print }}</td>
+            <td title="{{ cu.stud_group.specialty.full_name }}">{{ cu.stud_group.num }}</td>
+            <td>
+                {% if not teacher_practice %}
+                    {% for t in cu.practice_teachers %}
+                    <span title="Преподаватель практики">{{ t.rank }} {{ t.full_name_short }}</span>
+                    {% endfor %}
+                {% endif %}
+                {% if teacher_practice %}
+                    <span title="Преподаватель за которым закреплён предмет">{{ cu.teacher.rank }} {{ cu.teacher.full_name_short }}</span>
+                {% endif %}
+                {% if cu.practice_teachers|length > 0 %}
+                <div>
+                    {% if cu.allow_edit_practice_teacher_att_mark_1 %}
+                        <span class="badge badge-success" title="Разрешено преподавателю практики редактировать поле 'Аттестация 1'">1</span>
+                    {% endif %}
+                    {% if cu.allow_edit_practice_teacher_att_mark_2 %}
+                        <span class="badge badge-success" title="Разрешено преподавателю практики редактировать поле 'Аттестация 2'">2</span>
+                    {% endif %}
+                    {% if cu.allow_edit_practice_teacher_att_mark_3 %}
+                        <span class="badge badge-success" title="Разрешено преподавателю практики редактировать поле 'Аттестация 3'">3</span>
+                    {% endif %}
+                    {% if cu.allow_edit_practice_teacher_att_mark_exam %}
+                        <span class="badge badge-success" title="Разрешено преподавателю практики редактировать поле 'Экзамен'">Экз.</span>
+                    {% endif %}
+                    {% if cu.allow_edit_practice_teacher_att_mark_append_ball %}
+                        <span class="badge badge-success" title="Разрешено преподавателю практики редактировать поле 'Доп. балл'">Доп.</span>
+                    {% endif %}
+                    {% if cu.allow_edit_practice_teacher_simple_mark_test_simple %}
+                        <span class="badge badge-success" title="Разрешено преподавателю практики редактировать поле 'Зачет'">Зач</span>
+                    {% endif %}
+                    {% if cu.allow_edit_practice_teacher_simple_mark_exam %}
+                        <span class="badge badge-success" title="Разрешено преподавателю практики редактировать поле 'Экзамен'">Экз.</span>
+                    {% endif %}
+                    {% if cu.allow_edit_practice_teacher_simple_mark_test_diff %}
+                        <span class="badge badge-success" title="Разрешено преподавателю практики редактировать поле 'Дифференцированный зачет'">ЗаО</span>
+                    {% endif %}
+                    {% if cu.allow_edit_practice_teacher_simple_mark_course_work %}
+                        <span class="badge badge-success" title="Разрешено преподавателю практики редактировать поле 'Курсовая работа'">КР</span>
+                    {% endif %}
+                    {% if cu.allow_edit_practice_teacher_simple_mark_course_project %}
+                        <span class="badge badge-success" title="Разрешено преподавателю практики редактировать поле 'Курсовой проект'">КП</span>
+                    {% endif %}
+                </div>
+                {% endif %}
+            </td>
+            <td>
+                <a href="{{ url_for('att_marks', id=cu.id) }}">
+                    {{ cu.status_name }}
+                    {% if cu.pass_department %}
+                        <span class="font-weight-bold" title="Ведомость сдана на кафедру">каф.</span>
+                    {% endif %}
+                </a>
+            </td>
+            <td><a href="{{ url_for('att_marks', id=cu.id) }}">{{ cu.mark_types_name }}</a></td>
+            <td>
+                <div class="mt-1">
+                    <a href="{{ url_for('lessons', _anchor='/curriculum-unit/'+(cu.id|string)) }}" class="text-decoration-none badge badge-info">Посещаемость</a>
+                </div>
+                <div class="mt-1">
+                    <a href="{{ url_for('att_marks', id=cu.id) }}" class="text-decoration-none badge badge-primary">Ведомость</a>
+                </div>
+                {% if 'MOODLE_LINK' in config and cu.moodle_id %}
+                <div class="mt-1">
+                    <a href="{{ config['MOODLE_LINK']|format(cu.moodle_id) }}" class="text-decoration-none badge badge-warning">Moodle</a>
+                </div>
+                {% endif%}
+            </td>
+        </tr>
+    {%- endmacro %}
+
+    {% if curriculum_units|length >0 or curriculum_units_practice|length >0 %}
+        <table class="table table-bordered table-hover">
+            <thead>
+                <tr>
+                    <th>Предмет</th>
+                    <th>Курс</th>
+                    <th>Группа</th>
+                    <th></th>
+                    <th>Состояние</th>
+                    <th>Отчётность</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for cu in curriculum_units %}
+                    {{ curriculum_unit_4_teacher_row(cu, curriculum_units[loop.index0-1] if not loop.first else None, loop.last) }}
+                {% endfor %}
+                {% if curriculum_units_practice|length > 0 %}
+                    <tr>
+                        <th colspan="7" class="text-center">Практические занятия</th>
+                    </tr>
+                    {% for cu in curriculum_units_practice %}
+                        {{ curriculum_unit_4_teacher_row(cu, curriculum_units_practice[loop.index0-1] if not loop.first else None, loop.last, teacher_practice=True) }}
+                    {% endfor %}
+                {% endif %}
+            </tbody>
+        </table>
+    {% endif %}

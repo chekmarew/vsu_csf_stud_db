@@ -1,0 +1,76 @@
+<html lang="ru">
+<head>
+    {% from "_macros_bootstrap" import bootstrap_form_input, bootstrap_form_button with context %}
+    <meta charset="UTF-8">
+    <title>ВГУ ФКН БРС Списки студенческих групп</title>
+    {% include '_header.html' %}
+</head>
+<body>
+    {% include '_menu.html' %}
+    <div class="container">
+        <h3>Списки студенческих групп</h3>
+        <form method="post">
+            {% autoescape false %}
+            {% for stud_group_selected in form.stud_groups_selected %}
+                <div class="row py-2">
+                    <div class="col-1">
+                        {{ stud_group_selected(class_="form-control") }}
+                    </div>
+                    <div class="col-11">
+                        {{ stud_group_selected.label(class_="col-form-label") }}
+                    </div>
+                </div>
+            {% endfor %}
+            {% if stud_groups_lists %}
+                <div class="row py-2">
+                    <a href="javascript:void(null)" class="btn btn-primary btn-sm mx-2 btn_stud_group_select" data-stud-group-ids="[{% for sg in stud_groups %}{{ sg.id }}{% if not loop.last %},{% endif %}{% endfor %}]">Выбрать все</a>
+                    {% for l_name, stud_groups in stud_groups_lists.items() %}
+                    <a href="javascript:void(null)" class="btn btn-info btn-sm mx-2 btn_stud_group_select" data-stud-group-ids="[{% for sg in stud_groups %}{{ sg.id }}{% if not loop.last %},{% endif %}{% endfor %}]">{{ l_name }}</a>
+                    {% endfor %}
+                    <a href="javascript:void(null)" class="btn btn-secondary btn-sm mx-2 btn_stud_group_select" data-stud-group-ids="[]">Снять выделение</a>
+
+                </div>
+            {% endif %}
+            {{ bootstrap_form_input(form.name_format) }}
+            {{ bootstrap_form_input(form.split_sub_group) }}
+            {{ bootstrap_form_button(form.button_excel) }}
+            {% endautoescape %}
+        </form>
+
+    </div>
+
+    <script>
+        $(document).ready(function(){
+            {% if stud_groups_lists %}
+            $('.btn_stud_group_select').click(function(evt){
+                var elem_data = $(evt.target).data();
+                var stud_group_ids = elem_data.studGroupIds;
+                $('[name="stud_groups_selected"]').each(function(i, e){
+                    var elem = $(e);
+                    elem.prop('checked', stud_group_ids.indexOf(parseInt(elem.val()))>=0);
+                });
+                if (stud_group_ids.length > 0){
+                    $('#button_excel').removeAttr('disabled');
+                }
+                else
+                {
+                    $('#button_excel').attr('disabled', 'disabled');
+                }
+            });
+            {% endif %}
+            $('[name="stud_groups_selected"]').change(function(){
+                if ($('[name="stud_groups_selected"]:checked').length > 0){
+                    $('#button_excel').removeAttr('disabled');
+                }
+                else
+                {
+                    $('#button_excel').attr('disabled', 'disabled');
+                }
+            });
+        });
+    </script>
+
+
+
+</body>
+</html>

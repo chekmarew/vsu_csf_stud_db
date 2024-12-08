@@ -1,0 +1,17 @@
+{% if periods_archive| length > 0 %}
+<p>
+    <a data-toggle="collapse" href="#periodsArchive" role="button" aria-expanded="true" aria-controls="periodsArchive" class="collapsed">Данные за прошлый семестр</a>
+</p>
+<div id="periodsArchive" class="collapse{% if archive_year != None and archive_semester != None %} show{% endif %}">
+    {% if archive_year != None and archive_semester != None %}
+        <a href="?">Текущий семестр</a>
+    {% endif %}
+    {% for y, s in periods_archive %}
+        {% if (y, s) == (archive_year, archive_semester) %}
+            <span>{{ y }}-{{ y+1 }} сем. {{ s }}</span>
+        {% else %}
+            <a href="?archive_year={{ y }}&archive_semester={{ s }}">{{ y }}-{{ y+1 }} сем. {{ s }}</a>
+        {% endif %}
+    {% endfor %}
+</div>
+{% endif %}

@@ -1,0 +1,31 @@
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>ВГУ ФКН Балльно-рейтинговая система</title>
+    {% include '_header.html' %}
+</head>
+<body>
+    {% include '_menu.html' %}
+    <div class="container-fluid">
+        <div class="px-5">
+            <h2>Добро пожаловать в БРС ФКН ВГУ</h2>
+            {% for u in (current_user.roles_all if show_all_roles else current_user.roles_active) %}
+                {% if u.role_name == "Student" %}
+                    <h3><a href="{{ url_for('att_marks_report_student', id=u.id) }}">Личный кабинет студента {{ u.id }}</a>{% if u.stud_group %} <small>(<a href="{{ url_for('stud_group_leader', id=u.stud_group.id) }}">Староста / Куратор</a>)</small>{% endif %}</h3>
+                {% endif %}
+                {% if u.role_name == "Teacher" %}
+                    {% if u.department_secretary %}
+                        <h3><a href="{{ url_for('department_panel', department_id=u.department_id) }}">Панель секретаря кафедры</a></h3>
+                    {% else %}
+                        <h3><a href="{{ url_for('teacher_report', id=u.id) }}">Личный кабинет преподавателя</a></h3>
+                    {% endif %}
+                {% endif %}
+                {% if u.role_name == "AdminUser" %}
+                    <h3><a href="{{ url_for('admin_panel') }}">Панель администратора</a></h3>
+                {% endif %}
+            {% endfor %}
+
+        </div>
+    </div>
+</body>
+</html>

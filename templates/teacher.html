@@ -1,0 +1,101 @@
+<html lang="ru">
+<head>
+    {% from "_macros_bootstrap" import bootstrap_form_input, bootstrap_form_button with context %}
+    <meta charset="UTF-8">
+    <title>ВГУ ФКН БРС Преподаватель</title>
+    {% include '_header.html' %}
+</head>
+<body>
+    {% include '_menu.html' %}
+    <div class="container">
+        <h2>Преподаватель</h2>
+        <h3><a href="{{ url_for('person', id=teacher.person.id) }}">{{ teacher.person.full_name }}</a></h3>
+        <form method="post" id="formTeacher">
+    	    {% autoescape false %}
+            {{ bootstrap_form_input(form.department) }}
+            {% if teacher.id %}
+            <h6>Работа по совместительству на кафедрах:</h6>
+            {% for d in teacher.departments_part_time_job %}
+            <div class="row my-1 py-1 border-bottom">
+                <div class="col-1">
+                    {% if form_department_part_job_time_add %}
+                        <a href="{{ url_for('teacher_department_part_job_time_remove', id=teacher.id, department_id=d.id) }}" title="Удалить из списка" class="btn btn-danger btn-sm btn-department-part-job-time-remove">X</a>
+                    {% endif %}
+                </div>
+                <div class="col-11">
+                    {{ d.full_name }}
+                </div>
+            </div>
+            {% endfor %}
+            {% if form_department_part_job_time_add %}
+            <div class="row my-1 py-1 border-bottom">
+                <div class="col-12">
+                    <a class="btn btn-primary text-white btn-department-part-job-time-add" data-toggle="modal" data-target="#modalDepartmentPartJobTime">+ Добавить</a>
+                </div>
+            </div>
+            {% endif %}
+            {% endif %}
+            {{ bootstrap_form_input(form.rank) }}
+            {{ bootstrap_form_input(form.academic_degree) }}
+            {{ bootstrap_form_input(form.active) }}
+
+            {% if teacher.active and teacher.department != None and (teacher.department.id == teacher.department.ID_DEFAULT or teacher.department.parent_department_id == teacher.department.ID_DEFAULT) %}
+            {{ bootstrap_form_input(form.dean_staff) }}
+            {{ bootstrap_form_input(form.department_leader) }}
+            {{ bootstrap_form_input(form.department_secretary) }}
+            {{ bootstrap_form_input(form.right_read_all) }}
+            {% endif %}
+            {% if teacher.id %}
+
+               {{ bootstrap_form_button(form.button_delete, class_="btn btn-danger") }}
+           {% endif %}
+           {{ bootstrap_form_button(form.button_save, class_="btn btn-success") }}
+           {% endautoescape %}
+        </form>
+        {% if teacher.id %}
+            <a href="{{url_for('teacher_report', id=teacher.id)}}" class="btn btn-primary">Личный кабинет преподавателя</a>
+            {% if teacher.department_secretary or teacher.department_leader %}
+                <a href="{{url_for('department_panel', department_id=teacher.department_id)}}" class="btn btn-primary">Кафедра</a>
+            {% endif %}
+            {% if teacher.favorite_students|length > 0 %}
+                <a href="{{url_for('favorite_teacher_students', id=teacher.id)}}" class="btn btn-primary">Список выбранных студентов</a>
+            {% endif %}
+        {% endif %}
+    </div>
+
+    {% if form_department_part_job_time_add %}
+    <!-- Modal add form_department_part_job_time_add -->
+    <div class="modal fade" id="modalDepartmentPartJobTime" tabindex="-1" role="dialog" aria-labelledby="modalDepartmentPartJobTimeTitle">
+        <div class="modal-dialog modal-dialog-centered" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalDepartmentPartJobTimeTitle">Добавить кафедру</h5>
+                </div>
+                <div class="modal-body">
+                    <form action="{{ url_for('teacher_department_part_job_time_add', id=teacher.id) }}" method="post">
+                        <div class="form-group row">
+                            {{ form_department_part_job_time_add.department.label(class_="col-12 col-form-label") }}
+                            <div class="col-12">
+                                {{ form_department_part_job_time_add.department(class_="form-control") }}
+                            </div>
+                        </div>
+                        {{ bootstrap_form_button(form_department_part_job_time_add.button_add) }}
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- End form_department_part_job_time_add -->
+
+
+    <script>
+        $(document).ready(function(){
+            $(document.getElementById("formTeacher").elements).change(function(evt){
+                $('.btn-department-part-job-time-add').hide();
+                $('.btn-department-part-job-time-remove').hide();
+            });
+        });
+    </script>
+    {% endif %}
+</body>
+</html>

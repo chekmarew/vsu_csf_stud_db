@@ -1,0 +1,407 @@
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>ВГУ ФКН Балльно-рейтинговая система</title>
+    {% include '_header.html' %}
+    {% from "_mark_decorator.html" import macros_mark_class, macros_mark_simple_class, macros_pct_attendance_class with context %}
+    {% macro curriculum_unit_hours_title(curriculum_unit, n) -%}
+        {% set ah = "hours_att_%d"|format(n) %}
+        {% set h = curriculum_unit[ah] %}
+        {% if h > 0 %} title="Часов на {{ n }}-ю аттестацию: {{ h }}"{% endif %}
+    {%- endmacro %}
+    {% include '_mark_decorator.html' %}
+	<style>
+		.table-header-fixed {
+			position: sticky;
+			top: 0;
+			background-color: #f8f9fa;
+			z-index: 1;
+		}
+		tr.row-border-top-6 td, tr.row-border-top-6 th {
+		    border-top-width: 6px;
+		}
+		tr.row-border-top-3 td, tr.row-border-top-3 th {
+		    border-top-width: 3px;
+		}
+		tr.row-border-bottom-6 td, tr.row-border-bottom-6 th {
+		    border-bottom-width: 6px;
+		}
+	</style>
+</head>
+<body>
+    {% include '_menu.html' %}
+    <div class="container-fluid">
+        <h2>Свод оценок студента</h2>
+        <dl class="row">
+            <dt class="col-lg-3 col-12 text-left text-lg-right">
+                Ф.И.О.:
+            </dt>
+            <dd class="col-lg-3 col-12">
+                {% if current_user.admin_user and current_user.admin_user.active %}
+                <a href="{{ url_for('student', id=student.id) }}">{{ student.full_name }}</a>
+                {% else %}
+                {{ student.full_name }}
+                {% endif %}
+            </dd>
+            {% if student.stud_group %}
+                <dt class="col-lg-3 col-12 text-left text-lg-right">
+                    Курс:
+                </dt>
+                <dd class="col-lg-3 col-12">
+                    {{ student.stud_group.course }}
+                </dd>
+                <dt class="col-lg-3 col-12 text-left text-lg-right">
+                    Семестр:
+                </dt>
+                <dd class="col-lg-3 col-12">
+                    {{ student.stud_group.semester }}
+                </dd>
+                <dt class="col-lg-3 col-12 text-left text-lg-right">
+                    Группа:
+                </dt>
+                <dd class="col-lg-3 col-12">
+                    {% if student.stud_group.get_rights(current_user)["write"] %}
+                    <a href="{{ url_for('stud_group', id=student.stud_group.id, _anchor='curriculum_units') }}">
+                        {{ student.stud_group.num }}
+                    </a>
+                    {% elif student.stud_group.get_rights(current_user)["read_marks"] %}
+                    <a href="{{ url_for('att_marks_report_stud_group', id=student.stud_group.id) }}">
+                        {{ student.stud_group.num }}
+                    </a>
+                    {% elif student.stud_group.get_rights(current_user)["read_list"] %}
+                    <a href="{{ url_for('stud_group_leader', id=student.stud_group.id) }}" title="Сведения о старосте и кураторе группы">
+                        {{ student.stud_group.num }}
+                    </a>
+                    {% else %}
+                        {{ student.stud_group.num }}
+                    {% endif %}
+                    {% if student.stud_group_subnum %}
+                        ({{ student.stud_group_subnum }})
+                    {% endif %}
+                </dd>
+                <dt class="col-lg-3 col-12 text-left text-lg-right">
+                    Направление / специальность:
+                </dt>
+                <dd class="col-lg-9 col-12">
+                    {{ student.stud_group.specialty.full_name }}
+                </dd>
+            {% else %}
+                {% if student.semester %}
+                    <dt class="col-lg-3 col-12 text-left text-lg-right">
+                        Курс:
+                    </dt>
+                    <dd class="col-lg-3 col-12">
+                        {{ student.course }}
+                    </dd>
+                    <dt class="col-lg-3 col-12 text-left text-lg-right">
+                        Семестр:
+                    </dt>
+                    <dd class="col-lg-3 col-12">
+                        {{ student.semester }}
+                    </dd>
+                {% endif %}
+                {% if student.alumnus_year %}
+                    <dt class="col-lg-3 col-12 text-left text-lg-right">
+                        Год выпуска:
+                    </dt>
+                    <dd class="col-lg-3 col-12">
+                        {{ student.alumnus_year }}
+                    </dd>
+                {% endif %}
+                {% if student.expelled_year and student.status == 'expelled' %}
+                    <dt class="col-lg-3 col-12 text-left text-lg-right">
+                        {{ 'Отчислена' if student.person.gender == 'W' else 'Отчислен' }} в
+                    </dt>
+                    <dd class="col-lg-3 col-12">
+                        {{ student.expelled_year }} году
+                    </dd>
+                {% endif %}
+                {% if student.expelled_year and student.status == 'academic_leave' %}
+                    <dt class="col-lg-3 col-12 text-left text-lg-right">
+                        В академическом отпуске с
+                    </dt>
+                    <dd class="col-lg-3 col-12">
+                        {{ student.expelled_year }} года
+                    </dd>
+                {% endif %}
+
+            {% endif %}
+        </dl>
+        {% set ns = namespace(fail_flag=false) %}
+        <table class="table table-bordered">
+            <thead class="table-header-fixed">
+                <tr class="row-border-bottom-6">
+                    <th>Учебный год</th>
+                    <th>Семестр</th>
+                    <th>Курс</th>
+                    <th>Предмет</th>
+                    <th>Отчётность</th>
+                    <th>Преподаватель</th>
+                    <th>1</th>
+                    <th>2</th>
+                    <th>3</th>
+                    <th title="% посещаемости">% посещ.</th>
+                    <th title="Средневзешенный балл">взвеш. балл</th>
+                    <th>Экзамен</th>
+                    <th>Доп. балл</th>
+                    <th>Итог. балл</th>
+                    <th>Итог</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for mark in result %}
+                    {% set tr_class = "" %}
+                    {% if loop.last %}
+                        {% set tr_class = "row-border-bottom-6" %}
+                    {% elif loop.index0 > 0 %}
+                        {% if mark.curriculum_unit.stud_group.year != result[loop.index0-1].curriculum_unit.stud_group.year %}
+                            {% set tr_class = "row-border-top-6" %}
+                        {% elif mark.curriculum_unit.stud_group.semester != result[loop.index0-1].curriculum_unit.stud_group.semester %}
+                            {% set tr_class = "row-border-top-3" %}
+                        {% endif %}
+                    {% endif %}
+                    {% set mark_types = mark.curriculum_unit.mark_types %}
+                    {% if mark_types|length == 0 %}
+                        {% set mark_types = ["no_mark"] %}
+                    {% endif %}
+                    <tr class="{{ tr_class }}"{% if mark.att_mark_id %} data-att-mark-id="{{ mark.att_mark_id }}"{% endif %}>
+                        <td rowspan="{{ mark_types | length }}">{{ mark.curriculum_unit.stud_group.year_print }}</td>
+                        <td rowspan="{{ mark_types | length }}">
+                            {% if mark.curriculum_unit.stud_group.get_rights(current_user)["read_marks"] %}
+                            <a href="{{ url_for('att_marks_report_stud_group', id=mark.curriculum_unit.stud_group_id) }}">
+                                {{ mark.curriculum_unit.stud_group.semester }}
+                            </a>
+                            {% else %}
+                                {{ mark.curriculum_unit.stud_group.semester }}
+                            {% endif %}
+                        </td>
+                        <td rowspan="{{ mark_types | length }}">{{ mark.curriculum_unit.stud_group.course }}</td>
+                        <td rowspan="{{ mark_types | length }}">
+                            {% if mark.curriculum_unit.get_rights(current_user)["read"] %}
+                            <a href="{{ url_for('att_marks', id=mark.curriculum_unit.id) }}">{{ mark.curriculum_unit.subject_name_print }}</a>
+                            {% else %}
+                            {{ mark.curriculum_unit.subject_name_print }}
+                            {% endif %}
+                            {% if 'MOODLE_LINK' in config and mark.curriculum_unit.moodle_id %}
+                            <a href="{{ config['MOODLE_LINK']|format(mark.curriculum_unit.moodle_id) }}" class="text-decoration-none badge badge-warning float-right" title="Ссылка на курс Moodle">M</a>
+                            {% endif %}
+                        </td>
+                        {% for mark_type in mark_types %}
+                        {% if not loop.first %}
+                            <tr>
+                        {% endif %}
+                        <td>{{ {"test_simple": "Зачет",  "exam": "Экзамен", "test_diff": "Дифференцированный зачет", "course_work": "Курсовая работа", "course_project": "Курсовой проект", "no_mark": "Нет"}[mark_type] }}</td>
+                        {% if loop.first %}
+                        <td rowspan="{{ mark_types | length }}" title="{{ mark.curriculum_unit.teacher.full_name }}{% for t in mark.curriculum_unit.practice_teachers %}&#013;{{ t.full_name }}{% endfor %}">{{ mark.curriculum_unit.teacher.full_name_short }}</td>
+                        {% endif %}
+                        {% if mark.exclude == 2 %}
+                            {% if loop.first %}
+                            <th rowspan="{{ mark_types | length }}" colspan="9">
+                                Перезачтено
+                            </th>
+                            {% endif %}
+                        {% else %}
+                            {% if mark.curriculum_unit.mark_type == mark_type %}
+                                <td class="{{ macros_mark_class(mark.att_mark_1) }}"{{ curriculum_unit_hours_title(mark.curriculum_unit, 1) }}>
+                                    {% if "att_mark_1" not in mark.curriculum_unit.visible_attrs %}
+                                        &mdash;
+                                    {% elif mark.att_mark_1 != None %}
+                                        {{ mark.att_mark_1 }}
+                                    {% endif %}
+                                </td>
+                                <td class="{{ macros_mark_class(mark.att_mark_2) }}"{{ curriculum_unit_hours_title(mark.curriculum_unit, 2) }}>
+                                    {% if "att_mark_2" not in mark.curriculum_unit.visible_attrs %}
+                                        &mdash;
+                                    {% elif mark.att_mark_2 != None %}
+                                        {{ mark.att_mark_2 }}
+                                    {% endif %}
+                                </td>
+                                <td class="{{ macros_mark_class(mark.att_mark_3) }}"{{ curriculum_unit_hours_title(mark.curriculum_unit, 3) }}>
+                                    {% if "att_mark_3" not in mark.curriculum_unit.visible_attrs %}
+                                        &mdash;
+                                    {% elif mark.att_mark_3 != None %}
+                                        {{ mark.att_mark_3 }}
+                                    {% endif %}
+                                </td>
+                                {% set attendance_pct_title = '' %}
+                                {% if mark.curriculum_unit.calc_attendance and mark.ball_attendance_add != None %}
+                                    {% if mark.ball_attendance_add < 0 %}
+                                        {% set attendance_pct_title = 'Штрафной балл за посещаемость: ' + (mark.ball_attendance_add|string) %}
+                                    {% endif %}
+                                {% endif %}
+                                <td rowspan="{{ mark_types | length }}" title="{{ attendance_pct_title }}" >
+                                    {% if mark.curriculum_unit.calc_attendance and mark.attendance_pct != None %}
+                                         <a href="{{ url_for('lessons_report_student', id=student.id, year=mark.curriculum_unit.stud_group.year, semester=mark.curriculum_unit.stud_group.semester, curriculum_unit=mark.curriculum_unit.id) }}" class="{{ macros_pct_attendance_class(mark.attendance_pct) }}">{{ mark.attendance_pct }}</a>
+                                    {% else %}
+                                        &mdash;
+                                    {% endif %}
+
+                                </td>
+                                <td class="{{ macros_mark_class(mark.ball_average, total=(mark.curriculum_unit.mark_type == 'test_diff')) if mark.curriculum_unit.visible_ball_average }}">
+                                    {% if mark.curriculum_unit.visible_ball_average %}
+                                       {{ mark.ball_average if mark.ball_average != None }}
+                                    {% else %}
+                                        &mdash;
+                                    {% endif %}
+                                </td>
+                                <td class="{{ macros_mark_class(mark.att_mark_exam) }}">
+                                    {% if "att_mark_exam" not in mark.curriculum_unit.visible_attrs %}
+                                        &mdash;
+                                    {% elif mark.att_mark_exam != None %}
+                                        {{ mark.att_mark_exam }}
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if "att_mark_append_ball" not in mark.curriculum_unit.visible_attrs or not mark.is_available_att_mark_append_ball %}
+                                        &mdash;
+                                    {% elif mark.att_mark_append_ball != None %}
+                                        {{ mark.att_mark_append_ball }}
+                                    {% endif %}
+                                </td>
+                                <td {% if mark.result_print != None %}class="{{ macros_mark_class(mark.result_print[0], total=True) }}"{% endif %}>
+                                    {% if mark.result_print != None %}
+                                        {{ mark.result_print[0] }}
+                                    {% endif %}
+                                </td>
+                                <th {% if mark.result_print != None %}class="{{ macros_mark_class(mark.result_print[0], total=True) }}"{% endif %}>
+                                    {% if mark.result_print != None %}
+                                        {{ mark.result_print[1]['value_text'] }}
+                                        {% if not mark.curriculum_unit.stud_group.active and mark.result_print[1]['value'] in (False,0,2) %}
+                                            {% set ns.fail_flag = True %}
+                                            <a href="#fail_flag">*</a>
+                                        {% endif %}
+                                    {% endif %}
+                                </th>
+                            {% else %}
+                                <td>&mdash;</td>
+                                <td>&mdash;</td>
+                                <td>&mdash;</td>
+                                {% if loop.first %}
+                                <td rowspan="{{ mark_types | length }}">
+                                    {% if mark.attendance_pct != None %}
+                                         <a href="{{ url_for('lessons_report_student', id=student.id, year=mark.curriculum_unit.stud_group.year, semester=mark.curriculum_unit.stud_group.semester, curriculum_unit=mark.curriculum_unit.id) }}" class="{{ macros_pct_attendance_class(mark.attendance_pct) }}">{{ mark.attendance_pct }}</a>
+                                    {% else %}
+                                        &mdash;
+                                    {% endif %}
+                                </td>
+                                {% endif %}
+                                <td>&mdash;</td>
+                                <td>&mdash;</td>
+                                <td>&mdash;</td>
+                                <td>&mdash;</td>
+                                {% set mark_simple = mark.get_simple_att_mark(mark_type) %}
+                                <th class="{{ macros_mark_simple_class(mark_simple.ball_simple_value if mark_simple != None else None) }}">
+                                    {% if mark_simple != None and mark_simple.ball_value != None %}
+                                        {{ mark_simple.ball_print }}
+                                        {% if not mark.curriculum_unit.stud_group.active and mark_simple.ball_value in (False,0,2) %}
+                                            {% set ns.fail_flag = True %}
+                                            <a href="#fail_flag">*</a>
+                                        {% endif %}
+                                    {% endif %}
+                                </th>
+                            {% endif %}
+                        {% endif %}
+                    </tr>
+                    {% endfor %}
+                {% endfor %}
+            </tbody>
+        </table>
+
+        {% if ns.fail_flag %}
+        <div id="fail_flag" class="container-fluid bg-warning">
+            <b>*</b> Обратите внимание. Результаты пересдач не отображаются на данной странице. Подробную информацию можно получить на <a href="https://edu.vsu.ru">edu.vsu.ru</a> в личном кабинете студента в разделе "успеваемость".
+        </div>
+        {% endif %}
+        <div class="my-1">
+            <a href="{{ url_for('lessons_report_student', id=student.id) }}" class="btn btn-primary">Посещаемость</a>
+        </div>
+        {% if current_user.teacher and current_user.teacher.active  %}
+        <div class="py-1">
+            <a href="javascript:void(null)" id="button_favorite" class="btn btn-primary" data-action="{{ 'remove' if student in current_user.favorite_students else 'add' }}">{{ 'Удалить из моего списка' if student in current_user.favorite_students else 'Добавить в мой список' }}</a></div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- modal CurrentLessonForMark  -->
+        {% if current_lesson_for_mark %}
+
+            <div class="modal fade" id="modalCurrentLessonForMark" tabindex="-1" role="dialog" aria-labelledby="modalCurrentLessonForMarkTitle" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered" role="document">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="modalCurrentLessonForMarkTitle">Посещаемость</h5>
+                            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                <span aria-hidden="true">&times;</span>
+                            </button>
+                        </div>
+                        <div class="modal-body">
+                            <h3>Сейчас идёт занитие</h3>
+                            <ul>
+                                <li>{{ current_lesson_for_mark.lesson_curriculum_unit.lesson.date.strftime("%d.%m.%Y") }}</li>
+                                <li>{{ current_lesson_for_mark.lesson_curriculum_unit.lesson.time|string }}</li>
+                                <li>{{ current_lesson_for_mark.lesson_curriculum_unit.curriculum_unit.subject.name }}</li>
+                                <li>{{ current_lesson_for_mark.lesson_curriculum_unit.lesson.teacher.full_name }}</li>
+                            </ul>
+
+                             <div class="modal-footer">
+                                <button id="modalCurrentLessonForMarkButtonOK" class="btn btn-primary col-12">Подтвердить присутствие на занятии</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+        <!-- end modal CurrentLessonForMark  -->
+
+    <script>
+        $(document).ready(function(){
+            {% if current_user.teacher and current_user.teacher.active %}
+                $('#button_favorite').click(function(){
+                    var action = $('#button_favorite').data().action;
+                    var action_new = (action == "add") ? "remove" : "add";
+                    $.post( "{{ url_for('api_favorite_teacher_student') }}", {action: action, studentId: {{ student.id }}, teacherId: {{ current_user.id }} })
+                              .done(function(data){
+                                if (data.ok){
+                                    $('#button_favorite').data('action', action_new);
+                                    if (action_new == "add") $('#button_favorite').text("Добавить в мой список");
+                                    if (action_new == "remove") $('#button_favorite').text("Удалить из моего списка");
+                                }
+                              })
+                              .fail(function() {
+                                alert( "Произошла ошибка" );
+                            });
+                });
+            {% endif %}
+            {% if current_lesson_for_mark %}
+                $('#modalCurrentLessonForMark').modal({ show:true });
+                $('#modalCurrentLessonForMarkButtonOK').click(function(){
+                $('#modalCurrentLessonForMarkButtonOK').attr('disabled', 'disabled');
+                    $.ajax({
+                        url: "{{ url_for('api_lessons_student', lesson_id=current_lesson_for_mark.lesson_id, student_id=current_lesson_for_mark.student_id) }}",
+                        data: JSON.stringify({"attendance": 1}),
+                        type: 'POST',
+	                    dataType: "json",
+                        contentType: "application/json; charset=utf-8",
+                        success: function(){
+                            $('#modalCurrentLessonForMark').modal('hide');
+							setTimeout(function(){document.location.reload()}, 1000+Math.ceil(Math.random()*9000));
+                        },
+                        error: function(jqXHR, textStatus, errorThrown ){
+                            $('#modalCurrentLessonForMarkButtonOK').removeAttr('disabled');
+
+                            if (jqXHR.responseJSON && jqXHR.responseJSON.error)
+                            {
+                                alert(jqXHR.responseJSON.error);
+                            }
+                            else
+                            {
+                                alert('Произошла ошибка');
+                            }
+                        }
+                    })
+                });
+            {% endif %}
+        });
+    </script>
+</body>
+</html>

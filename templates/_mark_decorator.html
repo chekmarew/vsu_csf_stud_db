@@ -1,0 +1,43 @@
+<style>
+    .mark5
+    {
+        background-color: rgba(0, 128, 0, 0.25);
+    }
+    .mark4
+    {
+        background-color: rgba(0, 128, 128, 0.25);
+    }
+    .mark3
+    {
+        background-color: rgba(255, 193, 7, 0.25);
+    }
+    .mark2
+    {
+        background-color: rgba(255, 0, 0, 0.75);
+        color: rgb(255, 255, 255);
+    }
+    .mark2 a
+    {
+        color: rgb(255, 255, 255);
+    }
+    .pctAttendance90
+    {
+        color: rgb(0, 128, 0);
+    }
+    .pctAttendance70
+    {
+        color: rgb(30, 144, 255);
+    }
+    .pctAttendance50
+    {
+        color: rgb(205, 133, 63);
+    }
+    .pctAttendance0
+    {
+        color: rgb(255, 0, 0);
+    }
+</style>
+
+{% macro macros_mark_class(mark, total=False) -%}{% if mark == None %}markNone{% else %}{% set v = mark if total else mark*2 %}{% if v >=90 %}mark5{% endif %}{% if 70 <= v < 90 %}mark4{% endif %}{% if 50 <= v < 70 %}mark3{% endif %}{% if v < 50 %}mark2{% endif %}{% endif %}{%- endmacro %}
+{% macro macros_mark_simple_class(v) -%}{% if v == None %}markNone{% elif v <= 2 %}mark2{% else %}mark{{v}}{% endif %}{%- endmacro %}
+{% macro macros_pct_attendance_class(pct) -%}{% if pct == None %}pctAttendanceNone{% else %}{% if pct > 90 %}pctAttendance90{% endif %}{% if 70 < pct <= 90 %}pctAttendance70{% endif %}{% if 50 < pct <= 70 %}pctAttendance50{% endif %}{% if pct <= 50 %}pctAttendance0{% endif %}{% endif %}{%- endmacro %}

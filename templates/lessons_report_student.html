@@ -1,0 +1,263 @@
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>ВГУ ФКН Балльно-рейтинговая система</title>
+    {% include '_header.html' %}
+    {% from "_macros_bootstrap" import bootstrap_form_input with context %}
+    {% from "_mark_decorator.html" import macros_mark_class, macros_pct_attendance_class with context %}
+    {% include '_mark_decorator.html' %}
+	<style>
+		.table-header-fixed {
+			position: sticky;
+			top: 0;
+			background-color: #f8f9fa;
+			z-index: 1;
+		}
+    .attendance1
+    {
+        background-color: rgba(0, 128, 0, 0.25);
+    }
+    .attendance2
+    {
+        background-color: rgba(255, 193, 7, 0.25);
+    }
+
+    .attendance0
+    {
+        background-color: rgba(255, 0, 0, 0.75);
+        color: rgb(255, 255, 255);
+    }
+
+    .attendance0 a
+    {
+        color: rgb(255, 255, 255);
+    }
+    .attendance0 .text-danger
+    {
+        color: rgb(255, 255, 255) !important;
+    }
+
+	</style>
+</head>
+<body>
+    {% include '_menu.html' %}
+    <div class="container-fluid">
+        <h2>Посещаемость студента</h2>
+        <dl class="row">
+            <dt class="col-sm-3 text-right">
+                Ф.И.О.:
+            </dt>
+            <dd class="col-sm-3">
+                {% if current_user.admin_user and current_user.admin_user.active %}
+                <a href="{{ url_for('student', id=student.id) }}">{{ student.full_name }}</a>
+                {% else %}
+                {{ student.full_name }}
+                {% endif %}
+            </dd>
+            {% if student.stud_group %}
+                <dt class="col-sm-3 text-right">
+                    Курс:
+                </dt>
+                <dd class="col-sm-3">
+                    {{ student.stud_group.course }}
+                </dd>
+                <dt class="col-sm-3 text-right">
+                    Семестр:
+                </dt>
+                <dd class="col-sm-3">
+                    {{ student.stud_group.semester }}
+                </dd>
+                <dt class="col-sm-3 text-right">
+                    Группа:
+                </dt>
+                <dd class="col-sm-3">
+                    {% if student.stud_group.get_rights(current_user)["write"] %}
+                    <a href="{{ url_for('stud_group', id=student.stud_group.id, _anchor='curriculum_units') }}">
+                        {{ student.stud_group.num }}
+                    </a>
+                    {% elif student.stud_group.get_rights(current_user)["read_marks"] %}
+                    <a href="{{ url_for('att_marks_report_stud_group', id=student.stud_group.id) }}">
+                        {{ student.stud_group.num }}
+                    </a>
+                    {% elif student.stud_group.get_rights(current_user)["read_list"] %}
+                    <a href="{{ url_for('stud_group_leader', id=student.stud_group.id) }}" title="Сведения о старосте и кураторе группы">
+                        {{ student.stud_group.num }}
+                    </a>
+                    {% else %}
+                        {{ student.stud_group.num }}
+                    {% endif %}
+                    {% if student.stud_group_subnum %}
+                        ({{ student.stud_group_subnum }})
+                    {% endif %}
+                    <dt class="col-sm-3 text-right">
+                        Направление / специальность:
+                    </dt>
+                    <dd class="col-sm-9">
+                        {{ student.stud_group.specialty.full_name }}
+                    </dd>
+                </dd>
+            {% else %}
+                {% if student.semester %}
+                    <dt class="col-sm-3 text-right">
+                        Курс:
+                    </dt>
+                    <dd class="col-sm-3 ">
+                        {{ student.course }}
+                    </dd>
+                    <dt class="col-sm-3 text-right">
+                        Семестр:
+                    </dt>
+                    <dd class="col-sm-3">
+                        {{ student.semester }}
+                    </dd>
+                {% endif %}
+                {% if student.alumnus_year %}
+                    <dt class="col-sm-3 text-right">
+                        Год выпуска:
+                    </dt>
+                    <dd class="col-sm-3">
+                        {{ student.alumnus_year }}
+                    </dd>
+                {% endif %}
+                {% if student.expelled_year and student.status == 'expelled' %}
+                    <dt class="col-sm-3 text-right">
+                        {{ 'Отчислена' if student.person.gender == 'W' else 'Отчислен' }} в
+                    </dt>
+                    <dd class="col-sm-3">
+                        {{ student.expelled_year }} году
+                    </dd>
+                {% endif %}
+                {% if student.expelled_year and student.status == 'academic_leave' %}
+                    <dt class="col-sm-3 text-right">
+                        В академическом отпуске с
+                    </dt>
+                    <dd class="col-sm-3">
+                        {{ student.expelled_year }} года
+                    </dd>
+                {% endif %}
+            {% endif %}
+        </dl>
+        <form method="get" id="lessonsForm">
+            {{ bootstrap_form_input(form.year) }}
+            {% if form.year.data %}
+            {{ bootstrap_form_input(form.semester) }}
+            {% endif %}
+            {% if form.year.data and form.semester.data %}
+            {{ bootstrap_form_input(form.curriculum_unit) }}
+            {% endif %}
+        </form>
+        {% if att_marks != None and att_marks|length > 0 %}
+            {% if form.curriculum_unit.data != None and att_marks|length == 1 %}
+            <h4>Комметарий:</h4>
+            <pre>{{ att_marks[0].comment }}</pre>
+            {% else %}
+            <h3>Комметарии:</h3>
+            <table class="table table-bordered">
+            <thead class="table-header-fixed">
+                <tr>
+                    <th>Предмет</th>
+                    <th>Комментарий</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for mark in att_marks %}
+                <tr>
+                    <td>{{ mark.curriculum_unit.subject_name_print }}</td>
+                    <td>{{ mark.comment }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+            </table>
+            {% endif %}
+        {% endif %}
+        {% if lessons != None %}
+        <table class="table table-bordered">
+            <thead class="table-header-fixed">
+                <tr>
+                    {% if form.curriculum_unit.data == None %}
+                    <th>Предмет</th>
+                    {% endif %}
+                    <th>Дата</th>
+                    <th>Пара</th>
+                    <th>Преподаватель</th>
+                    <th>Тип</th>
+                    <th>Форма</th>
+                    <th>Комментарий к занятию</th>
+                    <th>Отметка посещаемости</th>
+                    <th>Комментарий</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for l in lessons %}
+                    {% set lesson = l.lesson_curriculum_unit.lesson %}
+                    {% set curriculum_unit = l.lesson_curriculum_unit.curriculum_unit %}
+                    <tr>
+                        {% if form.curriculum_unit.data == None %}
+                        <td>
+                            {{ curriculum_unit.subject_name_print }}
+                        </td>
+                        {% endif %}
+                        <td>
+                            {{ lesson.date.strftime('%d.%m.%Y') }}
+                        </td>
+                        <td title="{{ lesson.time }}">
+                            {{ lesson.lesson_num }}
+                        </td>
+                        <td>
+                            <span title="{{ lesson.teacher.person.full_name }}">{{ lesson.teacher.person.full_name_short }}</span>
+                        </td>
+                        <td>
+                            {% if lesson.type == 'seminar' %}
+                            <span title="Практическое занятие">П</span>
+                            {% endif %}
+                            {% if lesson.type == 'lecture' %}
+                            <span title="Лекционное занятие">Лек</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if lesson.form == 'in_class' %}
+                            <span title="Очное занятие">О</span>
+                            {% endif %}
+                            {% if lesson.form == 'remote' %}
+                            <span title="Дистанцонное занятие">Д/О</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {{ lesson.comment if lesson.comment }}
+                        </td>
+                        <td title="{{ l.attendance_str_comment }}" class="attendance{{ l.attendance }}">
+                            {{ l.attendance_str }}
+                        </td>
+                        <td>
+                            {{ l.comment if l.comment }}
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+            {% if attendance_pct != None %}
+            <tfoot>
+                <tr>
+                    <th colspan="{{ 7 if form.curriculum_unit.data == None else 6 }}" class="text-right">% посещаемости</th>
+                    <th colspan="2" class="{{ macros_pct_attendance_class(attendance_pct) }}">{{ attendance_pct }} %</th>
+                </tr>
+            </tfoot>
+            {% endif %}
+        </table>
+        {% endif %}
+        <div class="my-1">
+            <a href="{{ url_for('att_marks_report_student', id=student.id) }}" class="btn btn-primary">Свод оценок рубежных аттестаций</a>
+        </div>
+
+    </div>
+    <script>
+        $(document).ready(function(){
+            var f = $("#lessonsForm");
+            $("#lessonsForm select").each(function(i,e){
+                $(e).change(function(){
+                    f.submit();
+                });
+            });
+        });
+    </script>
+</body>
+</html>
