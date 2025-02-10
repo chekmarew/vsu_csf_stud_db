@@ -10,16 +10,34 @@
             <dd>{{ curriculum_unit.subject_name_print }}</dd>
 
             <dt>Курс:</dt>
-            <dd>{{ curriculum_unit.stud_group.course }}</dd>
+            <dd>{{ curriculum_unit.stud_group.course_print }}</dd>
 
             <dt>Группа:</dt>
             <dd>{{ curriculum_unit.stud_group.num }}</dd>
 
             <dt>Отчётность:</dt>
-            <dd>{{ curriculum_unit.mark_type_name }}</dd>
+            <dd>{{ curriculum_unit.mark_types_name }}</dd>
         </dl>
     </div>
-    {% set result_total = {"vFalse": 0, "vTrue": 0, "v0": 0, "v2": 0, "v3": 0, "v4": 0, "v5": 0} %}
+    {% set result_total = {} %}
+    {% if curriculum_unit.mark_type != 'no_att' %}
+        {% set _ = result_total.update({curriculum_unit.mark_type: {"vFalse": 0, "vTrue": 0, "v0": 0, "v2": 0, "v3": 0, "v4": 0, "v5": 0}}) %}
+    {% endif %}
+    {% if curriculum_unit.has_simple_mark_test_simple %}
+        {% set _ = result_total.update({"test_simple": {"vFalse": 0, "vTrue": 0, "v0": 0}}) %}
+    {% endif %}
+    {% if curriculum_unit.has_simple_mark_exam %}
+        {% set _ = result_total.update({"exam" : {"v0": 0, "v2": 0, "v3": 0, "v4": 0, "v5": 0}}) %}
+    {% endif %}
+    {% if curriculum_unit.has_simple_mark_test_diff %}
+        {% set _ = result_total.update({"test_diff" : {"v0": 0, "v2": 0, "v3": 0, "v4": 0, "v5": 0}}) %}
+    {% endif %}
+    {% if curriculum_unit.has_simple_mark_course_work %}
+        {% set _ = result_total.update({"course_work" : {"v0": 0, "v2": 0, "v3": 0, "v4": 0, "v5": 0}}) %}
+    {% endif %}
+    {% if curriculum_unit.has_simple_mark_course_project %}
+        {% set _ = result_total.update({"course_project" : {"v0": 0, "v2": 0, "v3": 0, "v4": 0, "v5": 0}}) %}
+    {% endif %}
     <div>
         <table>
             <thead>
@@ -49,7 +67,24 @@
                         <th>доп. балл</th>
                         <th>балл</th>
                     {% endif %}
-                    <th>итог</th>
+                    {% if curriculum_unit.mark_type != 'no_att' %}
+                        <th>итог</th>
+                    {% endif %}
+                    {% if curriculum_unit.has_simple_mark_test_simple %}
+                        <th>зачет</th>
+                    {% endif %}
+                    {% if curriculum_unit.has_simple_mark_exam %}
+                        <th>экзамен</th>
+                    {% endif %}
+                    {% if curriculum_unit.has_simple_mark_test_diff %}
+                        <th>дифф. зачет</th>
+                    {% endif %}
+                    {% if curriculum_unit.has_simple_mark_course_work %}
+                        <th>курсовая работа</th>
+                    {% endif %}
+                    {% if curriculum_unit.has_simple_mark_course_project %}
+                        <th>курсовой проект</th>
+                    {% endif %}
                 </tr>
             </thead>
             <tbody>
@@ -90,74 +125,131 @@
                             {% endif %}
                         </td>
                     {% endif %}
-                    <th>
-                        {% if m.result_print %}
-                            {{ m.result_print[1]['value_text'] }}
-                            {% set vKey = "v" + (m.result_print[1]['value']|string) %}
-                            {% set x = result_total.update({vKey: result_total[vKey] + 1 }) %}
-                        {% endif %}
-                    </th>
+                    {% if curriculum_unit.mark_type != 'no_att' %}
+                        <th>
+                            {% if m.result_print %}
+                                {{ m.result_print[1]['value_text'] }}
+                                {% set vKey = "v" + (m.result_print[1]['value']|string) %}
+                                {% set _ = result_total[curriculum_unit.mark_type].update({vKey: result_total[curriculum_unit.mark_type][vKey] + 1 }) %}
+                            {% endif %}
+                        </th>
+                    {% endif %}
+                    {% if curriculum_unit.has_simple_mark_test_simple %}
+                        <th>
+                            {% set m_simple = m.get_simple_att_mark('test_simple') %}
+                            {% if m_simple.ball_value != None %}
+                                {{ m_simple.ball_print }}
+                                {% set vKey = "v" + (m_simple.ball_value|string) %}
+                                {% set _ = result_total['test_simple'].update({vKey: result_total['test_simple'][vKey] + 1 }) %}
+                            {% endif %}
+                        </th>
+                    {% endif %}
+                    {% if curriculum_unit.has_simple_mark_exam %}
+                        <th>
+                            {% set m_simple = m.get_simple_att_mark('exam') %}
+                            {% if m_simple.ball_value != None %}
+                                {{ m_simple.ball_print }}
+                                {% set vKey = "v" + (m_simple.ball_value|string) %}
+                                {% set _ = result_total['exam'].update({vKey: result_total['exam'][vKey] + 1 }) %}
+                            {% endif %}
+                        </th>
+                    {% endif %}
+                    {% if curriculum_unit.has_simple_mark_test_diff %}
+                        <th>
+                            {% set m_simple = m.get_simple_att_mark('test_diff') %}
+                            {% if m_simple.ball_value != None %}
+                                {{ m_simple.ball_print }}
+                                {% set vKey = "v" + (m_simple.ball_value|string) %}
+                                {% set _ = result_total['test_diff'].update({vKey: result_total['test_diff'][vKey] + 1 }) %}
+                            {% endif %}
+                        </th>
+                    {% endif %}
+                    {% if curriculum_unit.has_simple_mark_course_work %}
+                        <th>
+                            {% set m_simple = m.get_simple_att_mark('course_work') %}
+                            {% if m_simple.ball_value != None %}
+                                {{ m_simple.ball_print }}
+                                {% set vKey = "v" + (m_simple.ball_value|string) %}
+                                {% set _ = result_total['course_work'].update({vKey: result_total['course_work'][vKey] + 1 }) %}
+                            {% endif %}
+                        </th>
+                    {% endif %}
+                    {% if curriculum_unit.has_simple_mark_course_project %}
+                        <th>
+                            {% set m_simple = m.get_simple_att_mark('course_project') %}
+                            {% if m_simple.ball_value != None %}
+                                {{ m_simple.ball_print }}
+                                {% set vKey = "v" + (m_simple.ball_value|string) %}
+                                {% set _ = result_total['course_project'].update({vKey: result_total['course_project'][vKey] + 1 }) %}
+                            {% endif %}
+                        </th>
+                    {% endif %}
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
-        <hr/>
+
         {% set rows_count = (curriculum_unit.att_marks | rejectattr("att_mark_id", "in", curriculum_unit.att_marks_readonly_ids)| list | length) %}
-        <table>
-            {% if curriculum_unit.mark_type in ('exam', 'test_diff') %}
-            <tr>
-                <td style="text-align: right; font-weight: bold;">Неудовлетворительно</td>
-                <td>{{ result_total["v2"] }}</td>
-                {% if rows_count > 0 %}
-                <td>({{ ((100*result_total["v2"]) / rows_count)|round(2) }}%)</td>
-                {% endif %}
-            </tr>
-            <tr>
-                <td style="text-align: right; font-weight: bold;">Удовлетворительно</td>
-                <td>{{ result_total["v3"] }}</td>
-                {% if rows_count > 0 %}
-                <td>({{ ((100*result_total["v3"]) / rows_count)|round(2) }}%)</td>
-                {% endif %}
-            </tr>
-            <tr>
-                <td style="text-align: right; font-weight: bold;">Хорошо</td>
-                <td>{{ result_total["v4"] }}</td>
-                {% if rows_count > 0 %}
-                <td>({{ ((100*result_total["v4"]) / rows_count)|round(2) }}%)</td>
-                {% endif %}
-            </tr>
-            <tr>
-                <td style="text-align: right; font-weight: bold;">Отлично</td>
-                <td>{{ result_total["v5"] }}</td>
-                {% if rows_count > 0 %}
-                <td>({{ ((100*result_total["v5"]) / rows_count)|round(2) }}%)</td>
-                {% endif %}
-            </tr>
+        {% for mark_type, result in result_total.items() %}
+            <hr/>
+            {% if result_total.keys() | length > 1 %}
+            <h4>{{ MarkSimpleTypeDict[mark_type] }}:</h4>
             {% endif %}
-            {% if curriculum_unit.mark_type == 'test_simple' %}
-            <tr>
-                <td style="text-align: right; font-weight: bold;">Не зачтено</td>
-                <td>{{ result_total["vFalse"] }}</td>
-                {% if rows_count > 0 %}
-                <td>({{ ((100*result_total["vFalse"]) / rows_count)|round(2) }}%)</td>
+            <table>
+                {% if mark_type != 'test_simple' %}
+                <tr>
+                    <td style="text-align: right; font-weight: bold;">Неудовлетворительно</td>
+                    <td>{{ result["v2"] }}</td>
+                    {% if rows_count > 0 %}
+                    <td>({{ ((100*result["v2"]) / rows_count)|round(2) }}%)</td>
+                    {% endif %}
+                </tr>
+                <tr>
+                    <td style="text-align: right; font-weight: bold;">Удовлетворительно</td>
+                    <td>{{ result["v3"] }}</td>
+                    {% if rows_count > 0 %}
+                    <td>({{ ((100*result["v3"]) / rows_count)|round(2) }}%)</td>
+                    {% endif %}
+                </tr>
+                <tr>
+                    <td style="text-align: right; font-weight: bold;">Хорошо</td>
+                    <td>{{ result["v4"] }}</td>
+                    {% if rows_count > 0 %}
+                    <td>({{ ((100*result["v4"]) / rows_count)|round(2) }}%)</td>
+                    {% endif %}
+                </tr>
+                <tr>
+                    <td style="text-align: right; font-weight: bold;">Отлично</td>
+                    <td>{{ result["v5"] }}</td>
+                    {% if rows_count > 0 %}
+                    <td>({{ ((100*result["v5"]) / rows_count)|round(2) }}%)</td>
+                    {% endif %}
+                </tr>
+                {% else %}
+                <tr>
+                    <td style="text-align: right; font-weight: bold;">Не зачтено</td>
+                    <td>{{ result["vFalse"] }}</td>
+                    {% if rows_count > 0 %}
+                    <td>({{ ((100*result["vFalse"]) / rows_count)|round(2) }}%)</td>
+                    {% endif %}
+                </tr>
+                <tr>
+                    <td style="text-align: right; font-weight: bold;">Зачтено</td>
+                    <td>{{ result["vTrue"] }}</td>
+                    {% if rows_count > 0 %}
+                    <td>({{ ((100*result["vTrue"]) / rows_count)|round(2) }}%)</td>
+                    {% endif %}
+                </tr>
                 {% endif %}
-            </tr>
-            <tr>
-                <td style="text-align: right; font-weight: bold;">Зачтено</td>
-                <td>{{ result_total["vTrue"] }}</td>
-                {% if rows_count > 0 %}
-                <td>({{ ((100*result_total["vTrue"]) / rows_count)|round(2) }}%)</td>
-                {% endif %}
-            </tr>
-            {% endif %}
-            <tr>
-                <td style="text-align: right; font-weight: bold;">Не явилось</td>
-                <td>{{ result_total["v0"] }}</td>
-                {% if rows_count > 0 %}
-                <td>({{ ((100*result_total["v0"]) / rows_count)|round(2) }}%)</td>
-                {% endif %}
-            </tr>
-        </table>
+                <tr>
+                    <td style="text-align: right; font-weight: bold;">Не явилось</td>
+                    <td>{{ result["v0"] }}</td>
+                    {% if rows_count > 0 %}
+                    <td>({{ ((100*result["v0"]) / rows_count)|round(2) }}%)</td>
+                    {% endif %}
+                </tr>
+            </table>
+        {% endfor %}
     </div>
 </body>
 </html>

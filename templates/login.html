@@ -45,11 +45,16 @@
     <script>
         $(document).ready(function(){
             var form = document.forms[0];
+            $('#login').change(function(evt){
+                var login = evt.target.value;
+                var el_password = document.getElementById("password");
+                el_password.required = (!(/^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}$/.test(login)));
+
+            })
             $(form).submit(function(){
                 var el_login = document.getElementById("login");
-                var el_password = document.getElementById("password");
                 var el_button_login = document.getElementById("button_login");
-                if (/^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}$/.test(el_login.value) && (el_password.value == ""))
+                if (/^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}$/.test(el_login.value))
                 {
                     el_login.id="email";
                     el_login.setAttribute("name","email");

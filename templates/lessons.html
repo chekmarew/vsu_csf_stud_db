@@ -1,6 +1,7 @@
 <!doctype html><html lang="ru"><head><meta name="viewport" content="width=device-width,user-scalable=no,initial-scale=1,maximum-scale=1,minimum-scale=1"><meta charset="utf-8"/><title>ВГУ ФКН БРС Посещаемость</title>
 	<script>
-        window.BASE_URL = '{{ url_for('index') }}api';
+        window.BASE_URL_API = '{{ url_for('index') }}api';
+        window.BASE_URL_MARKS = '{{ url_for('att_marks', id=0)[0:-1] }}';
     </script>
     <script defer="defer" type="module" crossorigin src="{{ url_for('static', filename=index_js_file) }}"></script></head>
     {% include '_header.html' %}

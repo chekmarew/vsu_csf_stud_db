@@ -1,8 +1,8 @@
 from datetime import datetime
 
 from app_config import db
-from model import StudGroup, Subject, SubjectParticular, Teacher, Student, StudentStates, StudentStateDict, CurriculumUnit, AttMark, MarkTypes, MarkTypeDict, AdminUser, Specialty, Department, Person
-from wtforms import validators, Form, SubmitField, IntegerField, StringField, SelectField, HiddenField, PasswordField, FormField, BooleanField, DateField
+from model import StudGroup, Subject, SubjectParticular, Teacher, Student, StudentStates, StudentStateDict, CurriculumUnit, AttMark, MarkTypes, MarkTypeDict, AdminUser, Specialty, Department, Person, CertificateOfStudy
+from wtforms import validators, Form, SubmitField, IntegerField, StringField, SelectField, HiddenField, PasswordField, FormField, BooleanField, DateField, TextAreaField
 from wtforms.widgets import ListWidget, CheckboxInput
 from wtforms_alchemy import ModelForm, ModelFieldList, QuerySelectMultipleField
 from wtforms_alchemy.fields import QuerySelectField
@@ -122,7 +122,7 @@ class StudentForm(ModelForm):
         include_primary_keys = True
 
     id = IntegerField('Номер студенческого билета', [validators.DataRequired(), validators.NumberRange(min=1), Unique(Student.id, get_session=lambda: db.session, message='Номер студенческого билета занят')])
-    student_ext_id = IntegerField('Идентификатор учебной деятельности ВГУ', [validators.Optional(), validators.NumberRange(min=1),
+    student_ext_id = IntegerField('Идентификатор учебной деятельности ВГУ', [validators.DataRequired(), validators.NumberRange(min=1),
                                                      Unique(Student.student_ext_id, get_session=lambda: db.session,
                                                             message='Идентификатор занят')])
     status = QuerySelectField('Состояние',
@@ -130,14 +130,24 @@ class StudentForm(ModelForm):
                               get_pk=lambda s: s,
                               get_label=lambda s: StudentStateDict[s],
                               allow_blank=False, validators=[validators.DataRequired()])
-    semester = IntegerField('Семестр', [validators.NumberRange(min=1, max=12), validators.Optional()])
+
+    specialty = QuerySelectField('Направление (специальность)',
+                                 query_factory=lambda: db.session.query(Specialty).filter(Specialty.active).
+                                 order_by(Specialty.education_level_order, Specialty.code,
+                                          Specialty.name, Specialty.specialization,
+                                          Specialty.education_level, Specialty.education_standart).all(),
+                                 get_pk=lambda s: s.id,
+                                 get_label=lambda s: s.full_name,
+                                 allow_blank=False)
+
+    semester = IntegerField('Семестр', [validators.NumberRange(min=1, max=12), validators.DataRequired()])
     stud_group = QuerySelectField('Группа',
                                   query_factory=lambda: db.session.query(StudGroup).join(Specialty, StudGroup.specialty_id == Specialty.id).filter(StudGroup.active).order_by(
                                       Specialty.education_level_order, StudGroup.year, StudGroup.semester, StudGroup.num).all(),
                                   get_pk=lambda g: g.id,
                                   get_label=lambda g: "%d курс%s группа %s" % (g.course, " маг." if g.specialty.education_level == "master" else "", g.num),
                                   blank_text='Не указана', allow_blank=True)
-    stud_group_subnum = IntegerField('Подгруппа', [validators.NumberRange(min=0, max=3), validators.Optional()])
+    stud_group_subnum = IntegerField('Подгруппа', [validators.NumberRange(min=0, max=StudGroup.STUD_GROUP_MAX_SUB_COUNT), validators.Optional()])
 
     alumnus_year = IntegerField('Учебный год выпуск', [validators.NumberRange(min=2000, max=datetime.now().year + 1), validators.Optional()])
     expelled_year = IntegerField('Учебный год отчисления', [validators.NumberRange(min=2000, max=datetime.now().year + 1), validators.Optional()])
@@ -154,6 +164,17 @@ class StudentForm(ModelForm):
     button_save = SubmitField('Сохранить')
     button_delete = SubmitField('Удалить')
 
+    def __init__(self, *args, **kwargs):
+        ModelForm.__init__(self, *args, **kwargs)
+        if kwargs.get("obj", None) is not None:
+            s: Student = kwargs.get("obj")
+            if s.specialty is not None and not s.specialty.active:
+                del self.specialty.query_factory
+                self.specialty.query = db.session.query(Specialty).filter(
+                    or_(Specialty.active, Specialty.id == s.specialty_id)). \
+                    order_by(Specialty.active, Specialty.education_level_order, Specialty.code,
+                             Specialty.name, Specialty.specialization,
+                             Specialty.education_level, Specialty.education_standart).all()
 
 class PersonSearchForm(Form):
     surname = StringField('Фамилия', [validators.Length(min=2, max=Person.surname.property.columns[0].type.length),
@@ -177,7 +198,7 @@ class PersonSearchForm(Form):
     )
     email = StringField('E-mail', validators=[
         validators.Optional(),
-        validators.Length(min=4, max=45),
+        validators.Length(min=4, max=Person.email.property.columns[0].type.length),
         validators.Email()
     ])
     phone = IntegerField('Сотовый телефон', validators=[
@@ -219,7 +240,7 @@ class PersonSearchForm(Form):
                             get_label=lambda s: s.name,
                             blank_text='Не важно', allow_blank=True)
 
-    student_foreigner = SelectField('Изучает русский язык как иностранный', choices=[('any', 'Не важно'), ('yes', 'Да'), ('no', 'Нет')], default='any')
+    # student_foreigner = SelectField('Изучает русский язык как иностранный', choices=[('any', 'Не важно'), ('yes', 'Да'), ('no', 'Нет')], default='any')
 
     # Teacher
     teacher_status = SelectField('Состояние', choices=[('any', 'Не важно'), ('yes', 'Работает'), ('no', 'Не работает')], default='yes')
@@ -236,7 +257,6 @@ class PersonSearchForm(Form):
 
 
 class StudentsUnallocatedForm(Form):
-    semester = HiddenField()
     students_selected = QuerySelectMultipleField(
         'Студенты',
         get_pk=lambda s: s.id,
@@ -250,7 +270,7 @@ class StudentsUnallocatedForm(Form):
                                   blank_text='Не указана', allow_blank=True,
                                   validators=[validators.DataRequired('Укажите группу')])
 
-    stud_group_subnum = IntegerField('Подгруппа', [validators.NumberRange(min=0, max=3)])
+    stud_group_subnum = IntegerField('Подгруппа', [validators.NumberRange(min=0, max=StudGroup.STUD_GROUP_MAX_SUB_COUNT)])
     button_transfer = SubmitField('Перевести в выбранную группу')
 
 
@@ -272,6 +292,7 @@ class SubjectForm(ModelForm):
         ],
         filters=[lambda val: val if val else None]
     )
+    without_specifying_schedule = BooleanField('Не указывать дополнительные данные в расписании')
 
     button_save = SubmitField('Сохранить')
     button_delete = SubmitField('Удалить')
@@ -292,6 +313,7 @@ class TeacherForm(ModelForm):
 
     active = BooleanField('Работает')
     dean_staff = BooleanField('Сотрудник деканата')
+    notify_results_fail = BooleanField('Уведомлять о высоком проценте неудовлетворительных оценок')
     department_leader = BooleanField('Зав. кафедрой')
     department_secretary = BooleanField('Секретарь кафедры')
     right_read_all = BooleanField('Разрешено чтение всех данных')
@@ -551,14 +573,21 @@ class LessonsReportForm(Form):
     )
 
 
+class CertificateOfStudyForm(Form):
+    count = IntegerField('Количество справок', default=1, validators=[validators.DataRequired(), validators.NumberRange(min=1, max=CertificateOfStudy.MAX_PER_ORDER, message='За один раз можно заказать не более %d справок' % CertificateOfStudy.MAX_PER_ORDER)])
+    comment = TextAreaField('Примечание', validators=[validators.Length(max=4000), validators.Optional()], filters=[lambda val: val.strip() if val else None])
+
+    button_submit = SubmitField('Заказать справку об обучении')
+
+
 class _LoginForm(Form):
     temporary_entrance = BooleanField("Чужой компьютер")
     button_login = SubmitField('Вход')
 
 
 class LoginForm(_LoginForm):
-    login = StringField('Login', filters=[lambda val: val.lower().strip() if val else None])
-    password = PasswordField('Пароль')
+    login = StringField('Login', validators=[validators.DataRequired()], filters=[lambda val: val.lower().strip() if val else None])
+    password = PasswordField('Пароль', validators=[validators.DataRequired(message='Пароль не может быть пустым')])
 
 
 class LoginEmailForm(_LoginForm):

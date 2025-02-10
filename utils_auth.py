@@ -1,5 +1,7 @@
 import socket
 from datetime import datetime
+import time
+import re
 from sqlalchemy import not_, or_, and_
 from flask import url_for
 from flask_login import current_user
@@ -11,9 +13,11 @@ from app_config import db, mail, Config
 from password_checker import password_checker
 from sms import sms_send
 
-
 from model import Teacher, Person, CurriculumUnit, StudGroup, AuthCode
+from model import AuthCode4ChangeEmail, AuthCode4ChangePhone
 from auth_config import AuthCodeConfig
+
+from model_history_controller import hist_save_controller
 
 
 def _user_is_need_alert(person: Person):
@@ -259,3 +263,200 @@ def get_current_user():
         pass
 
     return current_user
+
+
+def user_request_code_4_change_email(u: Person, email: str):
+    res = {
+        "ok": False
+    }
+    email = email.strip().lower()
+    if len(email) > Person.email.property.columns[0].type.length or not re.match(r'^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$', email):
+        res['error'] = "Введён некоррекный email"
+        res["error_code"] = 400
+        return res
+
+    if db.session.query(AuthCode4ChangeEmail).filter_by(person_id=u.id).filter(AuthCode4ChangeEmail.accept_time.is_(None)).filter(AuthCode4ChangeEmail.send_time >= datetime.now() - AuthCodeConfig.SEND_CODE_INTERVAL).count() > 0:
+        res['error'] = "Уже был запрошен код на изменение e-mail. Повторите запрос позже."
+        res["error_code"] = 400
+        return res
+
+    u_other = db.session.query(Person).filter_by(email=email).one_or_none()
+    if u_other is not None:
+        if u_other.id == u.id:
+            res['error'] = "Вы введи свой e-mail."
+        else:
+            res['error'] = "E-mail уже занят другим пользователем."
+
+        res["error_code"] = 400
+        return res
+
+    code_old = None
+    if u.email:
+        code_old = AuthCodeConfig.generate_code()
+        try:
+            msg = Message(subject=Config.MAIL_SUBJECT, recipients=[u.email])
+
+            msg.body = "Был произведён запрос на изменение Вашего e-mail с на %s на %s" % (u.email, email)
+            msg.body += "\r\n"
+            msg.body = "Код для подтверждения старого e-mail:"
+            msg.body += "\r\n"
+            msg.body += str(code_old)
+            msg.body += "\r\n"
+
+            msg.body += "Если вы не делали данный запрос, то обязательно сообщите на %s" % Config.MAIL_SUPPORT
+
+            mail.send(msg)
+        except socket.error:
+            res["error"] = "Не удалось отправить код email %s. Повторите запрос позже" % u.email
+            res["error_code"] = 503
+            return res
+
+    code = AuthCodeConfig.generate_code()
+    try:
+        msg = Message(subject=Config.MAIL_SUBJECT, recipients=[email])
+
+        msg.body = "Код для подтверждения e-mail:"
+        msg.body += "\r\n"
+        msg.body += str(code)
+
+        mail.send(msg)
+    except socket.error:
+        res["error"] = "Не удалось отправить код email %s. Повторите запрос позже" % email
+        res["error_code"] = 503
+        return res
+
+    a_code = AuthCode4ChangeEmail(person_id=u.id, email_old=u.email, email=email, code_old=code_old, code=code, send_time=datetime.now(), auth_err_count=0)
+    db.session.add(a_code)
+    db.session.commit()
+
+    res["code_timelife"] = AuthCodeConfig.SEND_CODE_TIMELIFE.total_seconds() - (datetime.now() - a_code.send_time).total_seconds()
+    res["ok"] = True
+
+    return res
+
+
+def user_request_code_4_change_phone(u: Person, phone: int):
+    res = {
+        "ok": False
+    }
+
+    if phone < 79000000000 or phone > 79999999999:
+        res['error'] = "Введён некоррекный номер телефона"
+        res["error_code"] = 400
+        return res
+
+    if db.session.query(AuthCode4ChangePhone).filter_by(person_id=u.id).filter(AuthCode4ChangePhone.accept_time.is_(None)).filter(AuthCode4ChangePhone.send_time >= datetime.now() - AuthCodeConfig.SEND_CODE_INTERVAL).count() > 0:
+        res['error'] = "Уже был запрошен код на изменение номера телефона. Повторите запрос позже."
+        res["error_code"] = 400
+        return res
+
+    u_other = db.session.query(Person).filter_by(phone=phone).one_or_none()
+    if u_other is not None:
+        if u_other.id == u.id:
+            res['error'] = "Вы введи свой номер телефона."
+        else:
+            res['error'] = "Номер телефона уже занят другим пользователем."
+
+        res["error_code"] = 400
+        return res
+
+    phone_str = "+%d" % phone
+
+    code_old = None
+    if u.phone:
+        code_old = AuthCodeConfig.generate_code()
+        send_sms_result = sms_send(number=u.phone_str, text="ВГУ ФКН БРС Поступил запрос: изменение телефона на %s. Код для подтверждения старого номера телефона: %d" % (phone_str, code_old))
+        if not send_sms_result:
+            res["error"] = "Не удалось отправить код на телефон %s. Повторите запрос позже." % u.phone_str
+            res["error_code"] = 503
+            return res
+        time.sleep(4)
+
+    code = AuthCodeConfig.generate_code()
+    send_sms_result = sms_send(number=phone_str, text="ВГУ ФКН БРС Код для подтверждения номера телефона: %d" % code)
+    if not send_sms_result:
+        res["error"] = "Не удалось отправить код на телефон %s. Повторите запрос позже." % phone_str
+        res["error_code"] = 503
+        return res
+
+    a_code = AuthCode4ChangePhone(person_id=u.id, phone_old=u.phone, phone=phone, code_old=code_old, code=code, send_time=datetime.now(), auth_err_count=0)
+    db.session.add(a_code)
+    db.session.commit()
+
+    res["code_timelife"] = AuthCodeConfig.SEND_CODE_TIMELIFE.total_seconds() - (datetime.now() - a_code.send_time).total_seconds()
+    res["ok"] = True
+
+    return res
+
+
+def _user_accept_code_4_change(type_code, u: Person, code, code_old=None):
+    res = {
+        "ok": False
+    }
+
+    a_code = None
+    type_class = None
+    if type_code == "email":
+        type_class = AuthCode4ChangeEmail
+    if type_code == "phone":
+        type_class = AuthCode4ChangePhone
+
+    if type_class is not None:
+        for _a_code in db.session.query(type_class).filter_by(person_id=u.id).filter(type_class.send_time >= datetime.now() - AuthCodeConfig.SEND_CODE_TIMELIFE, type_class.accept_time.is_(None)).order_by(type_class.id.desc()).all():
+            a_code = _a_code
+            break
+
+    if a_code is None:
+        res["error"] = "Проверочный код не запрашивался или устарел"
+        res["error_code"] = 400
+        return res
+
+    if a_code.auth_err_count >= AuthCodeConfig.MAX_FAIL_CODE_COUNT:
+        res["error"] = "Проверочный код был введён неверно несколько раз подряд. Попробуйте повторить запрос позже"
+        res["error_code"] = 400
+        return res
+
+    if a_code.code != code:
+        if type_code == "email":
+            res["error"] = "Неверный проверочный код для подтверждения e-mail"
+        if type_code == "phone":
+            res["error"] = "Неверный проверочный код для подтверждения номера телефона"
+
+        res["error_code"] = 400
+        a_code.auth_err_count += 1
+        db.session.add(a_code)
+        db.session.commit()
+        res["code_incorrect"] = True
+        return res
+
+    if a_code.code_old is not None and (code_old is None or a_code.code_old != code_old):
+        if type_code == "email":
+            res["error"] = "Неверный проверочный код для подтверждения старого e-mail"
+        if type_code == "phone":
+            res["error"] = "Неверный проверочный код для подтверждения старого номера телефона"
+        res["error_code"] = 400
+        a_code.auth_err_count += 1
+        db.session.add(a_code)
+        db.session.commit()
+        res["code_incorrect"] = True
+        return res
+
+    a_code.accept_time = datetime.now()
+    db.session.add(a_code)
+    if type_code == "email":
+        u.email = a_code.email
+    if type_code == "phone":
+        u.phone = a_code.phone
+    db.session.add(u)
+    hist_save_controller(db.session, u, u)
+    db.session.commit()
+    res["ok"] = True
+    return res
+
+
+def user_accept_code_4_change_email(u: Person, code, code_old=None):
+    return _user_accept_code_4_change("email", u, code, code_old)
+
+
+def user_accept_code_4_change_phone(u: Person, code, code_old=None):
+    return _user_accept_code_4_change("phone", u, code, code_old)

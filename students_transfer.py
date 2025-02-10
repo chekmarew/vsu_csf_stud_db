@@ -10,7 +10,6 @@ with app.app_context():
 
     stud_groups_new = {}
 
-
     for sg_old in stud_groups_old:
         sg_old.active = False
 
@@ -33,6 +32,7 @@ with app.app_context():
             curator_id=sg_old.curator_id,
             group_leader=sg_old.group_leader,
             group_leader2=sg_old.group_leader2,
+            weeks_training=0,
             active=True
         )
 

@@ -32,101 +32,7 @@
     {% include '_menu.html' %}
     <div class="container-fluid">
         <h2>Свод оценок студента</h2>
-        <dl class="row">
-            <dt class="col-lg-3 col-12 text-left text-lg-right">
-                Ф.И.О.:
-            </dt>
-            <dd class="col-lg-3 col-12">
-                {% if current_user.admin_user and current_user.admin_user.active %}
-                <a href="{{ url_for('student', id=student.id) }}">{{ student.full_name }}</a>
-                {% else %}
-                {{ student.full_name }}
-                {% endif %}
-            </dd>
-            {% if student.stud_group %}
-                <dt class="col-lg-3 col-12 text-left text-lg-right">
-                    Курс:
-                </dt>
-                <dd class="col-lg-3 col-12">
-                    {{ student.stud_group.course }}
-                </dd>
-                <dt class="col-lg-3 col-12 text-left text-lg-right">
-                    Семестр:
-                </dt>
-                <dd class="col-lg-3 col-12">
-                    {{ student.stud_group.semester }}
-                </dd>
-                <dt class="col-lg-3 col-12 text-left text-lg-right">
-                    Группа:
-                </dt>
-                <dd class="col-lg-3 col-12">
-                    {% if student.stud_group.get_rights(current_user)["write"] %}
-                    <a href="{{ url_for('stud_group', id=student.stud_group.id, _anchor='curriculum_units') }}">
-                        {{ student.stud_group.num }}
-                    </a>
-                    {% elif student.stud_group.get_rights(current_user)["read_marks"] %}
-                    <a href="{{ url_for('att_marks_report_stud_group', id=student.stud_group.id) }}">
-                        {{ student.stud_group.num }}
-                    </a>
-                    {% elif student.stud_group.get_rights(current_user)["read_list"] %}
-                    <a href="{{ url_for('stud_group_leader', id=student.stud_group.id) }}" title="Сведения о старосте и кураторе группы">
-                        {{ student.stud_group.num }}
-                    </a>
-                    {% else %}
-                        {{ student.stud_group.num }}
-                    {% endif %}
-                    {% if student.stud_group_subnum %}
-                        ({{ student.stud_group_subnum }})
-                    {% endif %}
-                </dd>
-                <dt class="col-lg-3 col-12 text-left text-lg-right">
-                    Направление / специальность:
-                </dt>
-                <dd class="col-lg-9 col-12">
-                    {{ student.stud_group.specialty.full_name }}
-                </dd>
-            {% else %}
-                {% if student.semester %}
-                    <dt class="col-lg-3 col-12 text-left text-lg-right">
-                        Курс:
-                    </dt>
-                    <dd class="col-lg-3 col-12">
-                        {{ student.course }}
-                    </dd>
-                    <dt class="col-lg-3 col-12 text-left text-lg-right">
-                        Семестр:
-                    </dt>
-                    <dd class="col-lg-3 col-12">
-                        {{ student.semester }}
-                    </dd>
-                {% endif %}
-                {% if student.alumnus_year %}
-                    <dt class="col-lg-3 col-12 text-left text-lg-right">
-                        Год выпуска:
-                    </dt>
-                    <dd class="col-lg-3 col-12">
-                        {{ student.alumnus_year }}
-                    </dd>
-                {% endif %}
-                {% if student.expelled_year and student.status == 'expelled' %}
-                    <dt class="col-lg-3 col-12 text-left text-lg-right">
-                        {{ 'Отчислена' if student.person.gender == 'W' else 'Отчислен' }} в
-                    </dt>
-                    <dd class="col-lg-3 col-12">
-                        {{ student.expelled_year }} году
-                    </dd>
-                {% endif %}
-                {% if student.expelled_year and student.status == 'academic_leave' %}
-                    <dt class="col-lg-3 col-12 text-left text-lg-right">
-                        В академическом отпуске с
-                    </dt>
-                    <dd class="col-lg-3 col-12">
-                        {{ student.expelled_year }} года
-                    </dd>
-                {% endif %}
-
-            {% endif %}
-        </dl>
+        {% include '_student_report_header.html' %}
         {% set ns = namespace(fail_flag=false) %}
         <table class="table table-bordered">
             <thead class="table-header-fixed">
@@ -314,8 +220,14 @@
         {% endif %}
         <div class="my-1">
             <a href="{{ url_for('lessons_report_student', id=student.id) }}" class="btn btn-primary">Посещаемость</a>
+            {% if (current_user.admin_user and current_user.admin_user.active) or (current_user.teacher and current_user.teacher.active and current_user.teacher.dean_staff) or student.person_id == current_user.id %}
+            <a href="{{ url_for('certificate_of_study', student_id=student.id) }}" class="ml-2 btn btn-info">Справка об обучении</a>
+            {% endif %}
+            {% if 'INFOSYS_STUDENT_CARD_LINK' in config and student.student_ext_id and ((current_user.admin_user and current_user.admin_user.active) or (current_user.teacher and current_user.teacher.active and current_user.teacher.dean_staff)) %}
+                <a href="{{ config['INFOSYS_STUDENT_CARD_LINK']|format(student.student_ext_id) }}" class="ml-2 btn btn-warning" target="_blank" data-toggle="tooltip" data-placement="top" title="Авторизуйтесь в infosys.vsu.ru перед открытием ссылки">Карточка студента InfoSys</a>
+            {% endif %}
         </div>
-        {% if current_user.teacher and current_user.teacher.active  %}
+        {% if current_user.teacher and current_user.teacher.active %}
         <div class="py-1">
             <a href="javascript:void(null)" id="button_favorite" class="btn btn-primary" data-action="{{ 'remove' if student in current_user.favorite_students else 'add' }}">{{ 'Удалить из моего списка' if student in current_user.favorite_students else 'Добавить в мой список' }}</a></div>
         </div>
@@ -402,6 +314,9 @@
                 });
             {% endif %}
         });
+        $(function () {
+            $('[data-toggle="tooltip"]').tooltip()
+        })
     </script>
 </body>
 </html>

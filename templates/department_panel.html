@@ -82,7 +82,7 @@
                             {% endif %}
                         </td>
                         <td>
-                            {% if cu.pass_department or cu.status == "exam" or cu.closed %}
+                            {% if cu.status in ("filled", "closed") %}
                                 <input type="checkbox" class="input_pass_department form-control" data-curriculum-unit-id="{{ cu.id }}" {% if cu.pass_department %} checked {% endif %}{% if not cu.get_rights(current_user)["pass_department"] %} disabled {% endif %} />
                             {% endif %}
                         </td>
@@ -101,6 +101,7 @@
         {% endif %}
     </div>
     {% if department %}
+    {% include '_modal_submit.html' %}
     <script>
         $(document).ready(function(){
             $('.input_pass_department').change(function(evt){
@@ -110,10 +111,17 @@
                 if (e.prop('checked')){
                     data.value = true;
                 }
+                $('#modalSubmit').modal('show');
 
-                $.post( "{{ url_for('api_pass_department') }}", data)
-                  .fail(function() {
+                $.post( "{{ url_for('api_pass_department') }}", data).done(function(data){
+                    $('#modalSubmit').modal('hide');
+                    if (!data.ok){
+                        alert( "Произошла ошибка. Пожалуйста, обновите страницу" );
+                        document.location.reload();
+                    }
+                }).fail(function() {
                     alert( "Произошла ошибка. Пожалуйста, обновите страницу" );
+                    $('#modalSubmit').modal('hide');
                     document.location.reload();
 
                 });

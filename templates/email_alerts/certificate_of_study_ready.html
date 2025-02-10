@@ -1,0 +1,25 @@
+<html lang="ru">
+<body>
+    <div>
+        <p>{{ 'Справка' if certificates|length == 1 else 'Справки' }} об обучении готовы. {{ 'Её' if certificates|length == 1 else 'Их' }} можно забрать в деканате.</p>
+        <table>
+            <thead>
+                <tr>
+                    <th>Номер запроса</th>
+                    <th>Номер справки</th>
+                    <th>Дата выдачи</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for cert in certificates %}
+                <tr>
+                    <td>{{ cert.id }}</td>
+                    <td>{{ cert.print_num }}</td>
+                    <td>{{ cert.print_time.strftime('%d.%m.%Y') }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>

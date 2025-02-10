@@ -23,11 +23,13 @@ import utils_auth
 
 from model import StudGroup, Specialty, Subject, SubjectParticular, Teacher, Student, CurriculumUnit, CurriculumUnitStatusHist, \
     LessonStudent, LessonCurriculumUnit, Lesson, \
-    AttMark, AttMarkHist, AdminUser, Person, Department, PersonHist
+    AttMark, AttMarkHist, AdminUser, Person, Department, PersonHist, CertificateOfStudy
+from model import MarkSimpleTypeDict
+
 from forms import StudGroupForm, StudentForm, SubjectForm, TeacherForm, PersonForm, PersonAllowJWTAuthForm, PersonSearchForm, \
     CurriculumUnitForm, CurriculumUnitPracticeTeacherAddForm, TeacherAddDepartmentPartTimeJobForm, \
     CurriculumUnitCopyForm, AttMarksForm, \
-    StudGroupsPrintForm, RatingForm, LessonsReportForm, AdminUserForm, LoginForm, LoginEmailForm, LoginSMSForm
+    StudGroupsPrintForm, RatingForm, LessonsReportForm, AdminUserForm, CertificateOfStudyForm, LoginForm, LoginEmailForm, LoginSMSForm
 from forms import StudentsUnallocatedForm
 
 from model_history_controller import hist_save_controller
@@ -184,7 +186,6 @@ def login_sms():
     return render_template('login_sms.html', form=form,  wait_sec=wait_sec, second_factor=session.get('wait_sms_second_factor', False))
 
 
-
 @app.route("/login_jwt", methods=["GET"])
 @jwt_required()
 def login_jwt():
@@ -256,6 +257,7 @@ def index():
 @app.route('/help')
 def help():
     return render_template('help.html')
+
 
 @app.route('/stud_groups')
 @login_required
@@ -682,8 +684,8 @@ def student(id):
         form.populate_obj(s)  # WFORMS-Alchemy с формы на объект
         if s.status == "alumnus":
             s.stud_group = None
+            s.stud_group_subnum = None
             s.expelled_year = None
-            s.semester = None
             if s.alumnus_year is None:
                 s.alumnus_year = datetime.now().year
 
@@ -696,7 +698,7 @@ def student(id):
 
         if s.stud_group is not None:
             s.status = "study"
-            s.semester = s.stud_group.semester
+            # s.semester = s.stud_group.semester
             if s.stud_group.sub_count == 0:
                 s.stud_group_subnum = 0
             else:
@@ -712,9 +714,13 @@ def student(id):
         form = StudentForm(obj=s)
 
         if form.validate():
-            if s.status != "alumnus" and s.semester is None:
-                form.semester.errors.append("Укажите семестр")
-            if len(form.semester.errors) == 0:
+            if s.stud_group is not None:
+                if s.semester != s.stud_group.semester:
+                    form.stud_group.errors.append("Студенческая группа не соответствует семестру студента")
+                if s.specialty.id != s.stud_group.specialty_id:
+                    form.stud_group.errors.append("Студенческая группа не соответствует направлению/специальности студента")
+
+            if len(form.stud_group.errors) == 0:
                 db.session.add(s)
                 # снятие старосты группы, при переходе в другую группу
                 if stud_group_old is not None and (s.stud_group is None or stud_group_old.id != s.stud_group.id):
@@ -739,57 +745,42 @@ def student(id):
 
 
 # Нераспределённые студенты
-@app.route('/students_unallocated', methods=['GET', 'POST'])
+@app.route('/students_unallocated', methods=['GET'])
+@app.route('/students_unallocated/<int:semester>/<int:specialty_id>', methods=['GET', 'POST'])
 @login_required
-def students_unallocated():
-    if current_user.admin_user is None:
+def students_unallocated(semester=None, specialty_id=None):
+    if current_user.admin_user is None or (not current_user.admin_user.active):
         return render_error(403)
 
-    q = db.session.query(Student).join(Person) \
-        .filter(Student.status == "study") \
-        .filter(Student.stud_group_id.is_(None)) \
-        .order_by(Student.semester, Person.surname, Person.firstname, Person.middlename)
-    students = q.all()
+    specialty = None
+    form = None
+    stud_groups = None
+    if semester is not None and specialty_id is not None:
+        specialty = db.session.query(Specialty).filter_by(id=specialty_id).one_or_none()
+        if specialty is None:
+            return render_error(404)
 
-    result = {}
-    for s in students:
-        if s.semester not in result:
-            result[s.semester] = []
-        result[s.semester].append(s)
+        students = db.session.query(Student).join(Person) \
+                .filter(Student.status == "study") \
+                .filter(Student.stud_group_id.is_(None)) \
+                .filter(Student.semester == semester) \
+                .filter(Student.specialty_id == specialty_id).order_by(Person.surname, Person.firstname, Person.middlename).all()
 
-    r_form = None
-    forms = []
-    semesters = sorted(result.keys())
-    for semester in semesters:
-        f_semester_key = 'form_students_unallocated_%d_semester' % semester
-        if f_semester_key in request.form and request.form[f_semester_key].isdigit() and int(
-                request.form[f_semester_key]) == semester:
-            r_form = form = StudentsUnallocatedForm(request.form, prefix='form_students_unallocated_%d_' % semester)
-        else:
-            form = StudentsUnallocatedForm(prefix='form_students_unallocated_%d_' % semester)
-            form.semester.data = semester
-
-        def students_selected_query_factory(semester):
-            def f():
-                return result[semester]
-            return f
-
-        form.students_selected.query_factory = students_selected_query_factory(semester)
-
-        form.stud_group.query_factory = \
-            lambda: db.session.query(StudGroup) \
+        form = StudentsUnallocatedForm(request.form)
+        form.students_selected.query = students
+        stud_groups = db.session.query(StudGroup).join(Specialty, StudGroup.specialty_id == Specialty.id) \
                 .filter(StudGroup.semester == semester) \
                 .filter(StudGroup.active) \
+                .filter(or_(StudGroup.specialty_id == specialty_id, Specialty.parent_specialty_id == specialty_id)) \
                 .order_by(StudGroup.num).all()
-
-        forms.append(form)
+        form.stud_group.query = stud_groups
 
     # Перенос студентов в группы
     result_transfer = None
-    if r_form is not None:
-        if r_form.button_transfer.data and r_form.validate() and len(r_form.students_selected.data) > 0:
-            g = r_form.stud_group.data
-            stud_group_subnum = r_form.stud_group_subnum.data
+    if form is not None:
+        if form.button_transfer.data and form.validate() and len(form.students_selected.data) > 0:
+            g = form.stud_group.data
+            stud_group_subnum = form.stud_group_subnum.data
             if g.sub_count == 0:
                 stud_group_subnum = 0
             else:
@@ -798,30 +789,36 @@ def students_unallocated():
                 if stud_group_subnum > g.sub_count:
                     stud_group_subnum = g.sub_count
 
-            semester = int(r_form.semester.data)
             result_transfer = {
                 "students": [],
                 "stud_group": g,
                 "stud_group_subnum": stud_group_subnum,
+                "specialty": g.specialty,
                 "semester": semester
             }
 
-            for s in r_form.students_selected.data:
-
+            for s in form.students_selected.data:
                 s.stud_group = g
                 s.stud_group_subnum = stud_group_subnum
+                s.specialty_id = g.specialty_id
+                s.specialty = g.specialty
+
                 db.session.add(s)
-                result[semester] = [_s for _s in result[semester] if _s.id != s.id]
                 result_transfer["students"].append(s)
             db.session.commit()
-            # удалить пустую форму
-            if len(result[semester]) == 0:
-                forms.remove(r_form)
-                semesters.remove(semester)
-
             result_transfer["student_ids"] = set(str(s.id) for s in result_transfer["students"])
 
-    return render_template('students_unallocated.html', forms=forms, semesters=semesters, result=result_transfer, stud_groups=db.session.query(StudGroup).filter(StudGroup.active).all())
+    students_count = []
+    for _semester, _specialty_id, _cnt in db.session.query(Student.semester, Student.specialty_id, func.count(Student.id)).filter(Student.status == "study").filter(Student.stud_group_id.is_(None)).group_by(Student.semester, Student.specialty_id).order_by(Student.semester, Student.specialty_id):
+        students_count.append({
+            "semester": _semester,
+            "specialty": db.session.query(Specialty).filter_by(id=_specialty_id).one(),
+            "count": _cnt
+        })
+
+    return render_template('students_unallocated.html',
+                           form=form, semester=semester, specialty=specialty, result=result_transfer,
+                           students_count=students_count, stud_groups=stud_groups)
 
 
 # Перевод студентов на следующий семестр
@@ -877,8 +874,6 @@ def subject(id):
             return redirect(url_for('subjects'))
 
     if form.button_save.data and form.validate():
-        if id != 'new' and db.session.query(CurriculumUnit).filter(CurriculumUnit.subject_id == s.id).count() > 0:
-            return render_error(403)
         form.populate_obj(s)
         db.session.add(s)
         db.session.commit()
@@ -991,6 +986,9 @@ def teacher(id):
                 if d.id == t.department.id:
                     t.departments_part_time_job.remove(d)
                     break
+
+            if not t.dean_staff:
+                t.notify_results_fail = False
 
             db.session.add(t)
 
@@ -1423,8 +1421,9 @@ def curriculum_unit_practice_teacher_remove(id, practice_teacher_id):
 
 
 @app.route('/curriculum_unit_history_doc/<int:id>/<stime>')
+@app.route('/curriculum_unit_history_doc/<int:id>/<stime>/<mark_type>')
 @login_required
-def curriculum_unit_history_doc(id, stime):
+def curriculum_unit_history_doc(id, stime, mark_type=None):
     try:
         stime = datetime.strptime(stime, app.config['DATE_TIME_FORMAT'])
     except ValueError:
@@ -1434,7 +1433,26 @@ def curriculum_unit_history_doc(id, stime):
         filter(CurriculumUnitStatusHist.curriculum_unit_id == id). \
         filter(CurriculumUnitStatusHist.stime == stime).one_or_none()
 
-    if cu_h is None or cu_h.doc is None:
+    if cu_h is None:
+        return render_error(404)
+
+    doc_attr = None
+    if mark_type is None:
+        doc_attr = "doc"
+    elif mark_type == "test_simple":
+        doc_attr = "doc_test_simple"
+    elif mark_type == "exam":
+        doc_attr = "doc_exam"
+    elif mark_type == "test_diff":
+        doc_attr = "doc_test_diff"
+    elif mark_type == "course_work":
+        doc_attr = "doc_course_work"
+    elif mark_type == "course_project":
+        doc_attr = "doc_course_project"
+    if doc_attr is None:
+        return render_error(400)
+
+    if getattr(cu_h, doc_attr) is None:
         return render_error(404)
 
     cu = cu_h.curriculum_unit
@@ -1442,14 +1460,15 @@ def curriculum_unit_history_doc(id, stime):
     if not cu.get_rights(current_user)["read"]:
         return render_error(403)
 
-    file_name = "Аттестационная_ведомость_%d_к_%s_гр_%s_%s.odt" % (
+    file_name = "Аттестационная_ведомость_%d_к_%s_гр_%s_%s_%s.odt" % (
         cu.stud_group.course,
         cu.stud_group.num,
         cu.subject_name_print.replace("(", "").replace(")", "").replace(" ", "_"),
-        (cu_h.etime or cu_h.stime).strftime("%Y-%m-%d_%H_%M_%S")
+        (cu_h.etime or cu_h.stime).strftime("%Y-%m-%d_%H_%M_%S"),
+        MarkSimpleTypeDict[mark_type] if mark_type is not None else cu.mark_type_name
     )
 
-    f_data = io.BytesIO(cu_h.doc)
+    f_data = io.BytesIO(getattr(cu_h, doc_attr))
     f_data.seek(0)
     return send_file(f_data, mimetype="application/vnd.oasis.opendocument.text", as_attachment=True,
                      download_name=file_name)
@@ -1543,7 +1562,7 @@ def att_marks(id):
             att_mark_news = []
             for s in _students:
                 # не добавлять particular_subjects
-                if cu.subject_id in ((sp.replaced_subject_id for sp in s.particular_subjects)):
+                if cu.subject_id in ((sp.replaced_subject_id for sp in s.particular_subjects if sp.replaced_subject_id is not None)):
                     continue
 
                 att_mark = AttMark(curriculum_unit=cu, student=s)
@@ -1627,22 +1646,32 @@ def att_marks(id):
             m.attendance_rate_cached = m.attendance_rate_raw
             db.session.add(m)
 
-        f = None
+        f_map = {}
         if cu.mark_type != "no_att":
-            f = create_doc_curriculum_unit(cu)
-        else:
-            if len(cu.mark_types) > 0:
-                f = create_doc_curriculum_unit_simple_marks(cu, cu.mark_types[0])
+            f_map["doc"] = create_doc_curriculum_unit(cu)
+        if cu.has_simple_mark_test_simple:
+            f_map["doc_test_simple"] = create_doc_curriculum_unit_simple_marks(cu, "test_simple")
+        if cu.has_simple_mark_test_diff:
+            f_map["doc_test_diff"] = create_doc_curriculum_unit_simple_marks(cu, "test_diff")
+        if cu.has_simple_mark_exam:
+            f_map["doc_exam"] = create_doc_curriculum_unit_simple_marks(cu, "exam")
+        if cu.has_simple_mark_course_work:
+            f_map["doc_course_work"] = create_doc_curriculum_unit_simple_marks(cu, "course_work")
+        if cu.has_simple_mark_course_project:
+            f_map["doc_course_project"] = create_doc_curriculum_unit_simple_marks(cu, "course_project")
 
         cu.closed = True
         db.session.add(cu)
         cu_h, cu_h_n = hist_save_controller(db.session, cu, current_user)
-        if f is not None and cu_h is not None:
-            with open(f, 'rb') as fo:
-                cu_h.doc = fo.read()
-            db.session.add(cu_h)
+        if cu_h is not None:
+            for doc_attr, f in f_map.items():
+                with open(f, 'rb') as fo:
+                    setattr(cu_h, doc_attr, fo.read())
+                    db.session.add(cu_h)
+
         db.session.commit()
-        if f is not None:
+
+        for doc_attr, f in f_map.items():
             os.remove(f)
 
     if form.button_open.data:
@@ -1993,7 +2022,7 @@ def lessons_report_student(id):
             cu_ids.append(cu_id)
 
     if s.stud_group is not None and s.stud_group.active:
-        cu_ids.extend((cu.id for cu in s.stud_group.curriculum_units if cu.subject_id not in ((sp.replaced_subject_id for sp in s.particular_subjects)) and cu.id not in cu_ids))
+        cu_ids.extend((cu.id for cu in s.stud_group.curriculum_units if cu.subject_id not in ((sp.replaced_subject_id for sp in s.particular_subjects if sp.replaced_subject_id is not None)) and cu.id not in cu_ids))
 
     # Костыль для пустого списка
     if len(cu_ids) == 0:
@@ -2294,14 +2323,15 @@ def rating():
         education_level_order = 1
         form.education_level_order.data = '1'
 
-    form.specialty.query_factory = lambda: db.session.query(Specialty.code, Specialty.name).filter(Specialty.education_level_order == education_level_order).order_by(Specialty.code).distinct()
-
     if form.year.data and form.semester.data in ('1', '2'):
         year = form.year.data
         s = int(form.semester.data)
         if s == 2:
             s = 0
         form.course.query_factory = lambda: [(row[0]+1)//2 for row in db.session.query(StudGroup.semester).join(Specialty, StudGroup.specialty_id==Specialty.id).filter(Specialty.education_level_order == education_level_order).filter(StudGroup.year == year).filter(func.mod(StudGroup.semester, 2) == s).order_by(StudGroup.semester).distinct()]
+        form.specialty.query_factory = lambda: db.session.query(Specialty.code, Specialty.name).join(StudGroup, Specialty.id==StudGroup.specialty_id).filter(Specialty.education_level_order == education_level_order).order_by(Specialty.code).filter(StudGroup.year == year).filter(func.mod(StudGroup.semester, 2) == s).distinct()
+    else:
+        form.specialty.query_factory = lambda: db.session.query(Specialty.code, Specialty.name).filter(Specialty.education_level_order == education_level_order).order_by(Specialty.code).distinct()
 
     if year is not None and s is not None and form.course.data is not None:
         stage = form.stage.data
@@ -2399,6 +2429,111 @@ def stud_groups_print():
         return render_template("stud_groups_print.html", form=form,
                                stud_groups=l_stud_groups,
                                stud_groups_lists=stud_groups_lists)
+
+
+@app.route('/certificate_of_study/<int:student_id>', methods=['GET', 'POST'])
+@login_required
+def certificate_of_study(student_id):
+    if not (
+            (current_user.admin_user is not None and current_user.admin_user.active) or
+            (current_user.teacher is not None and current_user.teacher.active and current_user.teacher.dean_staff) or
+            (student_id in (s.id for s in current_user.students))):
+        return render_error(403)
+
+    s: Student = db.session.query(Student).filter_by(id=student_id).one_or_none()
+    if s is None:
+        return render_error(404)
+
+    if s.student_ext_id is None:
+        return render_error(400)
+
+    form = CertificateOfStudyForm(request.form)
+    if form.button_submit.data:
+        if form.validate():
+            count_avalible = CertificateOfStudy.MAX_PER_ORDER - s.certificates_of_study.filter(CertificateOfStudy.ready_time.is_(None)).count()
+            if count_avalible < 0:
+                count_avalible = 0
+            if form.count.data > count_avalible:
+                if count_avalible == 0:
+                    flash('Превышено максимальное количество запросов', category='error')
+                else:
+                    form.count.errors.append("Максимальное количество справок доступных для заказа в данный момент: %d" % count_avalible)
+                    flash('Произошла ошибка при заказе справки об обучении', category='error')
+            else:
+                for _ in range(form.count.data):
+                    cert = CertificateOfStudy(
+                        student_id=s.id,
+                        specialty_id=s.specialty_id,
+                        surname=s.person.surname,
+                        firstname=s.person.firstname,
+                        middlename=s.person.middlename,
+                        course=s.course if s.status in ('study', 'academic_leave') else None,
+                        student_status=s.status,
+                        request_time=datetime.now(),
+                        comment=form.comment.data
+                    )
+                    db.session.add(cert)
+                db.session.flush()
+                db.session.commit()
+                if form.count.data == 1:
+                    flash('Запрос успешно обработан. Справка об обучении будет готова в течение 1-2 рабочих дней.', category='success')
+                else:
+                    flash('Запрос успешно обработан. Справки об обучении будут готовы в течение 1-2 рабочих дней.', category='success')
+
+                form = None
+        else:
+            flash('Произошла ошибка при заказе справки об обучении', category='error')
+
+    certificates_in_progress = s.certificates_of_study.filter(CertificateOfStudy.ready_time.is_(None)).order_by(CertificateOfStudy.id).all()
+    certificates_ready = s.certificates_of_study.filter(CertificateOfStudy.ready_time.isnot(None)).order_by(CertificateOfStudy.id.desc()).all()
+
+    return render_template('certificate_of_study.html', student=s, form=form, certificates_in_progress=certificates_in_progress, certificates_ready=certificates_ready)
+
+
+@app.route('/certificates_of_study', methods=['GET'])
+@login_required
+def certificates_of_study():
+    if not ((current_user.admin_user is not None and current_user.admin_user.active) or
+            (current_user.teacher is not None and current_user.teacher.active and current_user.teacher.dean_staff)):
+        return render_error(403)
+
+    certificates_new = db.session.query(CertificateOfStudy).filter(CertificateOfStudy.print_time.is_(None)).order_by(CertificateOfStudy.id).all()
+    certificates_with_num = db.session.query(CertificateOfStudy).filter(CertificateOfStudy.print_time.isnot(None)).filter(CertificateOfStudy.ready_time.is_(None)).order_by(CertificateOfStudy.year, CertificateOfStudy.num).all()
+
+    return render_template('certificates_of_study.html', certificates_new=certificates_new, certificates_with_num=certificates_with_num)
+
+
+@app.route('/certificates_of_study_archive/<int:year>', methods=['GET'])
+@app.route('/certificates_of_study_archive', methods=['GET'])
+@login_required
+def certificates_of_study_archive(year=None):
+    if not ((current_user.admin_user is not None and current_user.admin_user.active) or
+            (current_user.teacher is not None and current_user.teacher.active and current_user.teacher.dean_staff)):
+        return render_error(403)
+
+    if year is None:
+        year = db.session.query(func.max(CertificateOfStudy.year)).filter(CertificateOfStudy.ready_time.isnot(None)).with_for_update().first()[0]
+        if year is None:
+            render_error(404)
+
+    years = [_[0] for _ in db.session.query(CertificateOfStudy.year).filter(CertificateOfStudy.ready_time.isnot(None)).order_by(CertificateOfStudy.year.desc()).distinct()]
+
+    page = 1
+    if 'page' in request.args:
+        try:
+            page = int(request.args["page"])
+        except ValueError:
+            return render_error(400)
+
+    q = db.session.query(CertificateOfStudy).filter(CertificateOfStudy.year == year).filter(CertificateOfStudy.ready_time.isnot(None)).order_by(CertificateOfStudy.num.desc())
+    if page == 0:
+        certificates = q.all()
+    else:
+        certificates = q.paginate(page=page, error_out=False)
+
+    return render_template('certificates_of_study_archive.html', certificates=certificates,
+                           year=year, years=years, page=page)
+
 
 
 @app.route('/lessons', methods=["GET"])

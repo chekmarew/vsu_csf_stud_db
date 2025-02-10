@@ -17,7 +17,7 @@ def att_marks_report(s):
             att_mark = db.session.query(AttMark).filter(AttMark.student_id == s.id).filter(
                 AttMark.curriculum_unit_id == cu.id).one_or_none()
             if att_mark is None:
-                if cu.subject_id in ((sp.replaced_subject_id for sp in s.particular_subjects)):
+                if cu.subject_id in ((sp.replaced_subject_id for sp in s.particular_subjects if sp.replaced_subject_id is not None)):
                     continue
                 att_mark = AttMark(student=s, curriculum_unit=cu)
             result.append(att_mark)

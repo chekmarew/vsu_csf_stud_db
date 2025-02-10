@@ -48,6 +48,42 @@
             background-color: #f8f9fa;
             z-index: 1;
         }
+
+        .context-menu {
+            position: absolute;
+            text-align: left;
+            background-color: #f5f5f5;
+            border-bottom: 1px solid black;
+            font-size: small;
+        }
+
+        .context-menu ul {
+            padding: 0px;
+            margin: 0px;
+            min-width: 150px;
+            list-style: none;
+        }
+
+        .context-menu ul li {
+            padding: 0;
+            border-top: 1px solid black;
+            border-left: 1px solid black;
+            border-right: 1px solid black;
+        }
+
+        .context-menu ul li a {
+            padding-bottom: 7px;
+            padding-top: 7px;
+            padding-left: 3px;
+            padding-right: 3px;
+            display: block;
+            text-decoration: none;
+            color: black;
+        }
+
+        .context-menu ul li:hover {
+            background-color: lightgray;
+        }
     </style>
 </head>
 <body>
@@ -240,7 +276,7 @@
 
                     <div class="col-0-3qtr d-flex {{ macros_mark_class(m.att_mark_1) }}">
                         <div class="align-self-center">
-                        {{ att_mark.att_mark_1(class_='input-mark', type="number", min=0, max=50, tabindex=(form.att_marks|length*col_num)+loop.index, disabled=disabled_row or not m.check_edit_attr('att_mark_1', current_user), autocomplete="off", **{'data-student-id': m.student_id, 'data-att-mark-1': m.att_mark_1 if m.att_mark_1 else ''})|safe }}
+                        {{ att_mark.att_mark_1(class_='input-mark', type="number", min=0, max=50, tabindex=(form.att_marks|length*col_num)+loop.index, disabled=disabled_row or not m.check_edit_attr('att_mark_1', current_user), autocomplete="off", **{'data-student-id': m.student_id, 'data-att-mark1': m.att_mark_1 if m.att_mark_1 != None else ''})|safe }}
                         {% if att_mark.att_mark_1.errors %}
                             <span class="badge badge-danger">
                                 {{ ', '.join(att_mark.att_mark_1.errors ) }}
@@ -253,7 +289,7 @@
                     {% set col_num = col_num + 1 %}
                     <div class="col-0-3qtr d-flex {{ macros_mark_class(m.att_mark_2) }}">
                         <div class="align-self-center">
-                        {{ att_mark.att_mark_2(class_='input-mark', type="number", min=0, max=50, tabindex=(form.att_marks|length*col_num)+loop.index, disabled=disabled_row or not m.check_edit_attr('att_mark_2', current_user), autocomplete="off", **{'data-student-id': m.student_id, 'data-att-mark-2': m.att_mark_2 if m.att_mark_2 else ''})|safe }}
+                        {{ att_mark.att_mark_2(class_='input-mark', type="number", min=0, max=50, tabindex=(form.att_marks|length*col_num)+loop.index, disabled=disabled_row or not m.check_edit_attr('att_mark_2', current_user), autocomplete="off", **{'data-student-id': m.student_id, 'data-att-mark2': m.att_mark_2 if m.att_mark_2 != None else ''})|safe }}
                         {% if att_mark.att_mark_2.errors %}
                             <span class="badge badge-danger">
                                 {{ ', '.join(att_mark.att_mark_2.errors ) }}
@@ -266,7 +302,7 @@
                     {% set col_num = col_num + 1 %}
                      <div class="col-0-3qtr d-flex {{ macros_mark_class(m.att_mark_3) }}">
                          <div class="align-self-center">
-                         {{ att_mark.att_mark_3(class_='input-mark', type="number", min=0, max=50, tabindex=(form.att_marks|length*col_num)+loop.index, disabled=disabled_row or not m.check_edit_attr('att_mark_3', current_user), autocomplete="off", **{'data-student-id': m.student_id, 'data-att-mark-3': m.att_mark_3 if m.att_mark_3 else ''})|safe }}
+                         {{ att_mark.att_mark_3(class_='input-mark', type="number", min=0, max=50, tabindex=(form.att_marks|length*col_num)+loop.index, disabled=disabled_row or not m.check_edit_attr('att_mark_3', current_user), autocomplete="off", **{'data-student-id': m.student_id, 'data-att-mark3': m.att_mark_3 if m.att_mark_3 != None else ''})|safe }}
                          {% if att_mark.att_mark_3.errors %}
                             <span class="badge badge-danger">
                                 {{ ', '.join(att_mark.att_mark_3.errors ) }}
@@ -303,7 +339,7 @@
                         {% set col_num = col_num + 1 %}
                         <div class="col-1 d-flex {{ macros_mark_class(m.att_mark_exam) }}">
                             <div class="align-self-center">
-                            {{ att_mark.att_mark_exam(class_='input-mark', type="number", min=0, max=50, tabindex=(form.att_marks|length*col_num)+loop.index, disabled=disabled_row or not m.check_edit_attr('att_mark_exam', current_user), autocomplete="off", **{'data-student-id': m.student_id, 'data-att-mark-exam': m.att_mark_exam if m.att_mark_exam else ''})|safe }}
+                            {{ att_mark.att_mark_exam(class_='input-mark', type="number", min=0, max=50, tabindex=(form.att_marks|length*col_num)+loop.index, disabled=disabled_row or not m.check_edit_attr('att_mark_exam', current_user), autocomplete="off", **{'data-student-id': m.student_id, 'data-att-mark-exam': m.att_mark_exam if m.att_mark_exam != None else ''})|safe }}
                             {% if att_mark.att_mark_exam.errors %}
                                 <span class="badge badge-danger">
                                     {{ ', '.join(att_mark.att_mark_exam.errors ) }}
@@ -316,7 +352,7 @@
                         {% set col_num = col_num + 1 %}
                         <div class="col-0-3qtr d-flex">
                             <div class="align-self-center">
-                            {{ att_mark.att_mark_append_ball(class_='input-mark', type="number", min=0, max=10, tabindex=(form.att_marks|length*col_num)+loop.index, disabled=disabled_row or not m.check_edit_attr('att_mark_append_ball', current_user), autocomplete="off", **{'data-student-id': m.student_id, 'data-att-mark-append-ball': m.att_mark_append_ball if m.att_mark_append_ball else '' })|safe }}
+                            {{ att_mark.att_mark_append_ball(class_='input-mark', type="number", min=0, max=10, tabindex=(form.att_marks|length*col_num)+loop.index, disabled=disabled_row or not m.check_edit_attr('att_mark_append_ball', current_user), autocomplete="off", **{'data-student-id': m.student_id, 'data-att-mark-append-ball': m.att_mark_append_ball if m.att_mark_append_ball != None else '' })|safe }}
                             {% if att_mark.att_mark_append_ball.errors %}
                                 <span class="badge badge-danger">
                                     {{ ', '.join(att_mark.att_mark_append_ball.errors ) }}
@@ -346,7 +382,7 @@
                         {% set col_num = col_num + 1 %}
                         <div class="col-0-3qtr d-flex {{ macros_mark_simple_class(m.simple_mark_test_simple) }}">
                             <div class="align-self-center">
-                                {{ att_mark.simple_mark_test_simple(class_='input-mark-sel', tabindex=(form.att_marks|length*col_num)+loop.index, disabled=disabled_row or not m.check_edit_attr('simple_mark_test_simple', current_user), **{'data-student-id': m.student_id, 'data-simple-mark-test-simple': m.simple_mark_test_simple if m.simple_mark_test_simple else ''})|safe }}
+                                {{ att_mark.simple_mark_test_simple(class_='input-mark-sel', tabindex=(form.att_marks|length*col_num)+loop.index, disabled=disabled_row or not m.check_edit_attr('simple_mark_test_simple', current_user), **{'data-student-id': m.student_id, 'data-simple-mark-test-simple': m.simple_mark_test_simple if m.simple_mark_test_simple != None else ''})|safe }}
                             </div>
                         </div>
                     {% endif %}
@@ -354,7 +390,7 @@
                         {% set col_num = col_num + 1 %}
                         <div class="col-0-3qtr d-flex {{ macros_mark_simple_class(m.simple_mark_exam) }}">
                             <div class="align-self-center">
-                                {{ att_mark.simple_mark_exam(class_='input-mark-sel', tabindex=(form.att_marks|length*col_num)+loop.index, disabled=disabled_row or not m.check_edit_attr('simple_mark_exam', current_user), **{'data-student-id': m.student_id, 'data-simple-mark-exam': m.simple_mark_exam if m.simple_mark_exam else ''})|safe }}
+                                {{ att_mark.simple_mark_exam(class_='input-mark-sel', tabindex=(form.att_marks|length*col_num)+loop.index, disabled=disabled_row or not m.check_edit_attr('simple_mark_exam', current_user), **{'data-student-id': m.student_id, 'data-simple-mark-exam': m.simple_mark_exam if m.simple_mark_exam != None else ''})|safe }}
                             </div>
                         </div>
                     {% endif %}
@@ -362,7 +398,7 @@
                         {% set col_num = col_num + 1 %}
                         <div class="col-0-3qtr d-flex {{ macros_mark_simple_class(m.simple_mark_test_diff) }}">
                             <div class="align-self-center">
-                                {{ att_mark.simple_mark_test_diff(class_='input-mark-sel', tabindex=(form.att_marks|length*col_num)+loop.index, disabled=disabled_row or not m.check_edit_attr('simple_mark_test_diff', current_user), **{'data-student-id': m.student_id, 'data-simple-mark-test-diff': m.simple_mark_test_diff if m.simple_mark_test_diff else ''})|safe }}
+                                {{ att_mark.simple_mark_test_diff(class_='input-mark-sel', tabindex=(form.att_marks|length*col_num)+loop.index, disabled=disabled_row or not m.check_edit_attr('simple_mark_test_diff', current_user), **{'data-student-id': m.student_id, 'data-simple-mark-test-diff': m.simple_mark_test_diff if m.simple_mark_test_diff != None else ''})|safe }}
                             </div>
                         </div>
                     {% endif %}
@@ -370,7 +406,7 @@
                         {% set col_num = col_num + 1 %}
                         <div class="col-0-3qtr d-flex {{ macros_mark_simple_class(m.simple_mark_course_work) }}">
                             <div class="align-self-center">
-                                {{ att_mark.simple_mark_course_work(class_='input-mark-sel', tabindex=(form.att_marks|length*col_num)+loop.index, disabled=disabled_row or not m.check_edit_attr('simple_mark_course_work', current_user), **{'data-student-id': m.student_id, 'data-simple-mark-course-work': m.simple_mark_course_work if m.simple_mark_course_work else ''})|safe }}
+                                {{ att_mark.simple_mark_course_work(class_='input-mark-sel', tabindex=(form.att_marks|length*col_num)+loop.index, disabled=disabled_row or not m.check_edit_attr('simple_mark_course_work', current_user), **{'data-student-id': m.student_id, 'data-simple-mark-course-work': m.simple_mark_course_work if m.simple_mark_course_work != None else ''})|safe }}
                             </div>
                         </div>
                     {% endif %}
@@ -378,7 +414,7 @@
                         {% set col_num = col_num + 1 %}
                         <div class="col-0-3qtr d-flex {{ macros_mark_simple_class(m.simple_mark_course_project) }}">
                             <div class="align-self-center">
-                                {{ att_mark.simple_mark_course_project(class_='input-mark-sel', tabindex=(form.att_marks|length*col_num)+loop.index, disabled=disabled_row or not m.check_edit_attr('simple_mark_course_project', current_user), **{'data-student-id': m.student_id, 'data-simple-mark-course-project': m.simple_mark_course_project if m.simple_mark_course_project else ''})|safe }}
+                                {{ att_mark.simple_mark_course_project(class_='input-mark-sel', tabindex=(form.att_marks|length*col_num)+loop.index, disabled=disabled_row or not m.check_edit_attr('simple_mark_course_project', current_user), **{'data-student-id': m.student_id, 'data-simple-mark-course-project': m.simple_mark_course_project if m.simple_mark_course_project != None else ''})|safe }}
                             </div>
                         </div>
                     {% endif %}
@@ -458,7 +494,14 @@
             {% endif %}
         </form>
     </div>
-
+    {% if curriculum_unit.get_rights(current_user)["write"] %}
+    <div id="contextMenuMark" class="context-menu" style="display:none">
+        <ul>
+            <li><a href="javascript:void(null)" id="contextMenuMarkCopyToEmpty">Копировать значение в пустые поля</a></li>
+            <li><a href="javascript:void(null)" id="contextMenuMarkCopyToAll">Копировать значение всем студентам в группе</a></li>
+        </ul>
+    </div>
+    {% endif %}
 
      <!-- Modal History -->
     <div class="modal fade" id="modalHistory" tabindex="-1" role="dialog" aria-labelledby="modalHistoryTitle" aria-hidden="true" data-keyboard="true">
@@ -478,7 +521,24 @@
                                 <th>Время окончания</th>
                                 <th>Состояние</th>
                                 <th>Изменил</th>
+                                {% if curriculum_unit.mark_type != "no_att" %}
                                 <th></th>
+                                {% endif %}
+                                {% if curriculum_unit.has_simple_mark_test_simple %}
+                                <th></th>
+                                {% endif %}
+                                {% if curriculum_unit.has_simple_mark_exam %}
+                                <th></th>
+                                {% endif %}
+                                {% if curriculum_unit.has_simple_mark_test_diff %}
+                                <th></th>
+                                {% endif %}
+                                {% if curriculum_unit.has_simple_mark_course_work %}
+                                <th></th>
+                                {% endif %}
+                                {% if curriculum_unit.has_simple_mark_course_project %}
+                                <th></th>
+                                {% endif %}
                             </tr>
                         </thead>
                         {% for h in curriculum_unit.status_history %}
@@ -498,11 +558,48 @@
                             <td>
                                 {{ h.user.full_name_short }}
                             </td>
+                            {% if curriculum_unit.mark_type != "no_att" %}
                             <td>
                                 {% if h.doc != None %}
                                     <a href="{{ url_for('curriculum_unit_history_doc', id=h.curriculum_unit_id, stime=h.stime.strftime(config.DATE_TIME_FORMAT)) }}" target="_blank">[документ]</a>
                                 {% endif %}
                             </td>
+                            {% endif %}
+                            {% if curriculum_unit.has_simple_mark_test_simple %}
+                            <td>
+                                {% if h.doc_test_simple != None %}
+                                    <a href="{{ url_for('curriculum_unit_history_doc', id=h.curriculum_unit_id, stime=h.stime.strftime(config.DATE_TIME_FORMAT), mark_type='test_simple') }}" target="_blank">[документ (Зачет)]</a>
+                                {% endif %}
+                            </td>
+                            {% endif %}
+                            {% if curriculum_unit.has_simple_mark_exam %}
+                            <td>
+                                {% if h.doc_exam != None %}
+                                    <a href="{{ url_for('curriculum_unit_history_doc', id=h.curriculum_unit_id, stime=h.stime.strftime(config.DATE_TIME_FORMAT), mark_type='exam') }}" target="_blank">[документ (Экзамен)]</a>
+                                {% endif %}
+                            </td>
+                            {% endif %}
+                            {% if curriculum_unit.has_simple_mark_test_diff %}
+                            <td>
+                                {% if h.doc_test_diff != None %}
+                                    <a href="{{ url_for('curriculum_unit_history_doc', id=h.curriculum_unit_id, stime=h.stime.strftime(config.DATE_TIME_FORMAT), mark_type='test_diff') }}" target="_blank">[документ (Дифференцированный зачет)]</a>
+                                {% endif %}
+                            </td>
+                            {% endif %}
+                            {% if curriculum_unit.has_simple_mark_course_work %}
+                            <td>
+                                {% if h.doc_course_work != None %}
+                                    <a href="{{ url_for('curriculum_unit_history_doc', id=h.curriculum_unit_id, stime=h.stime.strftime(config.DATE_TIME_FORMAT), mark_type='course_work') }}" target="_blank">[документ (Курсовая работа)]</a>
+                                {% endif %}
+                            </td>
+                            {% endif %}
+                            {% if curriculum_unit.has_simple_mark_course_project %}
+                            <td>
+                                {% if h.doc_course_project != None %}
+                                    <a href="{{ url_for('curriculum_unit_history_doc', id=h.curriculum_unit_id, stime=h.stime.strftime(config.DATE_TIME_FORMAT), mark_type='course_project') }}" target="_blank">[документ (Курсовой проект)]</a>
+                                {% endif %}
+                            </td>
+                            {% endif %}
                         </tr>
                     {% endfor %}
                     </table>
@@ -756,21 +853,7 @@
     </div>
     <!-- end modal news  -->
 
-    <!-- Modal Submit -->
-    <div class="modal fade" id="modalSubmit" tabindex="-1" role="dialog" aria-labelledby="modalSubmitTitle" aria-hidden="true" data-keyboard="false">
-        <div class="modal-dialog modal-dialog-centered" role="document">
-            <div class="modal-content" style="width: auto;">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="modalSubmitTitle">Отправка данных</h5>
-                </div>
-                <div class="modal-body">
-                    <h2>Пожалуйста, подождите...</h2>
-                </div>
-            </div>
-        </div>
-    </div>
-    <!-- End modal Submit -->
-
+    {% include '_modal_submit.html' %}
 
     <script>
         $(document).ready(function(){
@@ -802,8 +885,6 @@
 
             {% endif %}
 
-
-
             $('.btn-print').click(function(){
                 setTimeout(function(){
                     $('#modalSubmit').modal('hide');
@@ -818,7 +899,7 @@
                 $('#button_open').parent().hide();
                 $('#button_close').parent().hide();
                 $('.btn-print').parent().hide();
-                $('[data-toggle="modal"][data-target="#modalFormView"]').hide();
+                //$('[data-toggle="modal"][data-target="#modalFormView"]').hide();
                 {% if curriculum_unit.result_failed != None %}
                     $('#result_failed').hide();
                 {% endif %}
@@ -845,11 +926,7 @@
             //Модальное окно отправка данных
             $('#formAttMarks').submit(function(e){
                 is_changed_input_mark = false;
-                $('#modalSubmit').modal({
-                    show:true,
-                    keyboard: false,
-                    backdrop: 'static'
-                });
+                $('#modalSubmit').modal('show');
                 return true;
             });
 
@@ -857,13 +934,14 @@
             {% if curriculum_unit.pass_department %}
                 $('#button_pass_department_cancel').click(function(){
                     if (!confirm('Вы действительно хотите снять отметку о сдаче ведомости на кафедру ?')) return;
+                    $('#modalSubmit').modal('show');
 
                     $.post( "{{ url_for('api_pass_department') }}", {curriculumUnitId: {{ curriculum_unit.id }} })
                     .done(function(data){
+                         $('#modalSubmit').modal('hide');
                         if(data.ok){
-                            alert( "Отметка снята" );
-                            $('[data-toggle="modal"][data-target="#modalFormView"]').hide();
-                            document.location.reload();
+                            //$('[data-toggle="modal"][data-target="#modalFormView"]').hide();
+                            document.location.href = "{{ url_for('att_marks', id=curriculum_unit.id) }}";
                         }
                         else
                         {
@@ -872,18 +950,19 @@
                     })
                     .fail(function() {
                         alert( "Произошла ошибка" );
+                        $('#modalSubmit').modal('hide');
                     });
                 });
             {% else %}
                 $('#button_pass_department').click(function(){
                     if (!confirm('Вы действительно хотите поставить отметку о сдаче ведомости на кафедру ?')) return;
-
+                    $('#modalSubmit').modal('show');
                     $.post( "{{ url_for('api_pass_department') }}", {curriculumUnitId: {{ curriculum_unit.id }}, value: true })
                     .done(function(data){
+                         $('#modalSubmit').modal('hide');
                         if(data.ok){
-                            alert( "Отметка поставлена" );
-                            $('[data-toggle="modal"][data-target="#modalFormView"]').hide();
-                            document.location.reload();
+                            //$('[data-toggle="modal"][data-target="#modalFormView"]').hide();
+                            document.location.href = "{{ url_for('att_marks', id=curriculum_unit.id) }}";
                         }
                         else
                         {
@@ -892,10 +971,104 @@
                     })
                     .fail(function() {
                         alert( "Произошла ошибка" );
+                        $('#modalSubmit').modal('hide');
                     });
                 });
             {% endif %}
             {% endif %}
+
+            {% if curriculum_unit.get_rights(current_user)["write"] %}
+            /* context menu copy */
+
+            var context_menu_mark = document.getElementById("contextMenuMark");
+            var context_menu_mark_elements = $('#contextMenuMarkCopyToEmpty, #contextMenuMarkCopyToAll');
+
+            $(document).click(function(){
+                $('.context-menu').hide();
+            })
+            $(document).keyup(function(e){
+                if(e.which == 27){
+                    $('.context-menu').hide();
+                }
+            });
+
+
+            $('.input-mark,.input-mark-sel').contextmenu(function(evt){
+                var el = evt.target;
+                var target_value = el.value;
+                if (el.disabled || (target_value == "__None") || (target_value == "")) return;
+                var target_elements = null;
+                var target_print_attr = null;
+                var target_print_value = null;
+                var d = $(el).data();
+
+                if (d.attMark1 !== undefined) { target_elements = $('[data-att-mark1]'); target_print_attr = "Аттестация 1"; target_print_value = target_value; }
+                if (d.attMark2 !== undefined) { target_elements = $('[data-att-mark2]'); target_print_attr = "Аттестация 2"; target_print_value = target_value; }
+                if (d.attMark3 !== undefined) { target_elements = $('[data-att-mark3]'); target_print_attr = "Аттестация 3"; target_print_value = target_value; }
+                if (d.attMarkExam !== undefined) { target_elements = $('[data-att-mark-exam]'); target_print_attr = "Экзамен"; target_print_value = target_value; }
+                if (d.attMarkAppendBall !== undefined) { target_elements = $('[data-att-mark-append-ball]'); target_print_attr = "Дополнительный балл"; target_print_value = target_value; }
+                if (d.simpleMarkTestSimple !== undefined) { target_elements = $('[data-simple-mark-test-simple]'); target_print_attr = "Зачет"; target_print_value = $(el).find(':selected').text(); }
+                if (d.simpleMarkExam !== undefined) { target_elements = $('[data-simple-mark-exam]'); target_print_attr = "Экзамен"; target_print_value = $(el).find(':selected').text(); }
+                if (d.simpleMarkTestDiff !== undefined) { target_elements = $('[data-simple-mark-test-diff]'); target_print_attr = "Дифференцированный зачет"; target_print_value = $(el).find(':selected').text(); }
+                if (d.simpleMarkCourseWork !== undefined) { target_elements = $('[data-simple-mark-course-work]'); target_print_attr = "Курсовая работа"; target_print_value = $(el).find(':selected').text(); }
+                if (d.simpleMarkCourseProject !== undefined) { target_elements = $('[data-simple-mark-course-project]'); target_print_attr = "Курсовой проект"; target_print_value = $(el).find(':selected').text(); }
+
+                if (!target_elements) return;
+
+                context_menu_mark_elements.data("targetValue", target_value);
+                context_menu_mark_elements.data("targetElements", target_elements);
+                context_menu_mark_elements.data("targetPrintAttr", target_print_attr);
+                context_menu_mark_elements.data("targetPrintValue", target_print_value);
+                evt.preventDefault();
+
+
+                context_menu_mark.style.display = 'block';
+                context_menu_mark.style.left = evt.pageX + "px";
+                context_menu_mark.style.top = evt.pageY + "px";
+            });
+
+            context_menu_mark_elements.click(function(evt){
+                var el = evt.target;
+                var d = $(el).data();
+                if ((d.targetValue === undefined)||(d.targetElements === undefined)) return;
+                var cnt_u = 0;
+                var update_all = (el.id === "contextMenuMarkCopyToAll");
+                if (!confirm('Вы действительно хотите заполнить '+(update_all ? "все" : "пустые") + ' поля "'+d.targetPrintAttr+'" значением "'+d.targetPrintValue+'" ?')) return;
+                d.targetElements.each(function(i, elem){
+                    if (elem.disabled) return;
+                    var v = elem.value;
+                    if (v == d.targetValue) return;
+                    if ((v == "")||(v == "__None")||update_all)
+                    {
+                        elem.value = d.targetValue;
+                        cnt_u++;
+                    }
+                });
+                if (cnt_u == 0){
+                    alert("Значения не были обновлены");
+                }
+                else
+                {
+                   var cnt_str = "значений";
+                   if ((cnt_u % 100 < 5 )||(cnt_u % 100 > 20))
+                   {
+                        if (cnt_u % 10 == 1) cnt_str = "значение";
+                        if ((cnt_u % 10 >= 2)&&(cnt_u % 10 <= 4)) cnt_str = "значения";
+                   }
+                   alert("Обновлено "+cnt_u+" "+cnt_str+"\n"+"Не забудьте сохранить ведомость");
+                   fn_change_mark();
+                }
+
+                context_menu_mark_elements.removeData("targetValue", target_value);
+                context_menu_mark_elements.removeData("targetElements", target_elements);
+                context_menu_mark_elements.removeData("targetPrintAttr", target_print_attr);
+                context_menu_mark_elements.removeData("targetPrintValue", target_print_value);
+
+            });
+            /* end contextmenu copy */
+            {% endif %}
+
+
         });
     </script>
     <script>
@@ -945,7 +1118,7 @@
                     for (var j=0; j<attrs.length; j++)
                     {
                         var attr = attrs[j];
-                        var elem = $('[data-'+attr.replaceAll('_', '-')+'][data-student-id="'+s.id.toString()+'"]');
+                        var elem = $('[data-'+attr.replace(/(\_)(\d+)$/,'$2').replaceAll('_', '-')+'][data-student-id="'+s.id.toString()+'"]');
                         elem.attr('tabindex', j*students_all.length + i + 1);
                     }
                 }
@@ -987,9 +1160,9 @@
             splitter: $('#formCSVImportSplitter'),
             studentNameFormat: $('#formCSVImportStudentNameFormat'),
             colsInclude: {
-                "attMark-1": $('#formCSVImportColumnAtt1'),
-                "attMark-2": $('#formCSVImportColumnAtt2'),
-                "attMark-3": $('#formCSVImportColumnAtt3'),
+                "attMark1": $('#formCSVImportColumnAtt1'),
+                "attMark2": $('#formCSVImportColumnAtt2'),
+                "attMark3": $('#formCSVImportColumnAtt3'),
                 attMarkExam: $('#formCSVImportColumnExam'),
                 attMarkAppendBall: $('#formCSVImportColumnAppendBall')
             },
@@ -1023,7 +1196,6 @@
             {
                 alert("Не выбран ни один столбец для импорта");
                 return;
-
             }
             var lines = csv_ui.data.val().split("\n");
             var split_symb = null;
@@ -1215,5 +1387,7 @@
     </script>
     <!-- End CSV Import -->
     {% endif %}
+
+
 </body>
 </html>

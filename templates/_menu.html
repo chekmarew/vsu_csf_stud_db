@@ -76,6 +76,12 @@
                 <a href="{{ url_for('department_panel') }}" class="nav-link{{' active' if request.endpoint == 'department_panel' }}">Кафедры</a>
             </li>
          {% endif %}
+         {% if (current_user.admin_user != None and current_user.admin_user.active) or (current_user.teacher and current_user.teacher.active and current_user.teacher.dean_staff) %}
+            <li class="nav-item">
+                <a href="{{ url_for('certificates_of_study') }}" class="nav-link{{' active' if request.endpoint in ('certificates_of_study', 'certificates_of_study_archive') }}">Справки об обучении</a>
+            </li>
+         {% endif %}
+
          {% if current_user.user_rights["persons"] %}
             <li class="nav-item">
                 <a href="{{ url_for('persons') }}" class="nav-link{{' active' if request.endpoint in ('persons', 'person', 'student', 'teacher', 'admin_user') }}">Поиск</a>

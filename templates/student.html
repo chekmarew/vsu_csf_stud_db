@@ -15,9 +15,11 @@
             {{ bootstrap_form_input(form.id) }}
             {{ bootstrap_form_input(form.student_ext_id) }}
             {{ bootstrap_form_input(form.status) }}
+            {{ bootstrap_form_input(form.semester) }}
+            {{ bootstrap_form_input(form.specialty) }}
             {{ bootstrap_form_input(form.stud_group) }}
             {{ bootstrap_form_input(form.stud_group_subnum, type='number') }}
-            {{ bootstrap_form_input(form.semester) }}
+
             {{ bootstrap_form_input(form.alumnus_year) }}
             {{ bootstrap_form_input(form.expelled_year) }}
             <hr/>
@@ -46,7 +48,13 @@
             {% endif %}
             <div class="my-1">
                 <a href="{{ url_for('att_marks_report_student', id=student.id) }}" class="btn btn-primary">Свод оценок рубежных аттестаций</a>
-                <a href="{{ url_for('lessons_report_student', id=student.id) }}" class="btn btn-primary">Посещаемость студента</a>
+                <a href="{{ url_for('lessons_report_student', id=student.id) }}" class="ml-2 btn btn-primary">Посещаемость студента</a>
+                <a href="{{ url_for('certificate_of_study', student_id=student.id) }}" class="ml-2 btn btn-info">Справка об обучении</a>
+
+                {% if 'INFOSYS_STUDENT_CARD_LINK' in config and student.student_ext_id %}
+                    <a href="{{ config['INFOSYS_STUDENT_CARD_LINK']|format(student.student_ext_id) }}" class="ml-2 btn btn-warning" target="_blank" data-toggle="tooltip" data-placement="top" title="Авторизуйтесь в infosys.vsu.ru перед открытием ссылки">Карточка студента InfoSys</a>
+                {% endif %}
+
             </div>
         {% endif %}
     </div>
@@ -57,7 +65,7 @@
         $(document).ready(function(){
             var stud_group_map = {
                 {% for sg in stud_groups %}
-                {{ sg.id }}: { "id": {{sg.id}}, "semester": {{ sg.semester }}, "num": {{ sg.num }}, "sub_count": {{ sg.sub_count }} }{% if not loop.last %},{% endif %}
+                {{ sg.id }}: { "id": {{sg.id}}, "semester": {{ sg.semester }}, "num": {{ sg.num }}, "sub_count": {{ sg.sub_count }}, "specialty_id": {{ sg.specialty_id }} }{% if not loop.last %},{% endif %}
                 {% endfor %}
             }
 
@@ -66,7 +74,10 @@
             var input_stud_group_subnum = $('#formStudent input[name=stud_group_subnum]');
             var input_stud_group_parent  = input_stud_group.parent().parent();
             var input_stud_group_subnum_parent = input_stud_group_subnum.parent().parent();
+            var input_semester = $('#formStudent input[name=semester]');
             var input_semester_parent = $('#formStudent input[name=semester]').parent().parent();
+            var input_specialty = $('#formStudent select[name=specialty]');
+            var input_specialty_parent = $('#formStudent select[name=specialty]').parent().parent();
             var input_alumnus_year_parent = $('#formStudent input[name=alumnus_year]').parent().parent();
             var input_expelled_year_parent = $('#formStudent input[name=expelled_year]').parent().parent();
 
@@ -79,7 +90,7 @@
             input_stud_group.change(function(){
                 if (input_stud_group.val() == "__None" || input_status.val() != 'study')
                 {
-                    input_semester_parent.show();
+                    // input_semester_parent.show();
                     input_stud_group_subnum_parent.hide();
                     input_stud_group_subnum.val('');
                     input_stud_group_subnum.removeAttr('min');
@@ -88,7 +99,7 @@
                 }
                 else
                 {
-                    input_semester_parent.hide();
+                    // input_semester_parent.hide();
                     var stud_group = stud_group_map[input_stud_group.val()];
                     input_stud_group_subnum.prop('required', true);
                     if (stud_group.sub_count == 0)
@@ -117,7 +128,7 @@
             input_status.change(function(){
                 input_stud_group_parent.show();
                 input_stud_group_subnum_parent.show();
-                input_semester_parent.show();
+                // input_semester_parent.show();
                 input_alumnus_year_parent.show();
                 input_expelled_year_parent.show();
 
@@ -133,7 +144,7 @@
                 {
                     input_stud_group_parent.hide();
                     input_stud_group_subnum_parent.hide();
-                    input_semester_parent.hide();
+                    // input_semester_parent.hide();
                     input_expelled_year_parent.hide();
                 }
 
@@ -147,6 +158,21 @@
 
             });
             input_status.change();
+            var fn_select_stud_grops_4_specialty = function(){
+                var semester = parseInt(input_semester.val());
+                var specialty_id = parseInt(input_specialty.val());
+                input_stud_group.find('option').each(function(i, e){
+                    var stud_group_id = e.value;
+                    if (stud_group_id == "__None") return;
+                    var stud_group = stud_group_map[stud_group_id];
+                    $(e)[(((stud_group.specialty_id == specialty_id)&&(stud_group.semester == semester)) ? 'show': 'hide')]();
+                });
+            }
+            fn_select_stud_grops_4_specialty();
+            input_semester.change(fn_select_stud_grops_4_specialty);
+            input_specialty.change(fn_select_stud_grops_4_specialty);
+
+
             {% if student.id and favorite_list_teachers|length > 0 %}
                 $('.favorite-teacher-btn-remove').click(function(evt){
                     var teacherId = $(evt.target).data().teacherId;
@@ -166,6 +192,9 @@
                 });
             {% endif %}
         });
+        $(function () {
+            $('[data-toggle="tooltip"]').tooltip()
+        })
     </script>
 </body>
 </html>

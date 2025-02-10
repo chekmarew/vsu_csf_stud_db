@@ -1,0 +1,404 @@
+<html lang="ru">
+<head>
+    {% from "_macros_bootstrap" import bootstrap_form_input, bootstrap_form_button with context %}
+    <meta charset="UTF-8">
+    <title>ВГУ ФКН БРС Журнал справок об обучении</title>
+    {% include '_header.html' %}
+    <style>
+        .fixed {
+            background-color: #f8f9fa;
+            position: sticky;
+        }
+
+        .fixed_top {
+            top: 0;
+            border-bottom: 3px solid #dee2e6 !important;
+        }
+        .certificate_comment {
+            white-space: pre;
+        }
+    </style>
+</head>
+<body>
+    {% include '_menu.html' %}
+    <div class="container-fluid">
+        <h2>Справки об обучении</h2>
+        <ul class="nav nav-tabs" role="tablist">
+            <li class="nav-item"><a class="nav-link active" href="#certificates_new" role="tab" data-toggle="tab">Запросы на выдачу справок</a></li>
+            <li class="nav-item"><a class="nav-link" href="#certificates_with_num" role="tab" data-toggle="tab">Справки с номерами (невыданные)</a></li>
+            <li class="nav-item"><a class="nav-link" href="{{ url_for('certificates_of_study_archive') }}">Журнал выданных справок</a></li>
+        </ul>
+        <div class="tab-content">
+            <div role="tabpanel" class="tab-pane fade active show" id="certificates_new">
+                <table class="table table-bordered">
+                    <thead class="fixed fixed_top">
+                        <tr>
+                            <th>{% if certificates_new|length > 0 %}<input type="checkbox" id="input_certificates_new_all" class="form-control">{% endif %}</th>
+                            <th>Номер запроса</th>
+                            <th>Дата время запроса</th>
+                            <th>Факультет</th>
+                            <th>Фамилия имя отчество</th>
+                            <th>Курс</th>
+                            <th>Примечание</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for cert in certificates_new %}
+                        <tr>
+                            <td><input type="checkbox" class="input_certificates_new form-control" data-cert-id="{{ cert.id }}"></td>
+                            <td>{{ cert.id }}</td>
+                            <td>{{ cert.request_time.strftime('%d.%m.%Y %H:%M') }}</td>
+                            <td>{{ cert.specialty.faculty.name_short }}</td>
+                            <td>
+                                <a href="{{ url_for('student', id=cert.student_id) if current_user.admin_user and current_user.admin_user.active else url_for('att_marks_report_student', id=cert.student_id) }}">{{ cert.surname }} {{ cert.firstname }}{% if cert.middlename %} {{ cert.middlename }}{% endif %}</a>
+                            </td>
+                            <td>
+                                {{ cert.course if cert.course }}{% if cert.specialty.education_level == 'master' %} маг.{% endif %}
+                                {% if cert.student_status == 'academic_leave' %}
+                                <br>
+                                <span class="text-secondary">академ. отпуск</span>
+                                {% endif %}
+                                {% if cert.student_status == 'expelled' %}
+                                <span class="text-secondary">{{ 'отчислена' if cert.student.person.gender == 'W' else 'отчислен' }}</span>
+                                {% endif %}
+                                {% if cert.student_status == 'alumnus' %}
+                                <span class="text-secondary">{{ 'выпускница' if cert.student.person.gender == 'W' else 'выпускник' }}</span>
+                                {% endif %}
+                            </td>
+                            <td class="certificate_comment" data-certificate-id="{{ cert.id }}" data-certificate-student-id="{{ cert.student_id }}" data-certificate-student-name="{{ cert.surname }} {{ cert.firstname }}{% if cert.middlename %} {{ cert.middlename }}{% endif %}" role="button">{{ cert.comment if cert.comment }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                <div>
+                    <button id="btn_issue_number" class="btn btn-primary" disabled>Выдать номер</button>
+                    <div class="btn-group ml-2">
+                        <button id="btn_issue_number_print" class="btn btn-primary" disabled>Выдать номер и напечатать</button>
+                        <button type="button" class="btn btn-primary dropdown-toggle dropdown-toggle-split" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                            <span class="sr-only">Toggle Dropdown</span>
+                        </button>
+                        <div class="dropdown-menu">
+                            <a class="dropdown-item" data-toggle="modal" role="button" data-target="#certificateOfStudyPrintParams">Параметры печати справок</a>
+                        </div>
+                    </div>
+                    <button id="btn_delete" class="btn btn-danger ml-3" disabled>Удалить запрос на получение справки</button>
+                </div>
+            </div>
+            <div role="tabpanel" class="tab-pane fade" id="certificates_with_num">
+                <table class="table table-bordered">
+                    <thead class="fixed fixed_top">
+                        <tr>
+                            <th>{% if certificates_with_num|length > 0 %}<input type="checkbox" id="input_certificates_with_num_all" class="form-control">{% endif %}</th>
+                            <th>Дата время присвоения номера</th>
+							<th>Номер</th>
+                            <th>Факультет</th>
+                            <th>Фамилия имя отчество</th>
+                            <th>Курс</th>
+                            <th>Примечание</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for cert in certificates_with_num %}
+                        <tr>
+                            <td><input type="checkbox" class="input_certificates_with_num form-control" data-cert-id="{{ cert.id }}"></td>
+                            <td>{{ cert.request_time.strftime('%d.%m.%Y %H:%M') }}</td>
+							<td>{{ cert.print_num }}</td>
+                            <td>{{ cert.specialty.faculty.name_short }}</td>
+                            <td>
+                                <a href="{{ url_for('student', id=cert.student_id) if current_user.admin_user and current_user.admin_user.active else url_for('att_marks_report_student', id=cert.student_id) }}">{{ cert.surname }} {{ cert.firstname }}{% if cert.middlename %} {{ cert.middlename }}{% endif %}</a>
+                            </td>
+                            <td>
+                                {{ cert.course if cert.course }}{% if cert.specialty.education_level == 'master' %} маг.{% endif %}
+                                {% if cert.student_status == 'academic_leave' %}
+                                <br>
+                                <span class="text-secondary">академ. отпуск</span>
+                                {% endif %}
+                                {% if cert.student_status == 'expelled' %}
+                                <span class="text-secondary">{{ 'отчислена' if cert.student.person.gender == 'W' else 'отчислен' }}</span>
+                                {% endif %}
+                                {% if cert.student_status == 'alumnus' %}
+                                <span class="text-secondary">{{ 'выпускница' if cert.student.person.gender == 'W' else 'выпускник' }}</span>
+                                {% endif %}
+                            </td>
+                            <td class="certificate_comment" data-certificate-id="{{ cert.id }}" data-certificate-student-id="{{ cert.student_id }}" data-certificate-student-name="{{ cert.surname }} {{ cert.firstname }}{% if cert.middlename %} {{ cert.middlename }}{% endif %}" data-certificate-print-num="{{ cert.print_num }}" role="button">{{ cert.comment if cert.comment }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                <div>
+                    <div class="btn-group">
+                        <button id="btn_print" class="btn btn-primary" disabled>Напечатать</button>
+                        <button type="button" class="btn btn-primary dropdown-toggle dropdown-toggle-split" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                            <span class="sr-only">Toggle Dropdown</span>
+                        </button>
+                        <div class="dropdown-menu">
+                            <a class="dropdown-item" data-toggle="modal" role="button" data-target="#certificateOfStudyPrintParams">Параметры печати справок</a>
+                        </div>
+                    </div>
+					<button id="btn_mark_issued" class="btn btn-primary ml-2" disabled>Отметить справки выданными</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="certificateOfStudyComment" tabindex="-1" role="dialog" aria-labelledby="certificateOfStudyCommentTitle" aria-hidden="true">
+      <div class="modal-dialog" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="certificateOfStudyCommentTitle"></h5>
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+              <span aria-hidden="true">&times;</span>
+            </button>
+          </div>
+          <div class="modal-body">
+		    <div class="row">
+				<div class="col-3">Студент:</div>
+				<div class="col-9 font-weight-bold" id="certificateOfStudyCommentStudentName"></div>
+			</div>
+            <div class="form-group row">
+            <label class="col-12 col-form-label" for="certificateOfStudyCommentValue">Примечание:</label>
+              <div class="col-12">
+                  <textarea class="form-control" rows="6" id="certificateOfStudyCommentValue"></textarea>
+              </div>
+            </div>
+
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-dismiss="modal">Закрыть</button>
+            <button type="button" class="btn btn-primary" id="certificateOfStudyCommentOKButton">Изменить примечание</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+
+    {% include '_modal_submit.html' %}
+    {% include '_modal_certificate_of_study_print_params.html' %}
+
+    <script>
+        $('.input_certificates_new').change(function(evt){
+            var val = evt.target.checked;
+            var val_indeterminate = false;
+            $('.input_certificates_new').each(function(i, elem){
+                if (elem.checked !== val) val_indeterminate = true;
+            });
+            $('#input_certificates_new_all').prop('checked', val || val_indeterminate).prop("indeterminate", val_indeterminate);
+            if (val || val_indeterminate){
+                $('#btn_issue_number,#btn_issue_number_print,#btn_delete').removeAttr('disabled');
+            }
+            else
+            {
+                $('#btn_issue_number,#btn_issue_number_print,#btn_delete').attr('disabled', 'disabled');
+            }
+
+        })
+        $('#input_certificates_new_all').change(function(evt){
+            var val = evt.target.checked;
+            $('.input_certificates_new').prop('checked', val);
+            if (val){
+                $('#btn_issue_number,#btn_issue_number_print,#btn_delete').removeAttr('disabled');
+            }
+            else
+            {
+                $('#btn_issue_number,#btn_issue_number_print,#btn_delete').attr('disabled', 'disabled');
+            }
+        });
+
+        $('.input_certificates_with_num').change(function(evt){
+            var val = evt.target.checked;
+            var val_indeterminate = false;
+            $('.input_certificates_with_num').each(function(i, elem){
+                if (elem.checked !== val) val_indeterminate = true;
+            });
+            $('#input_certificates_with_num_all').prop('checked', val || val_indeterminate).prop("indeterminate", val_indeterminate);
+            if (val || val_indeterminate){
+                $('#btn_print,#btn_mark_issued').removeAttr('disabled');
+            }
+            else
+            {
+                $('#btn_print,#btn_mark_issued').attr('disabled', 'disabled');
+            }
+        });
+
+        $('#input_certificates_with_num_all').change(function(evt){
+            var val = evt.target.checked;
+            $('.input_certificates_with_num').prop('checked', val);
+            if (val){
+                $('#btn_print,#btn_mark_issued').removeAttr('disabled');
+            }
+            else
+            {
+                $('#btn_print,#btn_mark_issued').attr('disabled', 'disabled');
+            }
+        });
+
+        $('#btn_delete').click(function(){
+            var ids = [];
+            $('.input_certificates_new').each(function(i, elem){
+                if (elem.checked){
+                    ids.push(elem.dataset.certId);
+                }
+            });
+            if (ids.length == 0) return;
+            if (!confirm('Вы действительно хотите удалить '+(ids.length == 1 ? 'выбранный запрос': 'выбранные запросы')+' на получение справки ?')) return;
+            $('#modalSubmit').modal('show');
+            $.ajax({
+                "url": "{{ url_for('api_certificate_of_study',ids='') }}"+ids.join(","),
+                "method": "DELETE",
+                success: function (data) {
+                    if (data.ok)
+                    {
+                        document.location.href = "{{ url_for('certificates_of_study') }}";
+                    }
+                    $('#modalSubmit').modal('hide');
+                },
+                error: function(xhr, status, error) {
+                    $('#modalSubmit').modal('hide');
+                    try {
+                        var data = JSON.parse(xhr.responseText);
+                        alert((data && data.error ? data.error : 'Ошибка запроса'))
+                    }
+                    catch(e) {
+                      alert('Ошибка запроса');
+                    }
+                }
+            })
+        });
+
+        $('#btn_issue_number,#btn_issue_number_print').click(function(evt){
+            var has_print_certs = (evt.target.id === "btn_issue_number_print");
+
+            var ids = [];
+            $('.input_certificates_new').each(function(i, elem){
+                if (elem.checked){
+                    ids.push(elem.dataset.certId);
+                }
+            });
+            if (ids.length == 0) return;
+            $('#modalSubmit').modal('show');
+            $.post( "{{ url_for('api_certificate_of_study',ids='') }}"+ids.join(","), {action: "issue_number" })
+            .done(function(data){
+                if(data.ok){
+                    if (has_print_certs) {
+                        var url_print = "{{ url_for('api_certificate_of_study',ids='') }}" + ids.join(",");
+                        var secretary_name=$('#certificateOfStudyPrintParamsSecretaryName').val();
+                        if (secretary_name){
+                            url_print+='?secretary_name='+encodeURI(secretary_name);
+                        }
+                        if ($('#certificateOfStudyPrintParamsOneFile').prop('checked'))
+                        {
+                            url_print+=(secretary_name ? '&' : '?')+'one_file=1';
+                        }
+
+                        window.open(url_print, '_blank');
+                    }
+                    document.location.href = "{{ url_for('certificates_of_study', _anchor='certificates_with_num') }}";
+                    document.location.reload(true);
+                }
+                $('#modalSubmit').modal('hide');
+            })
+            .fail(function(xhr, status, error) {
+                $('#modalSubmit').modal('hide');
+                try {
+                        var data = JSON.parse(xhr.responseText);
+                        alert((data && data.error ? data.error : 'Ошибка запроса'))
+                }
+                catch(e) {
+                    alert('Ошибка запроса');
+                }
+            });
+        });
+
+        $('#btn_print').click(function(evt){
+            var ids = [];
+            $('.input_certificates_with_num').each(function(i, elem){
+                if (elem.checked){
+                    ids.push(elem.dataset.certId);
+                }
+            });
+            if (ids.length == 0) return;
+            var url_print = "{{ url_for('api_certificate_of_study',ids='') }}" + ids.join(",");
+            var secretary_name=$('#certificateOfStudyPrintParamsSecretaryName').val();
+            if (secretary_name){
+                url_print+='?secretary_name='+encodeURI(secretary_name);
+            }
+            if ($('#certificateOfStudyPrintParamsOneFile').prop('checked'))
+            {
+                url_print+=(secretary_name ? '&' : '?')+'one_file=1';
+            }
+            window.open(url_print, '_blank');
+        });
+
+        $('#btn_mark_issued').click(function(evt){
+            var ids = [];
+            $('.input_certificates_with_num').each(function(i, elem){
+                if (elem.checked){
+                    ids.push(elem.dataset.certId);
+                }
+            });
+            if (ids.length == 0) return;
+            $('#modalSubmit').modal('show');
+            $.post( "{{ url_for('api_certificate_of_study',ids='') }}"+ids.join(","), {action: "mark_issued" })
+            .done(function(data){
+                if(data.ok){
+                    document.location.href = "{{ url_for('certificates_of_study_archive') }}";
+                }
+                $('#modalSubmit').modal('hide');
+            })
+            .fail(function(xhr, status, error) {
+                $('#modalSubmit').modal('hide');
+                try {
+                     var data = JSON.parse(xhr.responseText);
+                     alert((data && data.error ? data.error : 'Ошибка запроса'))
+                }
+                catch(e) {
+                    alert('Ошибка запроса');
+                }
+            });
+        });
+        $('.certificate_comment').click(function(evt){
+            var elem_comment = evt.target;
+            $('#certificateOfStudyCommentTitle').text(elem_comment.dataset.certificatePrintNum !== undefined ? 'Справка № '+elem_comment.dataset.certificatePrintNum : "Запрос на справку № "+elem_comment.dataset.certificateId)
+            $('#certificateOfStudyCommentStudentName').text(elem_comment.dataset.certificateStudentName);
+            $('#certificateOfStudyCommentValue').val(elem_comment.textContent);
+            $('#certificateOfStudyComment').data('certificateId', elem_comment.dataset.certificateId).modal('show');
+        });
+
+        $('#certificateOfStudyComment').on('shown.bs.modal',function(){
+          $('#certificateOfStudyCommentValue').focus();
+        });
+
+        $('#certificateOfStudyCommentOKButton').click(function(){
+            var id = $('#certificateOfStudyComment').data().certificateId;
+            if (!id){
+                $('#certificateOfStudyComment').modal('hide');
+                return;
+            }
+            var comment = $('#certificateOfStudyCommentValue').val().trim();
+            $('#modalSubmit').modal('show');
+
+            $.post( "{{ url_for('api_certificate_of_study',ids='') }}"+id, {action: "change_comment", comment: comment})
+            .done(function(data){
+                if(data.ok){
+                    $('.certificate_comment[data-certificate-id="'+id+'"]').text(comment);
+                }
+                $('#modalSubmit').modal('hide');
+                $('#certificateOfStudyComment').modal('hide');
+            })
+            .fail(function(xhr, status, error) {
+                $('#modalSubmit').modal('hide');
+                try {
+                        var data = JSON.parse(xhr.responseText);
+                        alert((data && data.error ? data.error : 'Ошибка запроса'))
+                }
+                catch(e) {
+                    alert('Ошибка запроса');
+                }
+            });
+        })
+
+
+
+    </script>
+</body>
+</html>

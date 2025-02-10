@@ -16,6 +16,7 @@
     	    {% autoescape false %}
             {{ bootstrap_form_input(form.name) }}
             {{ bootstrap_form_input(form.short_name) }}
+            {{ bootstrap_form_input(form.without_specifying_schedule) }}
             {% if subject.id %}
                {{ bootstrap_form_button(form.button_delete, class_="btn btn-danger") }}
            {% endif %}

@@ -1,0 +1,188 @@
+<html lang="ru">
+<head>
+    {% from "_macros_bootstrap" import bootstrap_form_input, bootstrap_form_button with context %}
+    <meta charset="UTF-8">
+    <title>ВГУ ФКН БРС Журнал справок об обучении</title>
+    {% include '_header.html' %}
+    <style>
+        .fixed {
+            background-color: #f8f9fa;
+            position: sticky;
+        }
+        .fixed_top {
+            top: 0;
+            border-bottom: 3px solid #dee2e6 !important;
+        }
+        .certificate_comment {
+            white-space: pre;
+        }
+    </style>
+</head>
+<body>
+    {% include '_menu.html' %}
+    <div class="container-fluid">
+        <h2>Справки об обучении</h2>
+        <ul class="nav nav-tabs" role="tablist">
+            <li class="nav-item"><a class="nav-link" href="{{ url_for('certificates_of_study', _anchor='certificates_new') }}">Запросы на выдачу справок</a></li>
+            <li class="nav-item"><a class="nav-link" href="{{ url_for('certificates_of_study', _anchor='certificates_with_num') }}">Справки с номерами (невыданные)</a></li>
+            <li class="nav-item"><span class="nav-link active">Журнал выданных справок</span></li>
+        </ul>
+        <div class="tab-content">
+            <div role="tabpanel" class="tab-pane fade active show">
+                <div class="form-inline align-items-left my-1">
+                    <label class="col-auto" for="year">Год:</label>
+                    <div class="col-auto ml-2">
+                        <select id="year" class="form-control">
+                            {% for _y in years %}
+                            <option value="{{ _y }}"{% if _y == year %} selected{% endif %}>{{ _y }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    {% if page == 0 or certificates.pages > 1 %}
+                    <div class="col-auto">
+                        Страницы:
+                    </div>
+                    <div class="col-auto">
+                        <ul class="pagination mt-3">
+                            {% if page == 0 %}
+                                <li class="page-item active"><span class="page-link">Все</span></li>
+                            {% else %}
+                                <li class="page-item"><a href="{{ url_for('certificates_of_study_archive', year=year, page=0) }}" class="page-link">Все</a></li>
+                                {% for p in certificates.iter_pages() %}
+                                    {% if p == None %}
+                                        <li class="page-item"><span class="page-link">...</span></li>
+                                    {% elif p == page %}
+                                        <li class="page-item active"><span class="page-link"> {{ p }}</span></li>
+                                    {% else %}
+                                        <li class="page-item"><a href="{{ url_for('certificates_of_study_archive', year=year, page=p) }}" class="page-link"> {{ p }}</a></li>
+                                    {% endif %}
+                                {% endfor %}
+                            {% endif %}
+
+                        </ul>
+                    </div>
+                    {% endif %}
+                    {% if year %}
+                        <div class="col-auto">
+                            Выдано за <b>{{ year }}</b> год справок: <b>{{ certificates|length if page == 0 else certificates.total }}</b>
+                        </div>
+                    {% endif %}
+                </div>
+
+                {% if page > 0 %}
+                    {% set certificates = certificates.items %}
+                {% endif %}
+
+                <table class="table table-bordered">
+                    <thead class="fixed fixed_top">
+                        <tr>
+                            <th>{% if certificates|length > 0 %}<input type="checkbox" id="input_certificates_all" class="form-control">{% endif %}</th>
+                            <th>Дата время присвоения номера</th>
+							<th>Номер</th>
+                            <th>Факультет</th>
+                            <th>Фамилия имя отчество</th>
+                            <th>Курс</th>
+                            <th>Примечание</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for cert in certificates %}
+                        <tr>
+                            <td><input type="checkbox" class="input_certificates form-control" data-cert-id="{{ cert.id }}"></td>
+                            <td>{{ cert.request_time.strftime('%d.%m.%Y %H:%M') }}</td>
+							<td>{{ cert.print_num }}</td>
+                            <td>{{ cert.specialty.faculty.name_short }}</td>
+                            <td>
+                                <a href="{{ url_for('student', id=cert.student_id) if current_user.admin_user and current_user.admin_user.active else url_for('att_marks_report_student', id=cert.student_id) }}">{{ cert.surname }} {{ cert.firstname }}{% if cert.middlename %} {{ cert.middlename }}{% endif %}</a>
+                            </td>
+                            <td>
+                                {{ cert.course if cert.course }}{% if cert.specialty.education_level == 'master' %} маг.{% endif %}
+                                {% if cert.student_status == 'academic_leave' %}
+                                <br>
+                                <span class="text-secondary">академ. отпуск</span>
+                                {% endif %}
+                                {% if cert.student_status == 'expelled' %}
+                                <span class="text-secondary">{{ 'отчислена' if cert.student.person.gender == 'W' else 'отчислен' }}</span>
+                                {% endif %}
+                                {% if cert.student_status == 'alumnus' %}
+                                <span class="text-secondary">{{ 'выпускница' if cert.student.person.gender == 'W' else 'выпускник' }}</span>
+                                {% endif %}
+                            </td>
+                            <td class="certificate_comment">{{ cert.comment if cert.comment }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                <div>
+                    <div class="btn-group">
+                        <button id="btn_print" class="btn btn-primary" disabled>Напечатать</button>
+                        <button type="button" class="btn btn-primary dropdown-toggle dropdown-toggle-split" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                            <span class="sr-only">Toggle Dropdown</span>
+                        </button>
+                        <div class="dropdown-menu">
+                            <a class="dropdown-item" data-toggle="modal" role="button" data-target="#certificateOfStudyPrintParams">Параметры печати справок</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% include '_modal_certificate_of_study_print_params.html' %}
+    <script>
+        $('.input_certificates').change(function(evt){
+            var val = evt.target.checked;
+            var val_indeterminate = false;
+            $('.input_certificates').each(function(i, elem){
+                if (elem.checked !== val) val_indeterminate = true;
+            });
+            $('#input_certificates_all').prop('checked', val || val_indeterminate).prop("indeterminate", val_indeterminate);
+            if (val || val_indeterminate){
+                $('#btn_print').removeAttr('disabled');
+            }
+            else
+            {
+                $('#btn_print').attr('disabled', 'disabled');
+            }
+
+        })
+        $('#input_certificates_all').change(function(evt){
+            var val = evt.target.checked;
+            $('.input_certificates').prop('checked', val);
+            if (val){
+                $('#btn_print').removeAttr('disabled');
+            }
+            else
+            {
+                $('#btn_print').attr('disabled', 'disabled');
+            }
+        });
+
+        $('#btn_print').click(function(evt){
+            var ids = [];
+            $('.input_certificates').each(function(i, elem){
+                if (elem.checked){
+                    ids.push(elem.dataset.certId);
+                }
+            });
+            if (ids.length == 0) return;
+            var url_print = "{{ url_for('api_certificate_of_study',ids='') }}" + ids.join(",");
+            var secretary_name=$('#certificateOfStudyPrintParamsSecretaryName').val();
+            if (secretary_name){
+                url_print+='?secretary_name='+encodeURI(secretary_name);
+            }
+            if ($('#certificateOfStudyPrintParamsOneFile').prop('checked'))
+            {
+                url_print+=(secretary_name ? '&' : '?')+'one_file=1';
+            }
+
+            window.open(url_print, '_blank');
+        });
+        $("#year").change(function(evt){
+            var y = evt.target.value;
+            var url = "{{ url_for('certificates_of_study_archive') }}"+"/"+y;
+            document.location.href = url;
+        });
+
+    </script>
+</body>
+</html>

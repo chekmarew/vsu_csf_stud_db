@@ -1,0 +1,136 @@
+<html lang="ru">
+<head>
+    {% from "_macros_bootstrap" import bootstrap_form_input, bootstrap_form_button with context %}
+    <meta charset="UTF-8">
+    <title>ВГУ ФКН Балльно-рейтинговая система</title>
+    {% include '_header.html' %}
+    <style>
+        .certificate_comment {
+            white-space: pre;
+        }
+    </style>
+</head>
+<body>
+    {% include '_menu.html' %}
+    <div class="container">
+        <h2>Справка об обучении</h2>
+        {% include '_student_report_header.html' %}
+        <div class="my-1 ml-2">
+            <a href="{{ url_for('att_marks_report_student', id=student.id) }}" class="btn btn-primary">Свод оценок рубежных аттестаций</a>
+            <a href="{{ url_for('lessons_report_student', id=student.id) }}" class="ml-2 btn btn-primary">Посещаемость</a>
+        </div>
+
+        {% with errors = get_flashed_messages(category_filter=["error"]) %}
+        {% if errors %}
+        <div class="alert alert-danger" role="alert">
+            <ul>
+            {%- for msg in errors %}
+                <li>{{ msg }}</li>
+            {% endfor -%}
+            </ul>
+        </div>
+        {% endif %}
+        {% endwith %}
+        {% with messages = get_flashed_messages(category_filter=["success"]) %}
+        {% if messages %}
+        <div class="alert alert-success" role="alert">
+            <ul>
+            {%- for msg in messages %}
+                <li>{{ msg }}</li>
+            {% endfor -%}
+            </ul>
+        </div>
+        {% endif %}
+        {% endwith %}
+
+        <ul class="nav nav-tabs" role="tablist">
+            {% if form %}
+            <li class="nav-item"><a class="nav-link{% if errors %} active{% endif %}" href="#request" role="tab" data-toggle="tab">Заказ справки</a></li>
+            {% endif %}
+            <li class="nav-item"><a class="nav-link{% if not errors %} active{% endif %}" href="#certificates_in_progress" role="tab" data-toggle="tab">Запросы в работе</a></li>
+            {% if certificates_ready | length > 0 %}
+            <li class="nav-item"><a class="nav-link" href="#certificates_ready" role="tab" data-toggle="tab">Готовые справки</a></li>
+            {% endif %}
+        </ul>
+        <div class="tab-content mt-1 mb-3 border-bottom bg-light">
+            {% if form %}
+                <div role="tabpanel" class="px-2 tab-pane fade{% if errors %} active show{% endif %}" id="request">
+                    <h4>Заказ справки</h4>
+                    {% if current_user.id == student.person_id and student.person.email == None %}
+                    <div class="alert alert-info" role="alert">
+                        Укажите в <a href="{{ url_for('profile', id=student.person_id) }}">профиле пользователя E-mail</a> для получения уведомления о готовности справки
+                    </div>
+                    {% endif %}
+                    <form method="post">
+                        {% autoescape false %}
+                        {{ bootstrap_form_input(form.count) }}
+                        {{ bootstrap_form_input(form.comment) }}
+                        {{ bootstrap_form_button(form.button_submit, class_="btn btn-info") }}
+                        {% endautoescape %}
+                    </form>
+                </div>
+            {% endif %}
+            <div role="tabpanel" class="px-2 tab-pane fade{% if not errors %} active show{% endif %}" id="certificates_in_progress">
+                <h4>Запросы в работе</h4>
+                {% if certificates_in_progress | length > 0 %}
+                    {% if current_user.id == student.person_id and student.person.email == None %}
+                    <div class="alert alert-info" role="alert">
+                        Укажите в <a href="{{ url_for('profile', id=student.person_id) }}">профиле пользователя E-mail</a> для получения уведомления о готовности справки
+                    </div>
+                    {% endif %}
+                <table class="table table-bordered">
+                    <thead>
+                        <tr>
+                            <th>Номер запроса</th>
+                            <th>Дата время запроса</th>
+                            <th>Примечание</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for cert in certificates_in_progress %}
+                        <tr>
+                            <td>{{ cert.id }}</td>
+                            <td>{{ cert.request_time.strftime('%d.%m.%Y %H:%M') }}</td>
+                            <td class="certificate_comment">{{ cert.comment if cert.comment }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <p>Справки об обучении пока не запрашивались</p>
+                {% endif %}
+            </div>
+            {% if certificates_ready | length > 0 %}
+            <div role="tabpanel" class="px-2 tab-pane fade" id="certificates_ready">
+                <h4>Готовые справки</h4>
+                <table class="table table-bordered">
+                    <thead>
+                        <tr>
+                            <th>Номер запроса</th>
+                            <th>Дата время запроса</th>
+                            <th>Номер справки</th>
+                            <th>Дата время выдачи справки</th>
+                            <th>Примечание</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for cert in certificates_ready %}
+                        <tr>
+                            <td>{{ cert.id }}</td>
+                            <td>{{ cert.request_time.strftime('%d.%m.%Y %H:%M') }}</td>
+                            <td>{{ cert.print_num if cert.print_num }}</td>
+                            <td>{{ cert.ready_time.strftime('%d.%m.%Y %H:%M') }}</td>
+                            <td class="certificate_comment">{{ cert.comment if cert.comment }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+
+
+</body>
+</html>

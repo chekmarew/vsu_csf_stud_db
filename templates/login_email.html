@@ -50,10 +50,10 @@
         </p>
         {% endif %}
         {% if wait_sec == None %}
-        <h6>
-            <span class="bg-warning">Вход по e-mail доступен только для преподавателей.</span>
-        </h6>
-        <h6>Не удалось войти? Пишите на <a href="mailto:{{ config.MAIL_SUPPORT }}">{{ config.MAIL_SUPPORT }}</a></h6>
+        <p class="font-weight-bold"><span class="bg-warning p-1">Вход по e-mail доступен только для преподавателей и студентов, указавших в профиле e-mail.</span></p>
+        <p class="font-weight-bold">Не удалось войти? Пишите:</p>
+        <p>Для студентов: <a href="mailto:csadmins@sc.vsu.ru">csadmins@sc.vsu.ru</a></p>
+        <p>Для преподавателей: <a href="mailto:{{ config.MAIL_SUPPORT }}">{{ config.MAIL_SUPPORT }}</a></p>
         {% endif %}
     </div>
     <script>

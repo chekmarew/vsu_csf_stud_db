@@ -55,8 +55,9 @@ EducationLevelDict = {
     'master': 'Магистр'
 }
 
-EducationStandarts = ('fgos3+', 'fgos3++')
+EducationStandarts = ('', 'fgos3+', 'fgos3++')
 EducationStandartDict = {
+    '': '',
     'fgos3+': 'ФГОС3+',
     'fgos3++': 'ФГОС3++'
 }
@@ -296,7 +297,7 @@ class Person(db.Model):
             _roles.append(self.teacher)
 
         for s in self.students:
-            if s.status == "study":
+            if s.status in ("study", "academic_leave"):
                 _roles.append(s)
 
         return _roles
@@ -328,7 +329,7 @@ class Person(db.Model):
     @property
     def student(self):
         for s in self.students:
-            if s.status == "study":
+            if s.status in ("study", "academic_leave"):
                 return s
 
         return None
@@ -337,7 +338,7 @@ class Person(db.Model):
     @property
     def is_active(self):
         """True, as all users are active."""
-        return len(self.roles_active) > 0
+        return len(self.roles) > 0
 
     def get_id(self):
         """Return the email address to satisfy Flask-Login's requirements."""
@@ -387,7 +388,10 @@ class Student(db.Model, _Person, _ObjectWithSemester):
 
     id = db.Column('student_id', db.BIGINT, primary_key=True)
     person_id = db.Column(db.ForeignKey('person.person_id'))
-    student_ext_id = db.Column('student_ext_id', db.BIGINT, unique=True)
+    student_ext_id = db.Column('student_ext_id', db.BIGINT, unique=True, nullable=False)
+
+    specialty_id = db.Column(db.ForeignKey('specialty.specialty_id'), index=True, nullable=False)
+    specialty = db.relationship('Specialty', foreign_keys=[specialty_id])
 
     stud_group_id = db.Column(db.ForeignKey('stud_group.stud_group_id', ondelete='SET NULL'), index=True)
     stud_group_subnum = db.Column('student_stud_group_subnum', db.SMALLINT)
@@ -403,6 +407,9 @@ class Student(db.Model, _Person, _ObjectWithSemester):
             db.Column('subject_particular_id', db.ForeignKey('subject_particular.subject_particular_id'))
         ))
 
+    certificates_of_study = db.relationship('CertificateOfStudy', lazy='dynamic',
+                               backref='student')
+
     # foreigner = db.Column('student_foreigner', db.BOOLEAN, nullable=False, default=False)
     @property
     def foreigner(self):
@@ -410,7 +417,6 @@ class Student(db.Model, _Person, _ObjectWithSemester):
             if sp.id in SubjectParticular.IDS_FOREIGN_LANGUAGE:
                 return True
         return False
-
 
     @property
     def status_name(self):
@@ -465,9 +471,15 @@ class Department(db.Model):
 
     id = db.Column('department_id', db.INTEGER, primary_key=True)
     name = db.Column('department_name', db.String(128), nullable=False, unique=True)
-    name_short = db.Column('department_name_short', db.String(16), unique=True)
+    name_short = db.Column('department_name_short', db.String(32), unique=True)
     parent_department_id = db.Column(db.ForeignKey('department.department_id'), index=True)
     parent_department = db.relationship('Department', remote_side=[id])
+
+    chief_id = db.Column(db.ForeignKey('person.person_id'), index=True)
+    chief = db.relationship('Person', foreign_keys=[chief_id])
+    chief_title = db.Column('chief_title', db.String(128))
+
+
 
     @property
     def full_name(self):
@@ -481,7 +493,7 @@ class Department(db.Model):
 class Specialty(db.Model):
     __tablename__ = 'specialty'
     __table_args__ = (
-        db.UniqueConstraint('specialty_code', 'specialty_name', 'specialization', 'education_level',
+        db.UniqueConstraint('specialty_code', 'specialty_name', 'specialization', 'module_name', 'education_level',
                             'education_standart'),
     )
 
@@ -489,6 +501,7 @@ class Specialty(db.Model):
     code = db.Column('specialty_code', db.String(16), nullable=False)
     name = db.Column('specialty_name', db.String(256), nullable=False)
     specialization = db.Column('specialization', db.String(256), nullable=False, default='')
+    module_name = db.Column('module_name', db.String(256), nullable=False, default='')
     education_level_order = db.Column('education_level_order', db.SMALLINT, nullable=False, default=1)
     education_level = db.Column('education_level', db.Enum(*EducationLevels), nullable=False, default='bachelor')
     education_standart = db.Column('education_standart', db.Enum(*EducationStandarts), nullable=False,
@@ -499,7 +512,13 @@ class Specialty(db.Model):
     active = db.Column('specialty_active', db.BOOLEAN, nullable=False, default=True)
 
     department_id = db.Column(db.ForeignKey('department.department_id'), index=True, nullable=False, default=Department.ID_DEFAULT)
-    department = db.relationship('Department')
+    department = db.relationship('Department', foreign_keys=[department_id])
+
+    parent_specialty_id = db.Column(db.ForeignKey('specialty.specialty_id'), index=True)
+    parent_specialty = db.relationship('Specialty', remote_side=[id])
+
+    faculty_id = db.Column(db.ForeignKey('department.department_id'), index=True, nullable=False, default=Department.ID_DEFAULT)
+    faculty = db.relationship('Department', foreign_keys=[faculty_id])
 
     @property
     def education_level_name(self):
@@ -508,7 +527,7 @@ class Specialty(db.Model):
 
     @property
     def education_standart_name(self):
-        if self.education_standart:
+        if self.education_standart is not None:
             return EducationStandartDict[self.education_standart]
 
     @property
@@ -518,13 +537,22 @@ class Specialty(db.Model):
 
     @property
     def full_name(self):
-        if self.code and self.name and self.education_level and self.education_standart:
+        if self.code and self.name and self.education_level and self.education_standart is not None:
             if self.specialization:
-                return "%s %s(%s) %s(%s)" % (self.code,
-                                             self.name,
-                                             self.specialization,
-                                             self.education_level_name,
-                                             self.education_standart_name)
+                if self.module_name:
+                    return "%s %s(%s, модуль: %s) %s(%s)" % (self.code,
+                                                 self.name,
+                                                 self.specialization,
+                                                 self.module_name,
+                                                 self.education_level_name,
+                                                 self.education_standart_name)
+                else:
+
+                    return "%s %s(%s) %s(%s)" % (self.code,
+                                                 self.name,
+                                                 self.specialization,
+                                                 self.education_level_name,
+                                                 self.education_standart_name)
             else:
                 return "%s %s %s(%s)" % (self.code,
                                          self.name,
@@ -649,6 +677,7 @@ class Subject(db.Model):
     id = db.Column('subject_id', db.INTEGER, primary_key=True, autoincrement=True)
     name = db.Column('subject_name', db.String(256), nullable=False, unique=True)
     short_name = db.Column('subject_short_name', db.String(48), unique=True)
+    without_specifying_schedule = db.Column('subject_without_specifying_schedule', db.BOOLEAN, nullable=False, default=False)
 
 
 class SubjectParticular(db.Model):
@@ -660,6 +689,8 @@ class SubjectParticular(db.Model):
 
     id = db.Column('subject_particular_id', db.INTEGER, primary_key=True, autoincrement=True)
     name = db.Column('subject_particular_name', db.String(256), nullable=False, unique=True)
+    short_name = db.Column('subject_particular_short_name', db.String(48), nullable=False, unique=True)
+
     replaced_subject_id = db.Column(db.ForeignKey('subject.subject_id'))
     replaced_subject = db.relationship('Subject', foreign_keys=[replaced_subject_id])
 
@@ -685,6 +716,7 @@ class Teacher(db.Model, _Person):
     )
 
     dean_staff = db.Column('teacher_dean_staff', db.BOOLEAN, nullable=False, default=False)
+    notify_results_fail = db.Column('teacher_notify_results_fail', db.BOOLEAN, nullable=False, default=False)
     department_leader = db.Column('teacher_department_leader', db.BOOLEAN, nullable=False, default=False)
     department_secretary = db.Column('teacher_department_secretary', db.BOOLEAN, nullable=False, default=False)
     right_read_all = db.Column('teacher_right_read_all', db.BOOLEAN, nullable=False, default=False)
@@ -998,7 +1030,9 @@ class CurriculumUnit(db.Model):
                     if _m is None or _m.ball_value is None:
                         return None
                     if _m.ball_value in (False, 0, 2):
-                        k += 1
+                        fail = True
+                if fail:
+                    k += 1
         if s == 0:
             return None
         return round((k * 100) / s, 2)
@@ -1128,6 +1162,12 @@ class CurriculumUnitStatusHist(db.Model):
     )
 
     doc = deferred(db.Column('curriculum_unit_doc', db.LargeBinary))
+
+    doc_test_simple = deferred(db.Column('curriculum_unit_doc_test_simple', db.LargeBinary))
+    doc_exam = deferred(db.Column('curriculum_unit_doc_exam', db.LargeBinary))
+    doc_test_diff = deferred(db.Column('curriculum_unit_doc_test_diff', db.LargeBinary))
+    doc_course_work = deferred(db.Column('curriculum_unit_doc_course_work', db.LargeBinary))
+    doc_course_project = deferred(db.Column('curriculum_unit_doc_course_project', db.LargeBinary))
 
 
 CurriculumUnit.journalize_class = CurriculumUnitStatusHist
@@ -1810,6 +1850,66 @@ class AuthCode(db.Model):
     auth_time = db.Column('code_auth_time', db.DateTime)
 
     auth_err_count = db.Column('auth_err_count', db.SMALLINT, default=0)
+
+
+class AuthCode4ChangeEmail(db.Model):
+    __tablename__ = 'auth_code_4_change_email'
+    id = db.Column('auth_code_4_change_email_id', db.BIGINT, primary_key=True, autoincrement=True)
+    person_id = db.Column(db.ForeignKey('person.person_id', ondelete='CASCADE', onupdate='CASCADE'), nullable=False)
+    email_old = db.Column('email_old', db.String(45))
+    email = db.Column('email', db.String(45), nullable=False)
+    code_old = db.Column('code_old', db.INTEGER)
+    code = db.Column('code', db.INTEGER, nullable=False)
+    send_time = db.Column('code_send_time', db.DateTime, nullable=False)
+    accept_time = db.Column('code_accept_time', db.DateTime)
+    auth_err_count = db.Column('auth_err_count', db.SMALLINT, default=0)
+    person = db.relationship('Person')
+
+
+class AuthCode4ChangePhone(db.Model):
+    __tablename__ = 'auth_code_4_change_phone'
+    id = db.Column('auth_code_4_change_phone_id', db.BIGINT, primary_key=True, autoincrement=True)
+    person_id = db.Column(db.ForeignKey('person.person_id', ondelete='CASCADE', onupdate='CASCADE'), nullable=False)
+    phone_old = db.Column('phone_old', db.BIGINT)
+    phone = db.Column('phone', db.BIGINT, nullable=False)
+    code_old = db.Column('code_old', db.INTEGER)
+    code = db.Column('code', db.INTEGER, nullable=False)
+    send_time = db.Column('code_send_time', db.DateTime, nullable=False)
+    accept_time = db.Column('code_accept_time', db.DateTime)
+    auth_err_count = db.Column('auth_err_count', db.SMALLINT, default=0)
+    person = db.relationship('Person')
+
+
+class CertificateOfStudy(db.Model):
+    __tablename__ = 'certificate_of_study'
+    __table_args__ = (
+        db.UniqueConstraint('certificate_of_study_year', 'certificate_of_study_num'),
+    )
+
+    MAX_PER_ORDER = 5
+
+    id = db.Column('certificate_of_study_id', db.BIGINT, primary_key=True, autoincrement=True)
+    student_id = db.Column(db.ForeignKey('student.student_id', ondelete='CASCADE', onupdate='CASCADE'), nullable=False, index=True)
+    specialty_id = db.Column(db.ForeignKey('specialty.specialty_id'), index=True, nullable=False)
+    specialty = db.relationship('Specialty', foreign_keys=[specialty_id])
+    surname = db.Column('certificate_of_study_surname', db.String(45), nullable=False)
+    firstname = db.Column('certificate_of_study_firstname', db.String(45), nullable=False)
+    middlename = db.Column('certificate_of_study_middlename', db.String(45))
+    course = db.Column('certificate_of_study_course', db.SMALLINT)
+    student_status = db.Column('certificate_of_study_student_status', db.Enum(*StudentStateDict.keys()), nullable=False)
+
+    request_time = db.Column('certificate_of_study_request_time', db.DateTime, nullable=False)
+    print_time = db.Column('certificate_of_study_print_time', db.DateTime)
+    ready_time = db.Column('certificate_of_study_ready_time', db.DateTime)
+    year = db.Column('certificate_of_study_year', db.SMALLINT)
+    num = db.Column('certificate_of_study_num', db.INTEGER)
+
+    comment = db.Column('certificate_of_study_comment', db.String(4000))
+
+    @property
+    def print_num(self):
+        if self.num is not None:
+            return "%d-%d" % (Department.ID_DEFAULT, self.num)
 
 
 class Holiday(db.Model):

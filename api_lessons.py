@@ -329,7 +329,7 @@ def api_lessons_new(teacher_id=None):
                 students_id_exclude = tuple((m.student_id for m in cu.att_marks if m.exclude))
                 for s in cu.stud_group.students:
                     s: Student = s
-                    if cu.subject_id in ((sp.replaced_subject_id for sp in s.particular_subjects)):
+                    if cu.subject_id in ((sp.replaced_subject_id for sp in s.particular_subjects if sp.replaced_subject_id is not None)):
                         continue
                     if s.id in students_id_exclude:
                         continue
@@ -907,7 +907,7 @@ def _api_lessons_curriculum_units(current_user, rj):
                 if group_subnums is not None and s.stud_group_subnum is not None and not group_subnums[s.stud_group_subnum]:
                     continue
 
-                if cu.subject_id in ((sp.replaced_subject_id for sp in s.particular_subjects)):
+                if cu.subject_id in ((sp.replaced_subject_id for sp in s.particular_subjects if sp.replaced_subject_id is not None)):
                     continue
                 if s.id not in students_ids:
                     students_ids.append(s.id)

@@ -41,6 +41,7 @@
 
             {% if teacher.active and teacher.department != None and (teacher.department.id == teacher.department.ID_DEFAULT or teacher.department.parent_department_id == teacher.department.ID_DEFAULT) %}
             {{ bootstrap_form_input(form.dean_staff) }}
+            {{ bootstrap_form_input(form.notify_results_fail) }}
             {{ bootstrap_form_input(form.department_leader) }}
             {{ bootstrap_form_input(form.department_secretary) }}
             {{ bootstrap_form_input(form.right_read_all) }}
@@ -94,6 +95,13 @@
                 $('.btn-department-part-job-time-add').hide();
                 $('.btn-department-part-job-time-remove').hide();
             });
+            {% if teacher.active and teacher.department != None and (teacher.department.id == teacher.department.ID_DEFAULT or teacher.department.parent_department_id == teacher.department.ID_DEFAULT) %}
+                if (!$('#dean_staff').prop('checked')) $('#notify_results_fail').parent().parent().hide();
+                $('#dean_staff').change(function(evt){
+                    var v = evt.target.checked;
+                    $('#notify_results_fail').parent().parent()[(v ? 'show': 'hide')]();
+                })
+            {% endif %}
         });
     </script>
     {% endif %}

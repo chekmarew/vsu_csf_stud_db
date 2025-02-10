@@ -3,12 +3,12 @@
     <meta charset="UTF-8">
     <title>Профиль пользователя</title>
     {% include '_header.html' %}
+    <script src="{{ url_for('static', filename='jquery.maskedinput/jquery.maskedinput.js') }}"></script>
 </head>
 <body>
     {% include '_menu.html' %}
     <div class="container-fluid">
         <h2>ВГУ ФКН БРС Профиль</h2>
-
         <h3>
             {% if current_user.admin_user != None and current_user.admin_user.active %}
                 <a href="{{ url_for('person', id=person.id) }}">{{ person.full_name }}</a></h3>
@@ -19,6 +19,21 @@
                 <small class="ml-3"><a href="{{ url_for('index', show_all_roles=True) }}">Все учётные записи &#8594;</a></small>
             {% endif %}
         </h3>
+        {% if person.id == current_user.id %}
+        <hr/>
+        <h4>Ваши контактые данные:</h4>
+        <div class="row m-2">
+            <div class="col-4 col-lg-2 font-weight-bold text-right">E-mail:</div>
+            <div class="col-8 col-lg-3">
+                {{ current_user.email if current_user.email }} <a href="javascript:void(null)" data-toggle="modal" data-target="#modalChangeEmail">{{ 'Изменить' if current_user.email else 'Указать' }}</a>
+            </div>
+            <div class="col-4 col-lg-2 font-weight-bold text-right">Телефон:</div>
+            <div class="col-8 col-lg-3">
+                {{ current_user.phone_format if current_user.phone }} <a href="javascript:void(null)" data-toggle="modal" data-target="#modalChangePhone">{{ 'Изменить' if current_user.phone else 'Указать' }}</a>
+            </div>
+        </div>
+        {% endif %}
+
         {% if form_allow_jwt_auth %}
         <hr>
         <h4>Согласие на поручение оператором (ФГБОУ ВО «Воронежский государственный университет» - далее «Университет») другому лицу (ООО «Цифровые Технологии») обработки персональных данных</h4>
@@ -104,12 +119,405 @@
         </div>
         {% endif %}
     </div>
+
+    {% if person.id == current_user.id %}
+    <div class="modal fade" id="modalChangeEmail" tabindex="-1" role="dialog" aria-labelledby="modalChangeEmailTitle" aria-hidden="true" data-keyboard="false">
+        <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalChangeEmailTitle">Изменение E-mail</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <form id="formChangeEmail">
+                        <div class="row">
+                            <div class="col-6 col-lg-2 font-weight-bold">Текущий<br>E-mail</div>
+                            <div class="col-6 col-lg-4 font-weight-bold">{{ current_user.email if current_user.email else '[не указан]' }}</div>
+                            {% if current_user.email %}
+                            <div class="col-6 col-lg-3 auth-code-email-elem font-weight-bold" style="display: none;">Введите код, отправленный на<br>старый e-mail</div>
+                            <div class="col-6 col-lg-3 auth-code-email-elem" style="display: none;"><input type="number" class="form-control" id="email_code_old" min="100000" max="999999" autocomplete="off"></div>
+                            {% endif %}
+                        </div>
+                        <div class="row">
+                            <div class="col-6 col-lg-2 font-weight-bold">Новый<br>E-mail</div>
+                            <div class="col-6 col-lg-4"><input type="email" class="form-control" id="email" required></div>
+                            <div class="col-6 col-lg-3 auth-code-email-elem font-weight-bold" style="display: none;">Введите код, отправленный на<br>{% if current_user.email %}новый {% endif %}e-mail</div>
+                            <div class="col-6 col-lg-3 auth-code-email-elem" style="display: none;"><input type="number" class="form-control" id="email_code" min="100000" max="999999" autocomplete="off"></div>
+                        </div>
+                        <div class="row">
+                            <div class="col-12 text-info" id="formChangeEmailTimer" style="display: none;"></div>
+                        </div>
+                        <div class="row">
+                            <div class="col-12 invalid-feedback" id="formChangeEmailFeedback" style="display: none;"></div>
+                        </div>
+                        <div class="row">
+                            <input class="btn btn-success form-control col-11 col-lg-5 mx-auto" type="submit" value="Изменить E-mail">
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modalChangePhone" tabindex="-1" role="dialog" aria-labelledby="modalChangePhoneTitle" aria-hidden="true" data-keyboard="false">
+        <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalChangePhoneTitle">Изменение номера телефона</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <form id="formChangePhone">
+                        <div class="row">
+                            <div class="col-6 col-lg-2 font-weight-bold">Текущий<br>телефон</div>
+                            <div class="col-6 col-lg-4 font-weight-bold">{{ current_user.phone_format if current_user.phone else '[не указан]' }}</div>
+                            {% if current_user.phone %}
+                            <div class="col-6 col-lg-3 auth-code-phone-elem font-weight-bold" style="display: none;">Введите код, отправленный на<br>старый телефон</div>
+                            <div class="col-6 col-lg-3 auth-code-phone-elem" style="display: none;"><input type="number" class="form-control" id="phone_code_old" min="100000" max="999999" autocomplete="off"></div>
+                            {% endif %}
+                        </div>
+                        <div class="row">
+                            <div class="col-6 col-lg-2 font-weight-bold">Новый<br>телефон</div>
+                            <div class="col-6 col-lg-4"><input class="form-control" id="phone" required></div>
+                            <div class="col-6 col-lg-3 auth-code-phone-elem font-weight-bold" style="display: none;">Введите код, отправленный на<br>{% if current_user.email %}новый {% endif %}телефон</div>
+                            <div class="col-6 col-lg-3 auth-code-phone-elem" style="display: none;"><input type="number" class="form-control" id="phone_code" min="100000" max="999999" autocomplete="off"></div>
+                        </div>
+                        <div class="row">
+                            <div class="col-12 text-info" id="formChangePhoneTimer" style="display: none;"></div>
+                        </div>
+                        <div class="row">
+                            <div class="col-12 invalid-feedback" id="formChangePhoneFeedback" style="display: none;"></div>
+                        </div>
+                        <div class="row">
+                            <input class="btn btn-success form-control col-11 col-lg-5 mx-auto" type="submit" value="Изменить номер телефона">
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% endif %}
+
+
     {% if form_allow_jwt_auth %}
     <script>
         $('#allow_jwt_auth').change(function(evt){
             var f = evt.target.form;
             f.submit();
         });
+    </script>
+    {% endif %}
+    {% if person.id == current_user.id %}
+    <script>
+        $(document).ready(function(){
+            var email_old = {% if current_user.email %}'{{ current_user.email }}'{% else %}null{% endif %};
+            var email_change_status = 1;
+            var email_time_stop = null;
+            var email_timer_handler = null;
+
+            var email_change_status_1_set = function(timeout){
+                if(email_timer_handler)
+                {
+                    clearInterval(email_timer_handler);
+                    email_timer_handler = null;
+                }
+                $('.auth-code-email-elem').hide();
+                if (email_old)
+                {
+                    $('#email_code_old').removeAttr("required").val('');
+                }
+                $('#email_code').removeAttr("required").val('');
+
+                $("#email").removeAttr("disabled");
+                $("#email").attr("required", "required");
+                $("#email").focus();
+                $('#formChangeEmail').find('input[type="submit"]').val('Изменить E-mail');
+                email_change_status = 1;
+                if (timeout) {
+                    $('#formChangeEmailTimer').text('Время ввода кода истекло');
+                }
+                else
+                {
+                    $('#formChangeEmailTimer').text('').hide();
+                }
+            }
+
+            $('#formChangeEmail').submit(function(e){
+                e.preventDefault();
+
+                $('#formChangeEmailFeedback').text('').hide();
+                var el_submit = $(e.target).find('input[type="submit"]');
+                el_submit.attr("disabled", "disabled");
+
+                if (email_change_status == 1)
+                {
+                    $("#email").attr("disabled", "disabled");
+                    $('#formChangeEmailTimer').text('').hide();
+                    $.post("{{ url_for('api_current_user_change_email_request_code') }}", {"email": $("#email").val()},  function(data){
+                        el_submit.removeAttr("disabled");
+                        if (data.ok)
+                        {
+                            $("#email").removeAttr("required");
+                            $('.auth-code-email-elem').show();
+
+                            if (email_old)
+                            {
+                                $('#email_code_old').focus();
+                                $('#email_code_old').attr("required", "required");
+                            }
+                            else
+                            {
+                                $('#email_code').focus();
+                            }
+                            $('#email_code').attr("required", "required");
+                            el_submit.val('Ввести код'+(email_old ? 'ы': '')+' подтверждения');
+                            email_change_status = 2;
+
+                            if (data.code_timelife !== undefined)
+                            {
+                                $('#formChangeEmailTimer').text('').show();
+                                email_time_stop = (new Date()).valueOf() + (data.code_timelife * 1000);
+
+                                email_timer_handler = setInterval(function(){
+                                    var dt_diff = Math.floor((email_time_stop - (new Date()).valueOf())/1000);
+                                    if (dt_diff >= 0){
+                                        var m = Math.floor(dt_diff/60);
+                                        var s = dt_diff % 60;
+                                        $('#formChangeEmailTimer').text('Осталось времени для ввода кода: '+(m<10 ? '0' :'')+m.toString()+':'+(s<10 ? '0' :'')+s.toString());
+                                    }
+                                    else
+                                    {
+                                        email_change_status_1_set(true);
+                                    }
+                                }, 250);
+                            }
+                        }else
+                        {
+                            $("#email").removeAttr("disabled");
+                        }
+
+                    }).fail(function(jqXHR) {
+                        el_submit.removeAttr("disabled");
+                        $("#email").removeAttr("disabled");
+
+                        if (jqXHR.responseJSON && jqXHR.responseJSON.error) {
+                            $('#formChangeEmailFeedback').text(jqXHR.responseJSON.error);
+                        }
+                        else
+                        {
+                            $('#formChangeEmailFeedback').text("Произошла ошибка. Повторите запрос позже.");
+                        }
+                        $('#formChangeEmailFeedback').show();
+
+                    });
+                }
+                if (email_change_status == 2)
+                {
+                    var d = {
+                        "code": $("#email_code").val()
+                    }
+                    $("#email_code").attr("disabled", "disabled");
+                    if (email_old)
+                    {
+                        d["code_old"] = $("#email_code_old").val();
+                        $("#email_code_old").attr("disabled", "disabled");
+                    }
+
+                    $.post("{{ url_for('api_current_user_change_email_accept_code') }}", d,  function(data){
+                        if (data.ok)
+                        {
+                            alert('E-mail успешно изменён');
+                            document.location.reload();
+                            return;
+                        }
+                        el_submit.removeAttr("disabled");
+                        $("#email_code").removeAttr("disabled");
+                        if (email_old)
+                        {
+                            $("#email_code_old").removeAttr("disabled");
+                        }
+                        if (!data.code_incorrect){
+                            email_change_status_1_set();
+                        }
+                    }).fail(function(jqXHR) {
+                        el_submit.removeAttr("disabled");
+                        $("#email_code").removeAttr("disabled");
+                        if (email_old)
+                        {
+                            $("#email_code_old").removeAttr("disabled");
+                        }
+                        if (jqXHR.responseJSON && jqXHR.responseJSON.error) {
+                            $('#formChangeEmailFeedback').text(jqXHR.responseJSON.error);
+                        }
+                        else
+                        {
+                            $('#formChangeEmailFeedback').text("Произошла ошибка. Повторите запрос позже.");
+                        }
+                        $('#formChangeEmailFeedback').show();
+                        if (!(jqXHR.responseJSON && jqXHR.responseJSON.error && jqXHR.responseJSON.code_incorrect)){
+                            email_change_status_1_set();
+                        }
+                    })
+                }
+                return false;
+        });
+        /**** Phone change ****/
+        var phone_old = {% if current_user.phone %}{{ current_user.phone }}{% else %}null{% endif %};
+        var phone_change_status = 1;
+        var phone_time_stop = null;
+        var phone_timer_handler = null;
+        $('#phone').mask("+7(900)000-00-00",{placeholder:"*"});
+        var phone_change_status_1_set = function(timeout){
+                if(phone_timer_handler)
+                {
+                    clearInterval(phone_timer_handler);
+                    phone_timer_handler = null;
+                }
+                $('.auth-code-phone-elem').hide();
+                if (phone_old)
+                {
+                    $('#phone_code_old').removeAttr("required").val('');
+                }
+                $('#phone_code').removeAttr("required").val('');
+
+                $("#phone").removeAttr("disabled");
+                $("#phone").attr("required", "required");
+                $("#phone").focus();
+                $('#formChangePhone').find('input[type="submit"]').val('Изменить номер телефона');
+                phone_change_status = 1;
+                if (timeout) {
+                    $('#formChangePhoneTimer').text('Время ввода кода истекло');
+                }
+                else
+                {
+                    $('#formChangePhoneTimer').text('').hide();
+                }
+            }
+
+            $('#formChangePhone').submit(function(e){
+                e.preventDefault();
+
+                $('#formChangePhoneFeedback').text('').hide();
+                var el_submit = $(e.target).find('input[type="submit"]');
+                el_submit.attr("disabled", "disabled");
+                if (phone_change_status == 1)
+                {
+                    $("#phone").attr("disabled", "disabled");
+                    $('#formChangePhoneTimer').text('').hide();
+                    $.post("{{ url_for('api_current_user_change_phone_request_code') }}", {"phone": $("#phone").val().replace(/[\+,\-,\(,\)]/g, "")},  function(data){
+                        el_submit.removeAttr("disabled");
+                        if (data.ok)
+                        {
+                            $("#phone").removeAttr("required");
+                            $('.auth-code-phone-elem').show();
+
+                            if (phone_old)
+                            {
+                                $('#phone_code_old').focus();
+                                $('#phone_code_old').attr("required", "required");
+                            }
+                            else
+                            {
+                                $('#phone_code').focus();
+                            }
+                            $('#phone_code').attr("required", "required");
+                            el_submit.val('Ввести код'+(phone_old ? 'ы': '')+' подтверждения из SMS');
+                            phone_change_status = 2;
+
+                            if (data.code_timelife !== undefined)
+                            {
+                                $('#formChangePhoneTimer').text('').show();
+                                phone_time_stop = (new Date()).valueOf() + (data.code_timelife * 1000);
+
+                                phone_timer_handler = setInterval(function(){
+                                    var dt_diff = Math.floor((phone_time_stop - (new Date()).valueOf())/1000);
+                                    if (dt_diff >= 0){
+                                        var m = Math.floor(dt_diff/60);
+                                        var s = dt_diff % 60;
+                                        $('#formChangePhoneTimer').text('Осталось времени для ввода кода: '+(m<10 ? '0' :'')+m.toString()+':'+(s<10 ? '0' :'')+s.toString());
+                                    }
+                                    else
+                                    {
+                                        phone_change_status_1_set(true);
+                                    }
+                                }, 250);
+                            }
+                        }else
+                        {
+                            $("#phone").removeAttr("disabled");
+                        }
+
+                    }).fail(function(jqXHR) {
+                        el_submit.removeAttr("disabled");
+                        $("#phone").removeAttr("disabled");
+
+                        if (jqXHR.responseJSON && jqXHR.responseJSON.error) {
+                            $('#formChangePhoneFeedback').text(jqXHR.responseJSON.error);
+                        }
+                        else
+                        {
+                            $('#formChangePhoneFeedback').text("Произошла ошибка. Повторите запрос позже.");
+                        }
+                        $('#formChangePhoneFeedback').show();
+
+                    });
+                }
+                if (phone_change_status == 2)
+                {
+                    var d = {
+                        "code": $("#phone_code").val()
+                    }
+                    $("#phone_code").attr("disabled", "disabled");
+                    if (phone_old)
+                    {
+                        d["code_old"] = $("#phone_code_old").val();
+                        $("#phone_code_old").attr("disabled", "disabled");
+                    }
+
+                    $.post("{{ url_for('api_current_user_change_phone_accept_code') }}", d,  function(data){
+                        if (data.ok)
+                        {
+                            alert('Номер телефона успешно изменён');
+                            document.location.reload();
+                            return;
+                        }
+                        el_submit.removeAttr("disabled");
+                        $("#phone_code").removeAttr("disabled");
+                        if (phone_old)
+                        {
+                            $("#phone_code_old").removeAttr("disabled");
+                        }
+                        if (!data.code_incorrect){
+                            phone_change_status_1_set();
+                        }
+                    }).fail(function(jqXHR) {
+                        el_submit.removeAttr("disabled");
+                        $("#phone_code").removeAttr("disabled");
+                        if (phone_old)
+                        {
+                            $("#phone_code_old").removeAttr("disabled");
+                        }
+                        if (jqXHR.responseJSON && jqXHR.responseJSON.error) {
+                            $('#formChangePhoneFeedback').text(jqXHR.responseJSON.error);
+                        }
+                        else
+                        {
+                            $('#formChangePhoneFeedback').text("Произошла ошибка. Повторите запрос позже.");
+                        }
+                        $('#formChangePhoneFeedback').show();
+                        if (!(jqXHR.responseJSON && jqXHR.responseJSON.error && jqXHR.responseJSON.code_incorrect)){
+                            phone_change_status_1_set();
+                        }
+                    })
+                }
+                return false;
+        });
+    });
     </script>
     {% endif %}
 </body>

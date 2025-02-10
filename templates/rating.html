@@ -83,7 +83,7 @@
         {% endif %}
     </div>
     <!-- Modal Submit -->
-    <div class="modal fade" id="modalSubmit" tabindex="-1" role="dialog" aria-labelledby="modalSubmitTitle" aria-hidden="true" data-keyboard="false">
+    <div class="modal" id="modalSubmit" tabindex="-1" role="dialog" aria-labelledby="modalSubmitTitle" aria-hidden="true" data-keyboard="false" data-backdrop="static">
         <div class="modal-dialog modal-dialog-centered" role="document">
             <div class="modal-content" style="width: auto;">
                 <div class="modal-header">
@@ -107,11 +107,7 @@
                 });
             });
             f.submit(function(){
-                $('#modalSubmit').modal({
-                    show:true,
-                    keyboard: false,
-                    backdrop: 'static'
-                });
+                $('#modalSubmit').modal('show');
                 return true;
             })
         });
