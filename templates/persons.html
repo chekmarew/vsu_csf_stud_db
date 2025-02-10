@@ -137,13 +137,13 @@
                                 {% set s_comment = '' %}
                                 {% if r.status == 'study' %}
                                     {% if r.stud_group %}
-                                        {% set s_comment = r.stud_group.course|string + ' курс ' + ('маг. ' if r.stud_group.specialty.education_level == 'master' else '') + r.stud_group.num|string %}
+                                        {% set s_comment = r.stud_group.course|string + ' курс ' + ('маг. ' if r.specialty.education_level == 'master' else '') + r.stud_group.num|string %}
                                         {% if r.stud_group_subnum %}
                                             {% set s_comment = s_comment +'.'+ r.stud_group_subnum|string %}
                                         {% endif %}
-                                        {% set s_comment = s_comment + ' группа ' + r.stud_group.specialty.full_name %}
+                                        {% set s_comment = s_comment + ' группа ' + r.specialty.full_name %}
                                     {% else %}
-                                        {% set s_comment = r.course|string + ' курс' + (' маг.' if r.stud_group.specialty.education_level == 'master' else '') %}
+                                        {% set s_comment = r.course|string + ' курс' + (' маг.' if r.specialty.education_level == 'master' else '') %}
                                     {% endif %}
                                 {% endif %}
                                 {% if r.status == 'alumnus' %}
