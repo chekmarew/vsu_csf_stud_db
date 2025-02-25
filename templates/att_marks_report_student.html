@@ -227,7 +227,7 @@
                 <a href="{{ config['INFOSYS_STUDENT_CARD_LINK']|format(student.student_ext_id) }}" class="ml-2 btn btn-warning" target="_blank" data-toggle="tooltip" data-placement="top" title="Авторизуйтесь в infosys.vsu.ru перед открытием ссылки">Карточка студента InfoSys</a>
             {% endif %}
         </div>
-        {% if current_user.teacher and current_user.teacher.active %}
+        {% if current_user.teacher and current_user.teacher.active and student.person_id != current_user.id %}
         <div class="py-1">
             <a href="javascript:void(null)" id="button_favorite" class="btn btn-primary" data-action="{{ 'remove' if student in current_user.favorite_students else 'add' }}">{{ 'Удалить из моего списка' if student in current_user.favorite_students else 'Добавить в мой список' }}</a></div>
         </div>

@@ -56,10 +56,17 @@
             {% if form %}
                 <div role="tabpanel" class="px-2 tab-pane fade{% if errors %} active show{% endif %}" id="request">
                     <h4>Заказ справки</h4>
-                    {% if current_user.id == student.person_id and student.person.email == None %}
-                    <div class="alert alert-info" role="alert">
+                    {% if current_user.id == student.person_id %}
+					{% if current_user.email == None %}
+                    <div class="alert alert-info my-1" role="alert">
                         Укажите в <a href="{{ url_for('profile', id=student.person_id) }}">профиле пользователя E-mail</a> для получения уведомления о готовности справки
                     </div>
+					{% endif %}
+					{% if current_user.student.id == student.id and current_user.students|length > 1 %}
+                    <div class="alert alert-warning my-1" role="alert">
+                        Если требуется справка за предыдущую ступень обучения, то необходимо <a href="{{ url_for('index', show_all_roles=True) }}">перейти ко всем учётным записям</a> и из-под нужной учётной записи студента заказать справку.
+                    </div>
+					{% endif %}
                     {% endif %}
                     <form method="post">
                         {% autoescape false %}

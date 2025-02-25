@@ -11,7 +11,7 @@
             <h2>Добро пожаловать в БРС ФКН ВГУ</h2>
             {% for u in (current_user.roles_all if show_all_roles else current_user.roles_active) %}
                 {% if u.role_name == "Student" %}
-                    <h3><a href="{{ url_for('att_marks_report_student', id=u.id) }}">Личный кабинет студента {{ u.id }}</a>{% if u.stud_group %} <small>(<a href="{{ url_for('stud_group_leader', id=u.stud_group.id) }}">Староста / Куратор</a>)</small>{% endif %}</h3>
+                    <h3><a href="{{ url_for('att_marks_report_student', id=u.id) }}">Личный кабинет студента {{ u.id }} ({{ u.specialty.education_level_name }})</a>{% if u.stud_group %} <small>(<a href="{{ url_for('stud_group_leader', id=u.stud_group.id) }}">Староста / Куратор</a>)</small>{% endif %}</h3>
                 {% endif %}
                 {% if u.role_name == "Teacher" %}
                     {% if u.department_secretary %}
