@@ -1,7 +1,9 @@
 from datetime import datetime
 
 from app_config import db
-from model import StudGroup, Subject, SubjectParticular, Teacher, Student, StudentStates, StudentStateDict, CurriculumUnit, AttMark, MarkTypes, MarkTypeDict, AdminUser, Specialty, Department, Person, CertificateOfStudy
+from model import StudGroup, Subject, SubjectParticular, Teacher, Student, StudentStates, StudentStateDict, \
+    CurriculumUnit, AttMark, MarkTypes, MarkTypeDict, AdminUser, Specialty, Department, Person, CertificateOfStudy, \
+    TopicTypeDict, TopicTypes
 from wtforms import validators, Form, SubmitField, IntegerField, StringField, SelectField, HiddenField, PasswordField, FormField, BooleanField, DateField, TextAreaField
 from wtforms.widgets import ListWidget, CheckboxInput
 from wtforms_alchemy import ModelForm, ModelFieldList, QuerySelectMultipleField
@@ -364,6 +366,17 @@ class AttMarkForm(ModelForm):
                                                get_label=lambda v: "н.я." if v == 0 else str(v),
                                                blank_text='', allow_blank=True)
 
+    teacher = QuerySelectField('Научный руководитель',
+                               query_factory=lambda: [],
+                               get_pk=lambda t: t.id,
+                               get_label=lambda t: t.full_name_short,
+                               blank_text='Не указан', allow_blank=True, validators=[validators.Optional()])
+
+    theme = StringField('Тема работы', validators=[
+        validators.Optional(),
+        validators.Length(min=3, max=AttMark.theme.property.columns[0].type.length)
+    ])
+
     att_mark_id = HiddenField()
 
 
@@ -376,6 +389,13 @@ class CurriculumUnitForm(ModelForm):
         validators.DataRequired(),
         validators.Length(min=1, max=CurriculumUnit.code.property.columns[0].type.length)
     ])
+
+    use_topic = QuerySelectField('Единица учебного плана относится к курсовой/дипломной работе или проектному семинару',
+                                 query_factory=lambda: TopicTypes,
+                                 get_pk=lambda ut: ut,
+                                 get_label=lambda ut: TopicTypeDict[ut],
+                                 default="none",
+                                 allow_blank=False, validators=[validators.DataRequired()])
 
     stud_group = QuerySelectField('Группа',
                                   query_factory=lambda: db.session.query(StudGroup).filter(StudGroup.active).order_by(
