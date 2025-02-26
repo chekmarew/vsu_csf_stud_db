@@ -25,6 +25,13 @@ MarkTypeDict = {
     "no_att": "Аттестации не предусмотрены"
 }
 
+TopicTypes = ('none', 'coursework', 'project_seminar')
+TopicTypeDict = {
+    'none': "Не относится",
+    'coursework': "Курсовая работа",
+    'project_seminar': "Курсовой проект"
+}
+
 MarkSimpleTypes = ("test_simple", "exam", "test_diff", "course_work", "course_project")
 MarkSimpleTypeDict = {
     "test_simple": "Зачет",
@@ -769,6 +776,7 @@ class CurriculumUnit(db.Model):
     teacher_id = db.Column(db.ForeignKey('teacher.teacher_id'), nullable=False, index=True)
     department_id = db.Column(db.ForeignKey('department.department_id'), nullable=False)
     mark_type = db.Column('mark_type', db.Enum(*MarkTypes), nullable=False)
+    use_topic = db.Column('use_topic', db.Enum(*TopicTypes), nullable=False, default='none')
 
     has_simple_mark_test_simple = db.Column('has_simple_mark_test_simple', db.BOOLEAN, nullable=False, default=False)
     has_simple_mark_exam = db.Column('has_simple_mark_exam', db.BOOLEAN, nullable=False, default=False)
@@ -859,6 +867,10 @@ class CurriculumUnit(db.Model):
                 attrs += ("att_mark_exam",)
             if self.mark_type in ("exam", "test_diff"):
                 attrs += ("att_mark_append_ball",)
+
+        if self.use_topic == 'coursework':
+            attrs += ("theme",)
+            attrs += ("teacher",)
 
         if self.has_simple_mark_test_simple:
             attrs += ("simple_mark_test_simple",)
@@ -1348,6 +1360,9 @@ class AttMark(db.Model):
     att_mark_exam = db.Column(db.SMALLINT)
     att_mark_append_ball = db.Column(db.SMALLINT)
 
+    theme = db.Column('work_theme', db.String(1000))
+    teacher_id = db.Column('teacher_id', db.Integer, db.ForeignKey('teacher.teacher_id'))
+
     simple_mark_test_simple = db.Column(db.SMALLINT)
     simple_mark_exam = db.Column(db.SMALLINT)
     simple_mark_test_diff = db.Column(db.SMALLINT)
@@ -1361,6 +1376,7 @@ class AttMark(db.Model):
     comment = db.Column('att_mark_comment', db.String(4000))
     comment_hidden = db.Column('att_mark_comment_hidden', db.String(4000))
 
+    teacher = db.relationship('Teacher')
     student = db.relationship('Student')
 
     history = db.relationship('AttMarkHist', lazy=True, backref='att_mark', order_by="AttMarkHist.stime.desc()")
@@ -1601,6 +1617,10 @@ class AttMark(db.Model):
                 return False
             if attr == "simple_mark_course_project" and not self.curriculum_unit.allow_edit_practice_teacher_simple_mark_course_project:
                 return False
+            if attr == "theme" and self.teacher_id != person.teacher.id:
+                return False
+            if attr == "teacher" and self.teacher_id is not None:
+                return False
 
             return True
 
@@ -1661,6 +1681,10 @@ class AttMarkHist(db.Model):
     att_mark_3 = db.Column(db.SMALLINT)
     att_mark_exam = db.Column(db.SMALLINT)
     att_mark_append_ball = db.Column(db.SMALLINT)
+
+    theme = db.Column('work_theme', db.String(1000))
+    teacher_id = db.Column('teacher_id', db.Integer, db.ForeignKey('teacher.teacher_id'))
+    teacher = db.relationship('Teacher')
 
     simple_mark_test_simple = db.Column(db.SMALLINT)
     simple_mark_exam = db.Column(db.SMALLINT)

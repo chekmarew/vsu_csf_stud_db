@@ -84,9 +84,19 @@
                         <td rowspan="{{ mark_types | length }}">{{ mark.curriculum_unit.stud_group.course }}</td>
                         <td rowspan="{{ mark_types | length }}">
                             {% if mark.curriculum_unit.get_rights(current_user)["read"] %}
-                            <a href="{{ url_for('att_marks', id=mark.curriculum_unit.id) }}">{{ mark.curriculum_unit.subject_name_print }}</a>
+                            <a href="{{ url_for('att_marks', id=mark.curriculum_unit.id) }}">
+                                {% if "course_work" in mark_types %}
+                                    {{ mark.theme if mark.theme is not none else "Тема еще не выбрана" }} ({{ mark.teacher.full_name_short if mark.teacher is not none else "научный руководитель ещё не выбран" }})
+                                {% else %}
+                                    {{ mark.curriculum_unit.subject_name_print }}
+                                {% endif %}
+                            </a>
                             {% else %}
-                            {{ mark.curriculum_unit.subject_name_print }}
+                                {% if "course_work" in mark_types %}
+                                    {{ mark.theme if mark.theme is not none else "Тема еще не выбрана" }} ({{ mark.teacher.full_name_short if mark.teacher is not none else "научный руководитель ещё не выбран" }})
+                                {% else %}
+                                    {{ mark.curriculum_unit.subject_name_print }}
+                                {% endif %}
                             {% endif %}
                             {% if 'MOODLE_LINK' in config and mark.curriculum_unit.moodle_id %}
                             <a href="{{ config['MOODLE_LINK']|format(mark.curriculum_unit.moodle_id) }}" class="text-decoration-none badge badge-warning float-right" title="Ссылка на курс Moodle">M</a>
