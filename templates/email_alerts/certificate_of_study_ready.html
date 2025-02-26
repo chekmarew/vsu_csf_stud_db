@@ -1,7 +1,7 @@
 <html lang="ru">
 <body>
     <div>
-        <p>{{ 'Справка' if certificates|length == 1 else 'Справки' }} об обучении готовы. {{ 'Её' if certificates|length == 1 else 'Их' }} можно забрать в деканате.</p>
+        <p>{{ 'Справка' if certificates|length == 1 else 'Справки' }} об обучении {{ 'готова' if certificates|length == 1 else 'готовы' }}. {{ 'Её' if certificates|length == 1 else 'Их' }} можно забрать в деканате.</p>
         <table>
             <thead>
                 <tr>
