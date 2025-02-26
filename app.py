@@ -1158,7 +1158,6 @@ def curriculum_unit(id):
             "stud_group": cu.stud_group,
             "subject": cu.subject,
             "mark_type": cu.mark_type,
-            "use_topic": cu.use_topic,
             "hours_lect": cu.hours_lect,
             "hours_pract": cu.hours_pract,
             "hours_lab": cu.hours_lab,
@@ -1277,7 +1276,6 @@ def curriculum_unit(id):
                             cu.hours_att_2 = 0
                             cu.hours_att_3 = 0
                         if cu.mark_type == "no_mark":
-                            cu.use_topic = 'none'
                             cu.has_simple_mark_test_simple = False
                             cu.has_simple_mark_exam = False
                             cu.has_simple_mark_test_diff = False
@@ -1577,22 +1575,6 @@ def att_marks(id):
             db.session.commit()
 
     form = AttMarksForm(request.form, obj=cu)
-
-    all_teachers = lambda: sorted(
-        cu.practice_teachers + [cu.teacher],
-        key=lambda teacher: teacher.full_name if teacher.full_name else ''
-    )
-
-    if (current_user.admin_user is not None and current_user.admin_user.active) or current_user.teacher.id == cu.teacher_id:
-        teacher_query_factory = all_teachers
-    else:
-        teacher_query_factory = lambda: [current_user.teacher]
-
-    for f_elem in form.att_marks:
-        if f_elem.object_data.teacher is not None:
-            f_elem.teacher.query_factory = all_teachers
-        else:
-            f_elem.teacher.query_factory = teacher_query_factory
 
     if form.button_clear.data:
         if current_user.admin_user is None or not current_user.admin_user.active:

@@ -366,17 +366,6 @@ class AttMarkForm(ModelForm):
                                                get_label=lambda v: "н.я." if v == 0 else str(v),
                                                blank_text='', allow_blank=True)
 
-    teacher = QuerySelectField('Научный руководитель',
-                               query_factory=lambda: [],
-                               get_pk=lambda t: t.id,
-                               get_label=lambda t: t.full_name_short,
-                               blank_text='Не указан', allow_blank=True, validators=[validators.Optional()])
-
-    theme = StringField('Тема работы', validators=[
-        validators.Optional(),
-        validators.Length(min=3, max=AttMark.theme.property.columns[0].type.length)
-    ])
-
     att_mark_id = HiddenField()
 
 
@@ -389,13 +378,6 @@ class CurriculumUnitForm(ModelForm):
         validators.DataRequired(),
         validators.Length(min=1, max=CurriculumUnit.code.property.columns[0].type.length)
     ])
-
-    use_topic = QuerySelectField('Единица учебного плана относится к работе с руководителем',
-                                 query_factory=lambda: TopicTypes,
-                                 get_pk=lambda ut: ut,
-                                 get_label=lambda ut: TopicTypeDict[ut],
-                                 default="none",
-                                 allow_blank=False, validators=[validators.DataRequired()])
 
     stud_group = QuerySelectField('Группа',
                                   query_factory=lambda: db.session.query(StudGroup).filter(StudGroup.active).order_by(

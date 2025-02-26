@@ -32,14 +32,6 @@
             padding: 0;
             margin: 0;
         }
-        .input-field
-        {
-            width: 100px;
-
-        }
-        .theme-ellipsis {
-            cursor: pointer;
-        }
 
         .row-disabled
         {
@@ -192,12 +184,6 @@
                 {% endif %}
                 <div class="col-2"><a href="javascript:void(null)" data-sort-students-keys="full_name">ФИО</a></div>
                 <div class="col-1-half"><a href="javascript:void(null)" data-sort-students-keys="id">Студ. билет №</a></div>
-                {% if 'teacher' in curriculum_unit.visible_attrs %}
-                <div class="col-2">Науч. рук.</div>
-                {% endif %}
-                {% if 'theme' in curriculum_unit.visible_attrs %}
-                <div class="col-2">Тема работы</div>
-                {% endif %}
                 {% if 'att_mark_1' in curriculum_unit.visible_attrs %}
                 <div class="col-0-3qtr">1 атт</div>
                 {% endif %}
@@ -277,26 +263,6 @@
                             {% endif %}
                         </div>
                     </div>
-                    {% if 'teacher' in curriculum_unit.visible_attrs %}
-                    <div class="col-2">
-                        {{ att_mark.teacher(disabled=disabled_row or not m.check_edit_attr('teacher', current_user), class_ = 'form-control') }}
-                    </div>
-                    {% endif %}
-                    {% if 'theme' in curriculum_unit.visible_attrs %}
-                    <div class="col-2 pl-2">
-                        <div class="input-group">
-                            {{ att_mark.theme(disabled=disabled_row or not m.check_edit_attr('theme', current_user),
-                            class_="form-control theme-input") }}
-                            <div class="input-group-append">
-                                <button class="btn btn-outline-secondary theme-ellipsis" type="button"
-                                        data-student-id="{{ m.student_id }}"
-                                        {% if disabled_row or not m.check_edit_attr('theme', current_user) %}disabled{% endif %}>
-                                    ...
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                    {% endif %}
                     {% if m.exclude == 2 %}
                         <div class="col-4-1qtr d-flex font-weight-bold">
                             <div class="align-self-center">
@@ -537,28 +503,6 @@
     </div>
     {% endif %}
 
-    <!-- Modal Theme -->
-    <div class="modal fade" id="modalTheme" tabindex="-1" role="dialog" aria-labelledby="modalThemeTitle"
-         aria-hidden="true">
-        <div class="modal-dialog modal-lg" role="document">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="modalThemeTitle">Тема работы</h5>
-                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                        <span aria-hidden="true">&times;</span>
-                    </button>
-                </div>
-                <div class="modal-body">
-                    <textarea id="themeTextarea" class="form-control" rows="5"></textarea>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-primary" id="modalThemeOKButton">OK</button>
-                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Отмена</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
      <!-- Modal History -->
     <div class="modal fade" id="modalHistory" tabindex="-1" role="dialog" aria-labelledby="modalHistoryTitle" aria-hidden="true" data-keyboard="true">
         <div class="modal-dialog modal-dialog-centered" role="document">
@@ -684,12 +628,6 @@
                             <tr>
                                 <th>Время начала</th>
                                 <th>Время окончания</th>
-                                {% if 'teacher' in curriculum_unit.visible_attrs %}
-                                <th>Науч. рук.</th>
-                                {% endif %}
-                                {% if 'theme' in curriculum_unit.visible_attrs %}
-                                <th>Тема работы</th>
-                                {% endif %}
                                 {% if 'att_mark_1' in curriculum_unit.visible_attrs %}
                                 <th>1 атт</th>
                                 {% endif %}
@@ -731,16 +669,6 @@
                             <td>
                                 {{ h.etime.strftime(config.DATE_TIME_FORMAT) if h.etime }}
                             </td>
-                            {% if 'teacher' in curriculum_unit.visible_attrs %}
-                            <td>
-                                {{ h.teacher.full_name_short if h.teacher != None }}
-                            </td>
-                            {% endif %}
-                            {% if 'theme' in curriculum_unit.visible_attrs %}
-                            <td>
-                                {{ h.theme if h.theme != None }}
-                            </td>
-                            {% endif %}
                             {% if 'att_mark_1' in curriculum_unit.visible_attrs %}
                             <td class="{{ macros_mark_class(h.att_mark_1) }}">
                                 {{ h.att_mark_1 if h.att_mark_1 != None }}
@@ -990,44 +918,6 @@
             });
 
 
-            $('.theme-ellipsis').click(function() {
-                var studentId = $(this).data('student-id');
-
-                var themeInput = $(this).closest('.input-group').find('.theme-input');
-                var theme = themeInput.val();
-                var disabled = themeInput.prop('disabled');
-
-                $('#themeTextarea').val(theme);
-
-                $('#modalTheme').data('theme-input', themeInput);
-                $('#modalTheme').data('student-id', studentId);
-                if (disabled)
-                {
-                    $('#modalThemeOKButton').hide();
-                    $('#themeTextarea').prop('readonly', true);
-                }
-                else
-                {
-                    $('#modalThemeOKButton').show();
-                    $('#themeTextarea').prop('readonly', false);
-                }
-                $('#modalTheme').modal('show');
-
-            });
-
-            $('#modalThemeOKButton').click(function(){
-                var themeInput = $('#modalTheme').data('theme-input');
-                var newTheme = $('#themeTextarea').val();
-
-                themeInput.val(newTheme);
-                fn_change_mark()
-                $('#modalTheme').modal('hide');
-            });
-
-            $('#modalTheme').on('shown.bs.modal', function () {
-                $('#themeTextarea').trigger('focus')
-            })
-
             window.addEventListener('beforeunload', function(evt) {
                 if (!is_changed_input_mark) return;
                 return evt.returnValue = 'Изменения аттестационной ведомости не будут сохранены. Закрыть ?';
@@ -1086,8 +976,6 @@
                 });
             {% endif %}
             {% endif %}
-
-
 
             {% if curriculum_unit.get_rights(current_user)["write"] %}
             /* context menu copy */
@@ -1499,7 +1387,6 @@
     </script>
     <!-- End CSV Import -->
     {% endif %}
-
 
 
 </body>
