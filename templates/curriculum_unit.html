@@ -42,6 +42,9 @@
                     <span class="px-2 py-1 mb-1 small rounded border border-primary nowrap"><label for="has_simple_mark_course_project">Курсовой проект</label> {{form.has_simple_mark_course_project | safe }}</span>
                 </div>
             </div>
+            <div id="use_topic">
+                {{ bootstrap_form_input(form.use_topic) }}
+            </div>
             {{ bootstrap_form_input(form.department) }}
             {% if curriculum_unit.teacher != None and not curriculum_unit.teacher.active %}
             <div class="form-group row">
@@ -158,6 +161,7 @@
         $(document).ready(function(){
             var input_mark_type = $('#formCurriculumUnit select[name=mark_type]');
             var row_has_simple_mark = $('#has_simple_mark_row');
+            var row_use_topic = $('#use_topic');
             var input_has_simple_mark_test_simple = $('#has_simple_mark_test_simple');
             var input_has_simple_mark_exam = $('#has_simple_mark_exam');
             var input_has_simple_mark_test_diff = $('#has_simple_mark_test_diff');
@@ -245,10 +249,12 @@
                 if (mark_type == "no_mark")
                 {
                     row_has_simple_mark.hide();
+                    row_use_topic.hide();
                 }
                 else
                 {
                     row_has_simple_mark.show();
+                    row_use_topic.show();
                 }
 
                 $("#form_practice_teacher_rights_simple_mark_test_simple")[((input_has_simple_mark_test_simple.prop('checked') && (mark_type != "test_simple") && (mark_type != "no_mark")) ? 'show': 'hide')]();
