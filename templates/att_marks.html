@@ -279,7 +279,7 @@
                     </div>
                     {% if 'teacher' in curriculum_unit.visible_attrs %}
                     <div class="col-2">
-                        {{ att_mark.teacher(disabled=disabled_row or not m.check_edit_attr('teacher', current_user)) }}
+                        {{ att_mark.teacher(disabled=disabled_row or not m.check_edit_attr('teacher', current_user), class_ = 'form-control') }}
                     </div>
                     {% endif %}
                     {% if 'theme' in curriculum_unit.visible_attrs %}
@@ -550,6 +550,10 @@
                 </div>
                 <div class="modal-body">
                     <textarea id="themeTextarea" class="form-control" rows="5"></textarea>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" id="modalThemeOKButton">OK</button>
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Отмена</button>
                 </div>
             </div>
         </div>
@@ -986,6 +990,44 @@
             });
 
 
+            $('.theme-ellipsis').click(function() {
+                var studentId = $(this).data('student-id');
+
+                var themeInput = $(this).closest('.input-group').find('.theme-input');
+                var theme = themeInput.val();
+                var disabled = themeInput.prop('disabled');
+
+                $('#themeTextarea').val(theme);
+
+                $('#modalTheme').data('theme-input', themeInput);
+                $('#modalTheme').data('student-id', studentId);
+                if (disabled)
+                {
+                    $('#modalThemeOKButton').hide();
+                    $('#themeTextarea').prop('readonly', true);
+                }
+                else
+                {
+                    $('#modalThemeOKButton').show();
+                    $('#themeTextarea').prop('readonly', false);
+                }
+                $('#modalTheme').modal('show');
+
+            });
+
+            $('#modalThemeOKButton').click(function(){
+                var themeInput = $('#modalTheme').data('theme-input');
+                var newTheme = $('#themeTextarea').val();
+
+                themeInput.val(newTheme);
+                fn_change_mark()
+                $('#modalTheme').modal('hide');
+            });
+
+            $('#modalTheme').on('shown.bs.modal', function () {
+                $('#themeTextarea').trigger('focus')
+            })
+
             window.addEventListener('beforeunload', function(evt) {
                 if (!is_changed_input_mark) return;
                 return evt.returnValue = 'Изменения аттестационной ведомости не будут сохранены. Закрыть ?';
@@ -1044,6 +1086,8 @@
                 });
             {% endif %}
             {% endif %}
+
+
 
             {% if curriculum_unit.get_rights(current_user)["write"] %}
             /* context menu copy */
@@ -1455,31 +1499,7 @@
     </script>
     <!-- End CSV Import -->
     {% endif %}
-    <script>
-        $(document).ready(function() {
 
-            $('.theme-ellipsis').click(function() {
-                var studentId = $(this).data('student-id');
-
-                var themeInput = $(this).closest('.input-group').find('.theme-input');
-                var theme = themeInput.val();
-
-                $('#themeTextarea').val(theme);
-
-                $('#modalTheme').modal('show');
-
-                $('#modalTheme').data('theme-input', themeInput);
-                $('#modalTheme').data('student-id', studentId);
-            });
-
-            $('#modalTheme').on('hidden.bs.modal', function () {
-                var themeInput = $(this).data('theme-input');
-                var newTheme = $('#themeTextarea').val();
-
-                themeInput.val(newTheme);
-            });
-        });
-    </script>
 
 
 </body>
