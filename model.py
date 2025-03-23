@@ -28,7 +28,7 @@ MarkTypeDict = {
 TopicTypes = ('none', 'coursework', 'project_seminar')
 TopicTypeDict = {
     'none': "Не относится",
-    'coursework': "Курсовая работа",
+    'coursework': "Курсовая / Выпускная / Научная работа",
     'project_seminar': "Курсовой проект"
 }
 

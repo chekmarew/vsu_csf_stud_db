@@ -390,7 +390,7 @@ class CurriculumUnitForm(ModelForm):
         validators.Length(min=1, max=CurriculumUnit.code.property.columns[0].type.length)
     ])
 
-    use_topic = QuerySelectField('Единица учебного плана относится к курсовой/дипломной работе или проектному семинару',
+    use_topic = QuerySelectField('Единица учебного плана относится к работе с руководителем',
                                  query_factory=lambda: TopicTypes,
                                  get_pk=lambda ut: ut,
                                  get_label=lambda ut: TopicTypeDict[ut],
