@@ -1,5 +1,5 @@
 ALTER TABLE `curriculum_unit`
-ADD COLUMN `use_topic` ENUM('none', 'coursework', 'project_seminar') CHARACTER SET 'latin1' COLLATE 'latin1_general_ci' NOT NULL DEFAULT 'none' COMMENT 'Единица учебного плана относится к курсовой/дипломной работе или проектному семинару' AFTER `mark_type`;
+ADD COLUMN `use_topic` ENUM('none', 'coursework', 'project_seminar') CHARACTER SET 'latin1' COLLATE 'latin1_general_ci' NOT NULL DEFAULT 'none' COMMENT 'Единица учебного плана относится к работе с руководителем' AFTER `mark_type`;
 
 ALTER TABLE `att_mark`
 ADD COLUMN `teacher_id` INT(11) UNSIGNED,
