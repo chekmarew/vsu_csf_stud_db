@@ -1291,16 +1291,6 @@ def curriculum_unit(id):
                         if cu.mark_type == "test_diff":
                             cu.has_simple_mark_test_diff = False
 
-                        if cu.use_topic == 'coursework' and len(cu.practice_teachers) == 0:
-                            teachers_list = db.session.query(Teacher) \
-                                .filter(Teacher.department_id == cu.department_id) \
-                                .filter(Teacher.id != cu.teacher_id) \
-                                .filter(Teacher.active) \
-                                .filter(Teacher.rank != "магистр") \
-                                .all()
-                            for t in teachers_list:
-                                cu.practice_teachers.append(t)
-
                         if len(cu.practice_teachers) == 0:
                             cu.allow_edit_practice_teacher_att_mark_1 = \
                                 cu.allow_edit_practice_teacher_att_mark_2 = \
@@ -1588,21 +1578,16 @@ def att_marks(id):
 
     form = AttMarksForm(request.form, obj=cu)
 
-    all_teachers_in_department = lambda: db.session.query(Teacher).join(Person) \
-                                          .filter(Teacher.active) \
-                                          .filter(Teacher.department_id == cu.department_id) \
-                                          .filter(Teacher.rank != "магистр") \
-                                          .order_by(Person.surname, Person.firstname, Person.middlename) \
-                                          .all()
+    all_teachers = lambda: cu.practice_teachers + [cu.teacher]
 
     if (current_user.admin_user is not None and current_user.admin_user.active) or current_user.teacher.id == cu.teacher_id:
-        teacher_query_factory = all_teachers_in_department
+        teacher_query_factory = all_teachers
     else:
         teacher_query_factory = lambda: [current_user.teacher]
 
     for f_elem in form.att_marks:
         if f_elem.object_data.teacher is not None:
-            f_elem.teacher.query_factory = all_teachers_in_department
+            f_elem.teacher.query_factory = all_teachers
         else:
             f_elem.teacher.query_factory = teacher_query_factory
 
