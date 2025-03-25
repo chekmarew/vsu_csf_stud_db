@@ -29,7 +29,7 @@ TopicTypes = ('none', 'coursework', 'project_seminar')
 TopicTypeDict = {
     'none': "Не относится",
     'coursework': "Курсовая / Выпускная / Научная работа",
-    'project_seminar': "Курсовой проект"
+    'project_seminar': "Проектный семинар"
 }
 
 MarkSimpleTypes = ("test_simple", "exam", "test_diff", "course_work", "course_project")
@@ -871,6 +871,9 @@ class CurriculumUnit(db.Model):
         if self.use_topic == 'coursework':
             attrs += ("theme",)
             attrs += ("teacher",)
+
+        if self.use_topic == 'project_seminar':
+            attrs += ("theme",)
 
         if self.has_simple_mark_test_simple:
             attrs += ("simple_mark_test_simple",)
