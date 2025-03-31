@@ -15,7 +15,7 @@ def _allow_write(u: Person):
         return True
 
     # temp
-    if u.login in ('redin_n_a', 'savchenko_n_a', 'shatkov_p_v', 'smirnov_i_g', 'korobejnikova_a_v'):
+    if u.login in ('korobejnikova_a_v', 'derevyanko_v_g'):
         return True
 
     return False
@@ -125,7 +125,7 @@ def api_schedule_lesson():
             "specialty_code": g.specialty.code,
             "specialty_name": g.specialty.name,
             "specialization": g.specialty.specialization,
-            "lessons_start_date": g.lessons_start_date.isoformat(),
+            "lessons_start_date": g.lessons_start_date.isoformat() if g.lessons_start_date else None,
             "curriculum_units": []
         }
 
@@ -159,9 +159,9 @@ def api_schedule_lesson():
                 "teacher_id": cu.teacher_id,
                 "practice_teacher_ids": [t.id for t in cu.practice_teachers],
                 "lessons": [],
-                "hours_lect": cu.hours_lect_per_week,
-                "hours_pract": cu.hours_pract_per_week,
-                "hours_lab": cu.hours_lab_per_week
+                "hours_lect_per_week": cu.hours_lect_per_week,
+                "hours_pract_per_week": cu.hours_pract_per_week,
+                "hours_lab_per_week": cu.hours_lab_per_week
             }
             g_j["curriculum_units"].append(cu_j)
 
