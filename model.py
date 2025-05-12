@@ -524,6 +524,9 @@ class Specialty(db.Model):
     parent_specialty_id = db.Column(db.ForeignKey('specialty.specialty_id'), index=True)
     parent_specialty = db.relationship('Specialty', remote_side=[id])
 
+    semestr_distirib = db.Column('semestr_distirib', db.SMALLINT)
+    semestr_end = db.Column('semestr_end', db.SMALLINT, nullable=False)
+
     faculty_id = db.Column(db.ForeignKey('department.department_id'), index=True, nullable=False, default=Department.ID_DEFAULT)
     faculty = db.relationship('Department', foreign_keys=[faculty_id])
 
