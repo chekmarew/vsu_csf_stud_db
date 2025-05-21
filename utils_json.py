@@ -275,7 +275,6 @@ def exam_to_json(exam: Exam, curriculum_unit_id=False, teacher_id=True, stud_gro
 
 
 def draft_lesson_to_json(lesson: ScheduledLessonDraft) -> dict:
-    subj = lesson.curriculum_unit.subject
     j = {
         "id": lesson.id,
         "curriculum_unit_id": lesson.curriculum_unit_id,
@@ -287,8 +286,6 @@ def draft_lesson_to_json(lesson: ScheduledLessonDraft) -> dict:
         "lesson_num": lesson.lesson_num,
         "classroom": lesson.classroom,
         "teacher_id": lesson.teacher_id,
-        "scheduled_lesson_comment": lesson.comment,
-        # новый флаг
-        "without_specifying_schedule": subj.without_specifying_schedule
+        "scheduled_lesson_comment": lesson.comment
     }
     return j

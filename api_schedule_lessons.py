@@ -115,7 +115,8 @@ def api_schedule_lesson():
                 result["subjects"].append({
                     "id": s.id,
                     "name": s.name,
-                    "short_name": s.short_name
+                    "short_name": s.short_name,
+                    "without_specifying_schedule": s.without_specifying_schedule
                 })
 
             if cu.teacher_id not in teacher_ids:
