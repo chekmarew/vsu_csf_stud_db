@@ -1,4 +1,4 @@
-from model import AttMark, CurriculumUnit, Teacher, Student, Person, LessonTime, Exam
+from model import AttMark, CurriculumUnit, Teacher, Student, Person, LessonTime, Exam, ScheduledLessonDraft
 
 
 def att_mark_to_json(att_mark: AttMark, current_user=None, add_curriculum_unit_id=True, add_comment_hidden=None):
@@ -272,3 +272,23 @@ def exam_to_json(exam: Exam, curriculum_unit_id=False, teacher_id=True, stud_gro
     if stud_group_subnums:
         exam_j["stud_group_subnums"] = exam.stud_group_subnums_map
     return exam_j
+
+
+def draft_lesson_to_json(lesson: ScheduledLessonDraft) -> dict:
+    subj = lesson.curriculum_unit.subject
+    j = {
+        "id": lesson.id,
+        "curriculum_unit_id": lesson.curriculum_unit_id,
+        "stud_group_subnums": lesson.stud_group_subnums,
+        "lesson_type": lesson.type,
+        "lesson_form": lesson.form,
+        "week_day": lesson.week_day,
+        "week_type": lesson.week_type,
+        "lesson_num": lesson.lesson_num,
+        "classroom": lesson.classroom,
+        "teacher_id": lesson.teacher_id,
+        "scheduled_lesson_comment": lesson.comment,
+        # новый флаг
+        "without_specifying_schedule": subj.without_specifying_schedule
+    }
+    return j

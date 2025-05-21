@@ -941,6 +941,25 @@ class CurriculumUnit(db.Model):
         return sum(self.hours)
 
     @property
+    def hours_lab_per_week(self):
+        if self.stud_group.weeks_training == 0:
+            return 0
+        return round(self.hours_lab / self.stud_group.weeks_training)
+
+    @property
+    def hours_lect_per_week(self):
+        if self.stud_group.weeks_training == 0:
+            return 0
+        return round(self.hours_lect / self.stud_group.weeks_training)
+
+    @property
+    def hours_pract_per_week(self):
+        if self.stud_group.weeks_training == 0:
+            return 0
+        return round(self.hours_pract / self.stud_group.weeks_training)
+
+
+    @property
     def status(self):
         if self.closed:
             return 'closed'
