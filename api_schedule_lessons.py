@@ -80,10 +80,15 @@ def api_schedule_lesson():
         "stud_groups": [],
         "teachers": [],
         "subjects": [],
+        "schedule": [],
         "ok": True,
         "periods_archive": [{"year": y, "semester": s} for y, s in utils.periods_archive()],
         "classrooms": [r.classroom for r in db.session.query(Classroom.classroom).order_by(Classroom.classroom).all()]
     }
+    flag = False
+    if _allow_write(current_user):
+        flag = True
+        result["schedule_draft"] = []
 
     teacher_ids = set()
     subject_ids = set()
@@ -108,6 +113,14 @@ def api_schedule_lesson():
             # Включаем только те единицы, у которых сумма учебных часов больше нуля
             if (cu.hours_lect + cu.hours_pract + cu.hours_lab) <= 0:
                 continue
+
+            if cu.scheduled_lessons:
+                for sch_l in cu.scheduled_lessons:
+                    result["schedule"].append(draft_lesson_to_json(sch_l))
+
+            if cu.scheduled_lessons_draft and flag:
+                for sch_l_d in cu.scheduled_lessons_draft:
+                    result["schedule_draft"].append(draft_lesson_to_json(sch_l_d))
 
             if cu.subject_id not in subject_ids:
                 subject_ids.add(cu.subject_id)
@@ -143,17 +156,24 @@ def api_schedule_lesson():
         if len(g_j["curriculum_units"]) == 0:
             continue
 
+
+
         result["stud_groups"].append(g_j)
 
     return jsonify(result)
 
 @app.route('/api/schedule/lesson/draft', methods=["POST"])
 @app.route('/api/schedule/lesson/draft/<int:lesson_id>', methods=["GET", "PATCH", "DELETE"])
+@utils.check_auth_4_api()
 def api_schedule_lesson_draft(lesson_id=None):
     """
     Handler для CRUD черновиков занятий (scheduled_lesson_draft) с учётом
     поля Subject.without_specifying_schedule.
     """
+    current_user = get_current_user()
+    if not _allow_write(current_user):
+        return jsonify({"ok": False, "error": "method not allowed to you"})
+
     # GET/DELETE: ищем существующий черновик
     draft = None
     if request.method in ("GET", "PATCH", "DELETE"):
