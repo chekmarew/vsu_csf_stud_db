@@ -80,7 +80,6 @@ def api_schedule_lesson():
         "stud_groups": [],
         "teachers": [],
         "subjects": [],
-        "schedule": [],
         "ok": True,
         "periods_archive": [{"year": y, "semester": s} for y, s in utils.periods_archive()],
         "classrooms": [r.classroom for r in db.session.query(Classroom.classroom).order_by(Classroom.classroom).all()]
@@ -114,13 +113,6 @@ def api_schedule_lesson():
             if (cu.hours_lect + cu.hours_pract + cu.hours_lab) <= 0:
                 continue
 
-            if cu.scheduled_lessons:
-                for sch_l in cu.scheduled_lessons:
-                    result["schedule"].append(draft_lesson_to_json(sch_l))
-
-            if cu.scheduled_lessons_draft and flag:
-                for sch_l_d in cu.scheduled_lessons_draft:
-                    result["schedule_draft"].append(draft_lesson_to_json(sch_l_d))
 
             if cu.subject_id not in subject_ids:
                 subject_ids.add(cu.subject_id)
@@ -151,6 +143,17 @@ def api_schedule_lesson():
                 "hours_pract_per_week": cu.hours_pract_per_week,
                 "hours_lab_per_week": cu.hours_lab_per_week
             }
+            if flag:
+                cu_j["lessons_draft"] = []
+
+            if cu.scheduled_lessons:
+                for sch_l in cu.scheduled_lessons:
+                    cu_j["lessons"].append(draft_lesson_to_json(sch_l))
+
+            if cu.scheduled_lessons_draft and flag:
+                for sch_l_d in cu.scheduled_lessons_draft:
+                    cu_j["lessons_draft"].append(draft_lesson_to_json(sch_l_d))
+
             g_j["curriculum_units"].append(cu_j)
 
         if len(g_j["curriculum_units"]) == 0:
