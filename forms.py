@@ -380,6 +380,12 @@ class AttMarkForm(ModelForm):
     att_mark_id = HiddenField()
 
 
+class AttMarksStudentAddForm(Form):
+    student = IntegerField('Номер студенческого билета', [validators.NumberRange(min=1), validators.DataRequired()])
+    group_subnum = IntegerField('Подгруппа', [validators.NumberRange(min=0, max=StudGroup.STUD_GROUP_MAX_SUB_COUNT), validators.DataRequired()])
+    button_add = SubmitField('Добавить')
+
+
 class CurriculumUnitForm(ModelForm):
     class Meta:
         model = CurriculumUnit

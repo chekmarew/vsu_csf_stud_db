@@ -252,14 +252,18 @@
                 <div class="row py-1 align-items-strech border-top border-right border-left{% if disabled_row %} row-disabled{% endif %}" data-student-id="{{ m.student_id }}" data-student-row="">
                     <div class="col-0-half d-flex font-weight-bold">
                         <div class="align-self-center">
-                            <a href="#modalHistoryAttMark{{ m.att_mark_id }}" data-toggle="modal" data-target="#modalHistoryAttMark{{ m.att_mark_id }}" data-loop-index="{{ loop.index }}" tabindex="-1">{{ loop.index }}</a>
+                            <a href="#modalHistoryAttMark{{ m.att_mark_id }}" data-toggle="modal" data-target="#modalHistoryAttMark{{ m.att_mark_id }}" data-loop-index="{{ loop.index }}" tabindex="-1">{{ loop.index }}{% if m.manual_add %}*{% endif %}</a>
                         </div>
                     </div>
                     {% if show_group_subnum %}
                     <div class="col-0-half d-flex">
                         {% if not disabled_row %}
                         <div class="align-self-center">
-                        {{ m.student.stud_group_subnum if m.student.stud_group_subnum }}
+                            {% if m.manual_add %}
+                            {{ m.group_subnum if m.group_subnum }}
+                            {% else %}
+                            {{ m.student.stud_group_subnum if m.student.stud_group_subnum }}
+                            {% endif %}
                         </div>
                         {% endif %}
                     </div>
@@ -474,6 +478,14 @@
             {% if curriculum_unit.result_failed != None %}
             <div id="result_failed" class="px-1 mb-2 text-white {% if curriculum_unit.result_failed > config['RESULT_FAIL_WARNING']%}bg-danger{% else %}bg-success{% endif %}">
                 Неудовлетворительных оценок: {{ curriculum_unit.result_failed }} %
+            </div>
+            {% endif %}
+
+            {% if form_student_add %}
+            <div class="row my-1 py-1 border-bottom">
+                <div class="col-12">
+                    <a class="btn btn-primary text-white btn-student-add" data-toggle="modal" data-target="#modalStudent">+ Добавить студента</a>
+                </div>
             </div>
             {% endif %}
 
@@ -784,15 +796,17 @@
                         {% endfor %}
                     </table>
                 </div>
-                {% if current_user.admin_user and current_user.admin_user.active and (not curriculum_unit.closed) %}
                 <div class="modal-footer justify-content-between">
-                    {% if m.att_mark_id not in curriculum_unit.att_marks_readonly_ids %}
-                    <a href="{{ url_for('att_mark_exclude2', id=m.att_mark_id, value=1) }}" class="btn btn-block btn-primary float-right btn-att-mark-exclude2-set">Поставить отметку "Перезачтено"</a>
-                    {% elif m.exclude == 2 %}
-                    <a href="{{ url_for('att_mark_exclude2', id=m.att_mark_id) }}" class="btn btn-block btn-primary float-right btn-att-mark-exclude2-unset">Снять отметку "Перезачтено"</a>
+                    {% if current_user.admin_user and current_user.admin_user.active and (not curriculum_unit.closed) %}
+                        {% if m.manual_add %}
+                            <a href="{{ url_for('att_marks_student_remove', id=m.curriculum_unit_id, student_id=m.student_id) }}" title="Удалить из списка" class="btn btn-block btn-danger float-right btn-student-remove">Удалить студента</a>
+                        {% elif m.att_mark_id not in curriculum_unit.att_marks_readonly_ids %}
+                            <a href="{{ url_for('att_mark_exclude2', id=m.att_mark_id, value=1) }}" class="btn btn-block btn-primary float-right btn-att-mark-exclude2-set">Поставить отметку "Перезачтено"</a>
+                        {% elif m.exclude == 2 %}
+                            <a href="{{ url_for('att_mark_exclude2', id=m.att_mark_id) }}" class="btn btn-block btn-primary float-right btn-att-mark-exclude2-unset">Снять отметку "Перезачтено"</a>
+                        {% endif %}
                     {% endif %}
                 </div>
-                {% endif %}
             </div>
         </div>
     </div>
@@ -922,6 +936,39 @@
     <!-- end modal news  -->
 
     {% include '_modal_submit.html' %}
+
+    {% if form_student_add %}
+    <!-- Modal add practice teacher -->
+    <div class="modal fade" id="modalStudent" tabindex="-1" role="dialog" aria-labelledby="modalStudentTitle">
+        <div class="modal-dialog modal-dialog-centered" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalStudentTitle">Добавить студента по номеру его студенческого билета</h5>
+                </div>
+                <div class="modal-body">
+                    <form action="{{ url_for('att_marks_student_add', id=curriculum_unit.id) }}" method="post">
+                        <div class="form-group row">
+                            {{ form_student_add.student.label(class_="col-12 col-form-label") }}
+                            <div class="col-12">
+                                {{ form_student_add.student(class_="form-control") }}
+                            </div>
+                        </div>
+                        {% if have_sub %}
+                        <div class="form-group row">
+                            {{ form_student_add.group_subnum.label(class_="col-12 col-form-label") }}
+                            <div class="col-12">
+                                {{ form_student_add.group_subnum(class_="form-control") }}
+                            </div>
+                        </div>
+                        {% endif %}
+                        {{ bootstrap_form_button(form_student_add.button_add) }}
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- End add practice teacher -->
+    {% endif %}
 
     <script>
         $(document).ready(function(){
@@ -1150,7 +1197,7 @@
         {% for att_mark in curriculum_unit.att_marks %}
 
             {% set s = att_mark.student %}
-            {id: {{ s.id }}, full_name: "{{ s.full_name }}", full_name_short: "{{ s.full_name_short }}", full_name_2: "{{ s.surname }} {{ s.firstname }}", enable: {% if att_mark.att_mark_id not in curriculum_unit.att_marks_readonly_ids %}true{% else %}false{% endif %}{% if show_group_subnum %}, stud_group_subnum: {% if (att_mark.att_mark_id not in curriculum_unit.att_marks_readonly_ids or att_mark.exclude == 2 ) and s.stud_group_subnum %}{{ s.stud_group_subnum }}{% else %}null{% endif %} {% endif %} }{% if not loop.last %},{% endif %}
+            {id: {{ s.id }}, full_name: "{{ s.full_name }}", full_name_short: "{{ s.full_name_short }}", full_name_2: "{{ s.surname }} {{ s.firstname }}", enable: {% if att_mark.att_mark_id not in curriculum_unit.att_marks_readonly_ids %}true{% else %}false{% endif %}, manual_add: {% if att_mark.manual_add %}true{% else %}false{% endif %}, original_index: {{ loop.index }}{% if show_group_subnum %}, stud_group_subnum: {% if (att_mark.att_mark_id not in curriculum_unit.att_marks_readonly_ids or att_mark.exclude == 2 ) and s.stud_group_subnum %}{{ s.stud_group_subnum }}{% else %}null{% endif %} {% endif %} }{% if not loop.last %},{% endif %}
         {% endfor %}
         ];
         $(document).ready(function(){
@@ -1179,7 +1226,8 @@
                     elem.removeClass("mb-2");
                     {% endif %}
                     var elem_order = elem.find('[data-loop-index]');
-                    elem_order.text(i+1);
+                    var newText = (i+1) + (s.manual_add ? '*' : '');
+                    elem_order.text(newText);
                     elem_order.attr('data-loop-index', i+1);
                     {% if curriculum_unit.mark_type == 'no_att' %}
                     if (i == students_all.length - 1)

@@ -1004,7 +1004,7 @@ class CurriculumUnit(db.Model):
         else:
             return tuple(
                     m.att_mark_id for m in self.att_marks if
-                    m.student.stud_group_id != m.curriculum_unit.stud_group_id or m.exclude == 2)
+                    not m.manual_add and m.student.stud_group_id != m.curriculum_unit.stud_group_id or m.exclude == 2)
 
     @property
     def subject_name_print(self):
@@ -1382,6 +1382,9 @@ class AttMark(db.Model):
 
     teacher = db.relationship('Teacher')
     student = db.relationship('Student')
+
+    manual_add = db.Column('att_mark_manual_add', db.BOOLEAN, nullable=False, default=False)
+    group_subnum = db.Column('att_mark_group_subnum', db.SMALLINT)
 
     history = db.relationship('AttMarkHist', lazy=True, backref='att_mark', order_by="AttMarkHist.stime.desc()")
     lessons_student = db.relationship('LessonStudent', lazy=True, uselist=True,

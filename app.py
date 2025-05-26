@@ -26,10 +26,12 @@ from model import StudGroup, Specialty, Subject, SubjectParticular, Teacher, Stu
     AttMark, AttMarkHist, AdminUser, Person, Department, PersonHist, CertificateOfStudy
 from model import MarkSimpleTypeDict
 
-from forms import StudGroupForm, StudentForm, SubjectForm, TeacherForm, PersonForm, PersonAllowJWTAuthForm, PersonSearchForm, \
+from forms import StudGroupForm, StudentForm, SubjectForm, TeacherForm, PersonForm, PersonAllowJWTAuthForm, \
+    PersonSearchForm, \
     CurriculumUnitForm, CurriculumUnitPracticeTeacherAddForm, TeacherAddDepartmentPartTimeJobForm, \
     CurriculumUnitCopyForm, AttMarksForm, \
-    StudGroupsPrintForm, RatingForm, LessonsReportForm, AdminUserForm, CertificateOfStudyForm, LoginForm, LoginEmailForm, LoginSMSForm
+    StudGroupsPrintForm, RatingForm, LessonsReportForm, AdminUserForm, CertificateOfStudyForm, LoginForm, \
+    LoginEmailForm, LoginSMSForm, AttMarksStudentAddForm
 from forms import StudentsUnallocatedForm
 
 from model_history_controller import hist_save_controller
@@ -1588,6 +1590,14 @@ def att_marks(id):
 
     form = AttMarksForm(request.form, obj=cu)
 
+    form_student_add = None
+    have_sub = False
+
+    if current_user.admin_user is not None and current_user.admin_user.active:
+        form_student_add = AttMarksStudentAddForm()
+        sg = db.session.query(StudGroup).filter(StudGroup.id == cu.stud_group_id).one_or_none()
+        have_sub = sg.sub_count > 1
+
     all_teachers = lambda: cu.practice_teachers + [cu.teacher]
 
     if (current_user.admin_user is not None and current_user.admin_user.active) or current_user.teacher.id == cu.teacher_id:
@@ -1736,7 +1746,9 @@ def att_marks(id):
     return render_template(
         'att_marks.html',
         curriculum_unit=cu,
-        form=form
+        form=form,
+        form_student_add=form_student_add,
+        have_sub=have_sub
     )
 
 
@@ -1889,6 +1901,68 @@ def att_marks_report_stud_group(id):
     return render_template(
         'att_marks_report_stud_group_print.html' if "print" in request.args else 'att_marks_report_stud_group.html',
         stud_group=group, result=result, ball_avg=ball_avg, sort_key=sort_key, previous_stud_groups_map=_previous_stud_groups_map(group, current_user))
+
+
+@app.route('/att_marks/<int:id>/student/add', methods=['GET', 'POST'])
+@login_required
+def att_marks_student_add(id):
+    cu = db.session.query(CurriculumUnit).filter(CurriculumUnit.id == id).one_or_none()
+    if cu is None:
+        return render_error(404)
+
+    if current_user.admin_user is None or not current_user.admin_user.active:
+        return render_error(403)
+    if (not cu.stud_group.active) or cu.closed or cu.pass_department:
+        return render_error(403)
+
+    form = AttMarksStudentAddForm(request.form)
+
+    student_id = form.student.data
+
+    s = db.session.query(Student).filter(Student.id == student_id).one_or_none()
+    if s is None:
+        return render_error(404)
+
+    for a in cu.att_marks:
+        if a.student_id == student_id:
+            return redirect(url_for('att_marks', id=id))
+
+    group_subnum = form.group_subnum.data
+
+    att_mark = AttMark(curriculum_unit=cu, student=s, manual_add=True, group_subnum=group_subnum)
+    cu.att_marks.append(att_mark)
+
+    db.session.add(cu)
+
+    hist_save_controller(db.session, cu, current_user, check_journalize_attributes=False)
+
+    db.session.commit()
+    return redirect(url_for('att_marks', id=id))
+
+
+@app.route('/att_marks/<int:id>/student/remove/<int:student_id>')
+@login_required
+def att_marks_student_remove(id, student_id):
+    cu = db.session.query(CurriculumUnit).filter(CurriculumUnit.id == id).one_or_none()
+    if cu is None:
+        return render_error(404)
+
+    if current_user.admin_user is None or not current_user.admin_user.active:
+        return render_error(403)
+    if (not cu.stud_group.active) or cu.closed or cu.pass_department:
+        return render_error(403)
+
+    att_mark = None
+    for a in cu.att_marks:
+        if a.student_id == student_id:
+            att_mark = a
+            break
+    if att_mark:
+        db.session.query(AttMarkHist).filter_by(att_mark_id=att_mark.att_mark_id).delete()
+        db.session.delete(att_mark)
+        db.session.commit()
+
+    return redirect(url_for('att_marks', id=id))
 
 
 @app.route('/lessons_report_stud_group/<int:id>')
