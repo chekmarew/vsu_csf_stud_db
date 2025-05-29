@@ -295,14 +295,14 @@ def api_lessons_new(teacher_id=None):
         result["lesson_id"] = lesson.id
         result["students"] = []
 
-        def _student_to_json(s: Student, cu: CurriculumUnit, lesson_student: Lesson):
+        def _student_to_json(s: Student, cu: CurriculumUnit, lesson_student: Lesson, group_subnum=None):
             return {
                 "id": s.id,
                 "curriculum_unit_id": cu.id,
                 "course": s.course,
                 "semester": s.semester,
                 "group_num": cu.stud_group.num,
-                "group_subnum": s.stud_group_subnum if s.stud_group_id is not None and s.stud_group_id == cu.stud_group_id else None,
+                "group_subnum": s.stud_group_subnum if s.stud_group_id is not None and s.stud_group_id == cu.stud_group_id else group_subnum,
                 "surname": s.person.surname,
                 "surname_old": s.person.surname_old,
                 "firstname": s.person.firstname,
@@ -317,7 +317,7 @@ def api_lessons_new(teacher_id=None):
                 cu = lesson_cu.curriculum_unit
                 for lesson_student in lesson_cu.lesson_students:
                     s = lesson_student.student
-                    result["students"].append(_student_to_json(s, cu, lesson_student))
+                    result["students"].append(_student_to_json(s, cu, lesson_student, group_subnum=_get_stud_group_manual(cu, s) ))
         else:
             # new lesson
             for cu_row in rj["curriculum_units"]:
@@ -327,12 +327,35 @@ def api_lessons_new(teacher_id=None):
                     lesson_cu.stud_group_subnums_map = cu_row["group_subnums"]
                 db.session.add(lesson_cu)
                 students_id_exclude = tuple((m.student_id for m in cu.att_marks if m.exclude))
+
+                students_id_manual = []
+                # manual add students
+                for m in cu.att_marks:
+                    m: AttMark = m
+                    if m.manual_add:
+                        s = m.student
+                        group_subnum = m.group_subnum
+                        if s.id in students_id_exclude:
+                            continue
+                        if group_subnum and not lesson_cu.stud_group_subnums_map[group_subnum]:
+                            continue
+
+                        lesson_student = LessonStudent(lesson_id=lesson.id, curriculum_unit_id=cu.id, student_id=s.id, attendance=default_attendance)
+                        db.session.add(lesson_student)
+
+                        result["students"].append(_student_to_json(s, cu, lesson_student, group_subnum))
+                        students_id_manual.append(s.id)
+
                 for s in cu.stud_group.students:
                     s: Student = s
+
+                    if s.id in students_id_manual:
+                        continue
                     if cu.subject_id in ((sp.replaced_subject_id for sp in s.particular_subjects if sp.replaced_subject_id is not None)):
                         continue
                     if s.id in students_id_exclude:
                         continue
+
                     if not lesson_cu.stud_group_subnums_map[s.stud_group_subnum]:
                         continue
 
@@ -340,6 +363,8 @@ def api_lessons_new(teacher_id=None):
                     db.session.add(lesson_student)
 
                     result["students"].append(_student_to_json(s, cu, lesson_student))
+
+
 
             db.session.commit()
         result["ok"] = True
@@ -398,7 +423,7 @@ def api_lessons(lesson_id):
                 lesson_student_j = {
                     "id": s.id,
                     "curriculum_unit_id": cu.id,
-                    "group_subnum": s.stud_group_subnum if s.stud_group_id == cu.stud_group_id else None,
+                    "group_subnum": s.stud_group_subnum if s.stud_group_id == cu.stud_group_id else _get_stud_group_manual(cu, s),
                     "surname": s.person.surname,
                     "surname_old": s.person.surname_old,
                     "firstname": s.person.firstname,
@@ -736,6 +761,16 @@ def api_lessons_student(lesson_id, student_id):
     return jsonify(result)
 
 
+
+def _get_stud_group_manual(cu: CurriculumUnit, s: Student):
+    if cu.stud_group.active:
+        for m in cu.att_marks:
+            m: AttMark = m
+            if m.manual_add and m.student_id == s.id:
+                return m.group_subnum
+
+    return None
+
 def _api_lessons_curriculum_units(current_user, rj):
     result = {
         "ok": False
@@ -866,9 +901,12 @@ def _api_lessons_curriculum_units(current_user, rj):
             "middlename": s.middlename,
             "gender": s.person.gender
         }
-        if stud_group.active and stud_group.sub_count > 1 \
-                and s.stud_group_id is not None and s.stud_group_id == stud_group.id:
-            s_json["group_subnum"] = s.stud_group_subnum
+        if stud_group.active and stud_group.sub_count > 1:
+
+            if s.stud_group_id is not None and s.stud_group_id == stud_group.id:
+                s_json["group_subnum"] = s.stud_group_subnum
+            elif _get_stud_group_manual(cu, s):
+                s_json["group_subnum"] = _get_stud_group_manual(cu, s)
 
         if sg is not None:
             s_json.update({

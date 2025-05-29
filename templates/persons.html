@@ -34,13 +34,11 @@
             {{ bootstrap_form_input(form.email) }}
             {{ bootstrap_form_input(form.phone) }}
             {{ bootstrap_form_input(form.card_number) }}
-            {% if form.allow_jwt_auth %}
-            {{ bootstrap_form_input(form.allow_jwt_auth) }}
-            {% endif %}
             {{ bootstrap_form_input(form.role) }}
 
             {# student #}
             {{ bootstrap_form_input(form.student_id) }}
+            {{ bootstrap_form_input(form.student_financing) }}
             {{ bootstrap_form_input(form.student_status) }}
             {{ bootstrap_form_input(form.student_alumnus_year) }}
             {{ bootstrap_form_input(form.student_expelled_year) }}
@@ -86,6 +84,7 @@
                 <th>{{'Другие роли' if role else 'Роли' }}</th>
                 {% if role == 'Student' %}
                 <th>№ Билета</th>
+                <th>Финансирование</th>
                 <th>Курс</th>
                 <th>Группа</th>
                 {% endif %}
@@ -171,6 +170,9 @@
                         {% if not loop.first %}<tr>{% endif %}
                         <td>
                             <a href="{{ url_for('student', id=s.id) if current_user.admin_user and current_user.admin_user.active else url_for('att_marks_report_student', id=s.id) }}" class="px-1{{ ' bg-secondary text-light' if s.status != 'study' }}">{{ s.id }}</a>
+                        </td>
+                        <td>
+                            {{ s.financing_name }}
                         </td>
                         <td>
                             {{ s.course if s.status == 'study' }}

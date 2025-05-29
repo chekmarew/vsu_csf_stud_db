@@ -77,6 +77,12 @@ EducationFormDict = {
     'correspondence': "Заочная"
 }
 
+Financing = ('budget', 'contract')
+FinancingDict = {
+    'budget': "бюджет",
+    'contract': "договор"
+}
+
 # Типы занятий
 LessonTypes = ('seminar', 'lecture')
 
@@ -213,7 +219,6 @@ class Person(db.Model):
     contacts = db.Column('contacts', db.String(4000))
     gender = db.Column('gender', db.Enum('M', 'W'))
     birthday = db.Column('birthday', db.Date)
-    allow_jwt_auth = db.Column('allow_jwt_auth', db.BOOLEAN, nullable=False)
 
     students = db.relationship('Student', lazy='subquery', backref='person')
     teacher = db.relationship('Teacher', backref='person', uselist=False)
@@ -360,7 +365,7 @@ class Person(db.Model):
         """False, as anonymous users aren't supported."""
         return False
 
-    journalize_attributes = ('surname', 'firstname', 'middlename', 'login', 'card_number', 'email', 'phone', 'contacts', 'allow_jwt_auth')
+    journalize_attributes = ('surname', 'firstname', 'middlename', 'login', 'card_number', 'email', 'phone', 'contacts')
 
 
 class PersonHist(db.Model):
@@ -380,7 +385,6 @@ class PersonHist(db.Model):
     email = db.Column('email', db.String(45), unique=True)
     phone = db.Column('phone', db.BIGINT, unique=True)
     contacts = db.Column('contacts', db.String(4000))
-    allow_jwt_auth = db.Column('allow_jwt_auth', db.BOOLEAN, nullable=False)
 
     __table_args__ = (
         db.PrimaryKeyConstraint('person_id', 'stime'),
@@ -406,7 +410,7 @@ class Student(db.Model, _Person, _ObjectWithSemester):
     alumnus_year = db.Column('student_alumnus_year', db.SMALLINT)
     expelled_year = db.Column('student_expelled_year', db.SMALLINT)
     status = db.Column('student_status', db.Enum(*StudentStateDict.keys()), nullable=False)
-
+    financing = db.Column('financing', db.Enum(*FinancingDict.keys()), nullable=False)
     particular_subjects = db.relationship('SubjectParticular',
         secondary=db.Table(
             'student_subject_particular',
@@ -429,6 +433,11 @@ class Student(db.Model, _Person, _ObjectWithSemester):
     def status_name(self):
         if self.status and self.status in StudentStateDict:
             return StudentStateDict[self.status]
+
+    @property
+    def financing_name(self):
+        if self.financing and self.financing in FinancingDict:
+            return FinancingDict[self.financing]
 
     @property
     def active(self):

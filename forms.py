@@ -3,7 +3,7 @@ from datetime import datetime
 from app_config import db
 from model import StudGroup, Subject, SubjectParticular, Teacher, Student, StudentStates, StudentStateDict, \
     CurriculumUnit, AttMark, MarkTypes, MarkTypeDict, AdminUser, Specialty, Department, Person, CertificateOfStudy, \
-    TopicTypeDict, TopicTypes
+    TopicTypeDict, TopicTypes, Financing, FinancingDict
 from wtforms import validators, Form, SubmitField, IntegerField, StringField, SelectField, HiddenField, PasswordField, FormField, BooleanField, DateField, TextAreaField
 from wtforms.widgets import ListWidget, CheckboxInput
 from wtforms_alchemy import ModelForm, ModelFieldList, QuerySelectMultipleField
@@ -16,7 +16,6 @@ from sqlalchemy import or_, desc
 class PersonForm(ModelForm):
     class Meta:
         model = Person
-        exclude = ['allow_jwt_auth']
 
     surname = StringField('Фамилия', filters=[lambda val: val.strip() if val else None], validators=[validators.Length(min=2, max=45), validators.DataRequired()])
     firstname = StringField('Имя', filters=[lambda val: val.strip() if val else None], validators=[validators.Length(min=2, max=45), validators.DataRequired()])
@@ -59,10 +58,6 @@ class PersonForm(ModelForm):
 
     button_save = SubmitField('Сохранить')
     button_delete = SubmitField('Удалить')
-
-
-class PersonAllowJWTAuthForm(Form):
-    allow_jwt_auth = BooleanField('Согласие')
 
 
 class StudGroupForm(ModelForm):
@@ -131,6 +126,12 @@ class StudentForm(ModelForm):
                               query_factory=lambda: StudentStates,
                               get_pk=lambda s: s,
                               get_label=lambda s: StudentStateDict[s],
+                              allow_blank=False, validators=[validators.DataRequired()])
+
+    financing = QuerySelectField('Финансирование',
+                              query_factory=lambda: Financing,
+                              get_pk=lambda f: f,
+                              get_label=lambda f: FinancingDict[f],
                               allow_blank=False, validators=[validators.DataRequired()])
 
     specialty = QuerySelectField('Направление (специальность)',
@@ -208,7 +209,6 @@ class PersonSearchForm(Form):
         validators.NumberRange(min=79000000000, max=79999999999)
     ])
     card_number = IntegerField('Номер карты (пропуска)', [validators.Optional(), validators.NumberRange(min=1)])
-    allow_jwt_auth = SelectField('Разрешение на обработку персональных данных третьему лицу', choices=[('any', 'Не важно'), ('yes', 'Да'), ('no', 'Нет')], default='any')
 
     role = SelectField('Роль пользователя',
                             choices=[('', 'Не важно'), ('Student', 'Студент'), ('Teacher', 'Преподаватель'),
@@ -216,6 +216,12 @@ class PersonSearchForm(Form):
 
     # Student
     student_id = IntegerField('Номер студенческого билета', [validators.NumberRange(min=1), validators.Optional()])
+    student_financing = QuerySelectField('Финансирование',
+                              query_factory=lambda: Financing,
+                              get_pk=lambda f: f,
+                              get_label=lambda f: FinancingDict[f],
+                              blank_text='Не важно', allow_blank=True,
+                              validators=[validators.Optional()])
     student_status = QuerySelectField('Состояние',
                               query_factory=lambda: StudentStates,
                               get_pk=lambda s: s,

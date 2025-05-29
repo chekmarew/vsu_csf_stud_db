@@ -5,10 +5,8 @@ from datetime import datetime
 
 from flask import request, session, render_template, redirect, url_for, send_from_directory, send_file, flash
 from flask_login import LoginManager, login_required, login_user, logout_user, current_user
-from flask_jwt_extended import jwt_required, get_jwt_identity
 
 from app_config import app, db
-from auth_config import AuthCodeConfig
 
 import api
 import api_auth_jwt
@@ -26,7 +24,7 @@ from model import StudGroup, Specialty, Subject, SubjectParticular, Teacher, Stu
     AttMark, AttMarkHist, AdminUser, Person, Department, PersonHist, CertificateOfStudy
 from model import MarkSimpleTypeDict
 
-from forms import StudGroupForm, StudentForm, SubjectForm, TeacherForm, PersonForm, PersonAllowJWTAuthForm, \
+from forms import StudGroupForm, StudentForm, SubjectForm, TeacherForm, PersonForm, \
     PersonSearchForm, \
     CurriculumUnitForm, CurriculumUnitPracticeTeacherAddForm, TeacherAddDepartmentPartTimeJobForm, \
     CurriculumUnitCopyForm, AttMarksForm, \
@@ -186,20 +184,6 @@ def login_sms():
                 form.code.errors.append(auth_res["error"])
 
     return render_template('login_sms.html', form=form,  wait_sec=wait_sec, second_factor=session.get('wait_sms_second_factor', False))
-
-
-@app.route("/login_jwt", methods=["GET"])
-@jwt_required()
-def login_jwt():
-    user = db.session.query(Person).filter_by(id=get_jwt_identity()).one_or_none()
-
-    if user is None:
-        return render_error(403)
-
-    session.permanent = True
-    login_user(user)
-
-    return redirect(request.args.get("next") or url_for('index'))
 
 
 @login_manager.user_loader
@@ -502,6 +486,8 @@ def persons():
             if form.student_id.data is not None:
                 q = q.filter(Student.id == form.student_id.data)
             else:
+                if form.student_financing.data is not None:
+                    q = q.filter(Student.financing == form.student_financing.data)
                 if form.student_status.data is not None:
                     q = q.filter(Student.status == form.student_status.data)
                 if form.student_group.data is not None:
@@ -557,12 +543,6 @@ def persons():
         if form.card_number.data is not None:
             q = q.filter(Person.card_number == form.card_number.data)
 
-        if getattr(AuthCodeConfig, "USE_ALLOW_JWT_AUTH", True):
-            if form.allow_jwt_auth.data == 'yes':
-                q = q.filter(Person.allow_jwt_auth)
-            if form.allow_jwt_auth.data == 'no':
-                q = q.filter(not_(Person.allow_jwt_auth))
-
         q = q.order_by(Person.surname, Person.firstname, Person.middlename)
         page = 1
         if 'page' in request.args:
@@ -573,9 +553,6 @@ def persons():
 
         result = q.paginate(page=page, error_out=False)
 
-    if not getattr(AuthCodeConfig, "USE_ALLOW_JWT_AUTH", True):
-        del form.allow_jwt_auth
-
     return render_template('persons.html', persons=result, form=form, role=role)
 
 
@@ -585,7 +562,7 @@ def person(id):
     if current_user.admin_user is None or (not current_user.admin_user.active):
         return render_error(403)
     if id == 'new':
-        p = Person(allow_jwt_auth=False)
+        p = Person()
     else:
         try:
             id = int(id)
@@ -616,7 +593,7 @@ def person(id):
         if id == 'new':
             return redirect(url_for('person', id=p.id))
 
-    return render_template('person.html', person=p, form=form, config_use_allow_jwt_auth=getattr(AuthCodeConfig, "USE_ALLOW_JWT_AUTH", True))
+    return render_template('person.html', person=p, form=form)
 
 
 @app.route('/profile/<int:id>', methods=['GET', 'POST'])
@@ -629,20 +606,7 @@ def profile(id):
     if p is None:
         return render_error(404)
 
-    if getattr(AuthCodeConfig, "USE_ALLOW_JWT_AUTH", True):
-        if request.method == "POST":
-            form_allow_jwt_auth = PersonAllowJWTAuthForm(request.form)
-            p.allow_jwt_auth = form_allow_jwt_auth.allow_jwt_auth.data
-            db.session.add(p)
-            hist_save_controller(db.session, p, current_user)
-            db.session.commit()
-        else:
-            form_allow_jwt_auth = PersonAllowJWTAuthForm()
-            form_allow_jwt_auth.allow_jwt_auth.data = p.allow_jwt_auth
-    else:
-        form_allow_jwt_auth = None
-
-    return render_template('profile.html', person=p, form_allow_jwt_auth=form_allow_jwt_auth)
+    return render_template('profile.html', person=p)
 
 
 @app.route('/student/<id>', methods=['GET', 'POST'])
@@ -1922,6 +1886,9 @@ def att_marks_student_add(id):
     s = db.session.query(Student).filter(Student.id == student_id).one_or_none()
     if s is None:
         return render_error(404)
+
+    if s.status != "study":
+        return render_error(400)
 
     for a in cu.att_marks:
         if a.student_id == student_id:

@@ -1,5 +1,5 @@
 import decimal
-from sqlalchemy import not_
+from sqlalchemy import not_, or_
 
 from app_config import db
 from model import StudGroup, CurriculumUnit, AttMark, Subject, LessonStudent, Lesson
@@ -24,8 +24,10 @@ def att_marks_report(s):
 
         result.extend(db.session.query(AttMark).join(CurriculumUnit).join(StudGroup) \
                       .filter(AttMark.student_id == s.id) \
-                      .filter(not_(StudGroup.active)) \
+                      .filter(or_(not_(StudGroup.active), AttMark.manual_add)) \
                       .order_by(StudGroup.year.desc(), StudGroup.semester.desc(), AttMark.curriculum_unit_id).all())
+
+
     return result
 
 

@@ -258,7 +258,7 @@ def get_current_user():
         if user_id is not None:
             user = db.session.query(Person).filter_by(id=user_id).one_or_none()
             if user is not None:
-                return user if not getattr(AuthCodeConfig, "USE_ALLOW_JWT_AUTH", True) or user.allow_jwt_auth else Person()
+                return user
     except:
         pass
 

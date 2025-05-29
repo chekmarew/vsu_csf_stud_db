@@ -2,20 +2,9 @@ from flask import request, jsonify, url_for
 from flask_jwt_extended import create_access_token, create_refresh_token, jwt_required, get_jwt_identity
 
 from app_config import app
-from auth_config import AuthCodeConfig
 import utils_auth
 import re
 
-
-def _add_auth_url(user, res_auth):
-    if getattr(AuthCodeConfig, "USE_ALLOW_JWT_AUTH", True) and not user.allow_jwt_auth:
-        res_auth['auth_url'] = url_for('login_jwt', jwt=res_auth['access_token'], next=url_for('profile', id=user.id), _external=True)
-        # Костыль из-за proxy
-        if "JWT_AUTH_HOST_URL" in app.config and app.config["JWT_AUTH_HOST_URL"] != request.host_url :
-            res_auth['auth_url'] = res_auth['auth_url'][len(request.host_url):]
-            res_auth['auth_url'] = app.config["JWT_AUTH_HOST_URL"] + res_auth['auth_url']
-
-    return res_auth
 
 @app.route('/api/auth_jwt/refresh', methods=["POST"])
 @jwt_required(refresh=True)
@@ -45,7 +34,6 @@ def api_auth_jwt_login():
     if res_auth["ok"] and res_auth["person_id"]:
         res_auth['access_token'] = create_access_token(identity=res_auth["person_id"])
         res_auth['refresh_token'] = create_refresh_token(identity=res_auth["person_id"])
-        res_auth = _add_auth_url(user, res_auth)
 
     http_code = res_auth.pop("error_code", 200)
     return jsonify(res_auth), http_code
@@ -122,7 +110,6 @@ def api_auth_jwt_email_code():
     if res_auth["ok"] and res_auth["person_id"]:
         res_auth['access_token'] = create_access_token(identity=res_auth["person_id"])
         res_auth['refresh_token'] = create_refresh_token(identity=res_auth["person_id"])
-        res_auth = _add_auth_url(user, res_auth)
 
     http_code = res_auth.pop("error_code", 200)
     return jsonify(res_auth), http_code
@@ -160,7 +147,6 @@ def api_auth_jwt_sms_code():
     if res_auth["ok"] and res_auth["person_id"]:
         res_auth['access_token'] = create_access_token(identity=res_auth["person_id"])
         res_auth['refresh_token'] = create_refresh_token(identity=res_auth["person_id"])
-        res_auth = _add_auth_url(user, res_auth)
 
     http_code = res_auth.pop("error_code", 200)
     return jsonify(res_auth), http_code

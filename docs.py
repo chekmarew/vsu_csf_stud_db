@@ -17,6 +17,8 @@ def create_doc_curriculum_unit(cu, _file_out=None):
     for m in att_marks:
         i += 1
         m.num = i
+        if m.manual_add:
+            m.num = "%d*" % i
     file_template = ""
 
     students_exclude2 = [m.student for m in cu.att_marks if m.exclude == 2]
