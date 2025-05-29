@@ -953,11 +953,11 @@
                                 {{ form_student_add.student(class_="form-control") }}
                             </div>
                         </div>
-                        {% if have_sub %}
+                        {% if show_group_subnum %}
                         <div class="form-group row">
-                            {{ form_student_add.group_subnum.label(class_="col-12 col-form-label") }}
+                            {{ form_student_add.group_subnum.label(class_="col-12 col-form-label", required='required') }}
                             <div class="col-12">
-                                {{ form_student_add.group_subnum(class_="form-control") }}
+                                {{ form_student_add.group_subnum(class_="form-control", type='number', min=1, max=curriculum_unit.stud_group.sub_count, required='required') }}
                             </div>
                         </div>
                         {% endif %}

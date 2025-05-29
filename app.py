@@ -1555,12 +1555,10 @@ def att_marks(id):
     form = AttMarksForm(request.form, obj=cu)
 
     form_student_add = None
-    have_sub = False
 
     if current_user.admin_user is not None and current_user.admin_user.active:
-        form_student_add = AttMarksStudentAddForm()
-        sg = db.session.query(StudGroup).filter(StudGroup.id == cu.stud_group_id).one_or_none()
-        have_sub = sg.sub_count > 1
+        if cu.stud_group.active and not cu.closed and not cu.pass_department:
+            form_student_add = AttMarksStudentAddForm()
 
     all_teachers = lambda: cu.practice_teachers + [cu.teacher]
 
@@ -1711,8 +1709,7 @@ def att_marks(id):
         'att_marks.html',
         curriculum_unit=cu,
         form=form,
-        form_student_add=form_student_add,
-        have_sub=have_sub
+        form_student_add=form_student_add
     )
 
 
