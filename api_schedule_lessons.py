@@ -167,7 +167,7 @@ def api_schedule_lesson():
 
 @app.route('/api/schedule/lesson/draft', methods=["POST"])
 @app.route('/api/schedule/lesson/draft/<int:lesson_id>', methods=["GET", "PATCH", "DELETE"])
-# @utils.check_auth_4_api()
+@utils.check_auth_4_api()
 def api_schedule_lesson_draft(lesson_id=None):
     """
     Handler для CRUD черновиков занятий (scheduled_lesson_draft) с учётом
@@ -359,7 +359,7 @@ def api_schedule_lesson_draft(lesson_id=None):
 
 
 @app.route('/api/schedule/lesson/to_draft', methods=["POST"])
-# @utils.check_auth_4_api()
+@utils.check_auth_4_api()
 def api_schedule_lesson_to_draft_transfer():
 
     # Удаляем все черновики
