@@ -170,193 +170,345 @@ def api_schedule_lesson():
 @utils.check_auth_4_api()
 def api_schedule_lesson_draft(lesson_id=None):
     """
-    Handler для CRUD черновиков занятий (scheduled_lesson_draft) с учётом
-    поля Subject.without_specifying_schedule.
+    CRUD для ScheduledLessonDraft с учётом:
+      - Subject.without_specifying_schedule,
+      - lesson_form == 'remote' (аудитория может быть null),
+      - если есть непустой комментарий, то аудитория тоже может быть null.
+    Поддерживается:
+      - Создание сразу для нескольких CU через related_curriculum_unit_ids.
+      - Обновление сразу нескольких драфтов через related_schedule_lesson_ids,
+        при условии, что совпадают type, form, week_day, week_type, teacher_id.
     """
-    # current_user = get_current_user()
-    # if not _allow_write(current_user):
-    #     return jsonify({"ok": False, "error": "method not allowed to you"})
 
-    # GET/DELETE: ищем существующий черновик
+    # ---------- GET / DELETE ----------
     draft = None
-
     if request.method in ("GET", "PATCH", "DELETE"):
         draft = db.session.query(ScheduledLessonDraft).filter_by(id=lesson_id).one_or_none()
-        if not draft:
+        if draft is None:
             return jsonify({"ok": False, "error": "Draft not found"}), 404
 
-
     if request.method == "GET":
-        data = draft_lesson_to_json(draft)
-        data["ok"] = True
-        return jsonify(data)
+        out = draft_lesson_to_json(draft)
+        out["ok"] = True
+        return jsonify(out)
 
     if request.method == "DELETE":
         db.session.delete(draft)
         db.session.commit()
         return jsonify({"ok": True})
 
-    # POST или PATCH
+    # ---------- POST / PATCH ----------
+
     rj = request.get_json(silent=True)
     if not isinstance(rj, dict):
         return jsonify({"ok": False, "error": "Invalid JSON"}), 400
 
-    # Список полей, которые обновляем через setattr
+    # Поля, разрешённые для массового setattr
     allowed_fields = [
-        'curriculum_unit_id', 'teacher_id', 'stud_group_subnums',
-        'week_day', 'week_type', 'lesson_num',
-        'lesson_type', 'lesson_form', 'classroom',
-        'scheduled_lesson_comment'
+        "curriculum_unit_id", "teacher_id", "stud_group_subnums",
+        "week_day", "week_type", "lesson_num",
+        "lesson_type", "lesson_form", "classroom",
+        "scheduled_lesson_comment"
     ]
 
-    # Функция проверки наличия обязательных полей для предметов с расписанием
-    def require_schedule_fields(src):
+    # -------- Вспомогательные функции --------
+
+    def require_schedule_fields(src: dict) -> list:
+        """
+        Проверяет наличие обязательных полей:
+          - teacher_id всегда обязателен, если предмет НЕ without_specifying_schedule.
+          - classroom обязателен только если BOTH:
+              1) form != 'remote'
+              2) scheduled_lesson_comment пустая или отсутствует
+        Возвращает список пропущенных полей.
+        """
         missing = []
-        for f in ('teacher_id', 'classroom'):
-            # считаем поле «пропущенным», если его нет или оно null/пусто
-            if f not in src or src[f] is None or (isinstance(src[f], str) and not src[f].strip()):
-                missing.append(f)
+        # teacher_id обязателен всегда (для предметов с расписанием)
+        if "teacher_id" not in src or src["teacher_id"] is None:
+            missing.append("teacher_id")
+
+        # Если форма != remote и нет непустого комментария, то classroom обязателен
+        form_val = src.get("lesson_form")
+        comment_val = src.get("scheduled_lesson_comment")
+        has_nonempty_comment = isinstance(comment_val, str) and comment_val.strip() != ""
+        if form_val != "remote" and not has_nonempty_comment:
+            if "classroom" not in src or src["classroom"] is None or (
+                    isinstance(src["classroom"], str) and not src["classroom"].strip()):
+                missing.append("classroom")
+
         return missing
 
-    # ===== POST =====
-    if request.method == "POST":
-        # Проверяем curriculum_unit
-        cu_id = rj.get('curriculum_unit_id')
+    def load_curriculum_unit(cu_id: int):
+        """Загружает CurriculumUnit по id или возвращает None."""
+        if not isinstance(cu_id, int):
+            return None
+        return db.session.query(CurriculumUnit).filter_by(id=cu_id).one_or_none()
 
-        cu = None
-        if isinstance(cu_id, int):
-            cu = db.session.query(CurriculumUnit).filter_by(id=cu_id).one_or_none()
-        if not cu:
+    def validate_related_cus(main_cu, related_ids: list):
+        """
+        Проверяет каждый ID из related_ids:
+         - существует ли CU,
+         - subject_id совпадает с main_cu.subject_id
+           или curriculum_unit_group_id совпадает (и не NULL).
+        Возвращает (список CU-объектов, список ошибок).
+        """
+        errors = []
+        related_objs = []
+        main_sid = main_cu.subject_id
+        main_gid = main_cu.curriculum_unit_group_id
+        for r_id in related_ids:
+            r_cu = load_curriculum_unit(r_id)
+            if r_cu is None:
+                errors.append(f"Invalid related_curriculum_unit_id {r_id}")
+                continue
+
+            if not (r_cu.subject_id == main_sid or (
+                    main_gid is not None and r_cu.curriculum_unit_group_id == main_gid)):
+                errors.append(f"Unrelated related_curriculum_unit_id {r_id}")
+                continue
+
+            related_objs.append(r_cu)
+
+        return related_objs, errors
+
+    def validate_related_drafts(base_draft, related_ids: list):
+        """
+        Проверяет каждый ID из related_ids:
+         - сам draft существует,
+         - у него совпадают поля (type, form, week_day, week_type, teacher_id),
+         - его curriculum_unit тот же subject_id или тот же curriculum_unit_group_id.
+        Возвращает (список draft-объектов, список ошибок).
+        """
+        errors = []
+        related_objs = []
+        base_cu = base_draft.curriculum_unit
+        base_sid = base_cu.subject_id
+        base_gid = base_cu.curriculum_unit_group_id
+        base_params = (
+        base_draft.type, base_draft.form, base_draft.week_day, base_draft.week_type, base_draft.teacher_id)
+
+        for d_id in related_ids:
+            rd = db.session.query(ScheduledLessonDraft).filter_by(id=d_id).one_or_none()
+            if rd is None:
+                errors.append(f"Related draft with ID {d_id} not found")
+                continue
+
+            rd_params = (rd.type, rd.form, rd.week_day, rd.week_type, rd.teacher_id)
+            if rd_params != base_params:
+                errors.append(f"Draft {d_id} parameters mismatch (type/form/week_day/week_type/teacher)")
+                continue
+
+            rc = rd.curriculum_unit
+            if not (rc.subject_id == base_sid or (base_gid is not None and rc.curriculum_unit_group_id == base_gid)):
+                errors.append(f"Draft {d_id} has unrelated curriculum unit")
+                continue
+
+            related_objs.append(rd)
+
+        return related_objs, errors
+
+    def validate_hours(
+            curriculum_unit_id: int,
+            lesson_type: str,
+            target_mask: int,
+            target_wt_factor: int,
+            exclude_draft_ids: list = None
+    ):
+        cu = db.session.query(CurriculumUnit).filter_by(id=curriculum_unit_id).one_or_none()
+        if cu is None:
+            return False, f"CurriculumUnit {curriculum_unit_id} not found"
+
+        allowed_counts = {
+            "lecture": cu.hours_lect_per_week,
+            "pract": cu.hours_pract_per_week,
+            "lab": cu.hours_lab_per_week
+        }
+        allowed_for_type = allowed_counts.get(lesson_type, 0)
+
+        # Берём только те draft'ы, у которых (existing_mask & target_mask) != 0
+        query = db.session.query(ScheduledLessonDraft).filter_by(
+            curriculum_unit_id=curriculum_unit_id,
+            type=lesson_type
+        ).filter(ScheduledLessonDraft.stud_group_subnums.op('&')(target_mask) != 0)
+
+        if exclude_draft_ids:
+            query = query.filter(ScheduledLessonDraft.id.notin_(exclude_draft_ids))
+
+        existing_drafts = query.all()
+
+        # load[0] — нагрузка для подгруппы 1, load[1] — для подгруппы 2
+        load = [0, 0]
+        for ed in existing_drafts:
+            existing_mask = ed.stud_group_subnums
+            wt = 2 if ed.week_type == 3 else 1
+            overlap = existing_mask & target_mask
+
+            if overlap & 1:
+                load[0] += wt
+            if overlap & 2:
+                load[1] += wt
+
+        # Прибавляем нагрузку нового/редактируемого драфта
+        if target_mask & 1:
+            load[0] += target_wt_factor
+        if target_mask & 2:
+            load[1] += target_wt_factor
+
+        for idx in (0, 1):
+            if load[idx] > allowed_for_type:
+                subgroup_no = idx + 1
+                return False, (
+                    f"Превышено количество занятий типа '{lesson_type}' в неделю "
+                    f"для подгруппы {subgroup_no}: допускается {allowed_for_type}, "
+                    f"пытаетесь {load[idx]}"
+                )
+        return True, None
+
+    # -------- Конец вспомогательных функций --------
+
+    # === POST: создание нового черновика (включая merge для related CU) ===
+    valid_hours_errors = []
+    if request.method == "POST":
+        # 1) Загрузим и проверим главный CurriculumUnit
+        cu_id = rj.get("curriculum_unit_id")
+        main_cu = load_curriculum_unit(cu_id)
+        if main_cu is None:
             return jsonify({"ok": False, "error": "Invalid curriculum_unit_id"}), 400
-        subj = cu.subject
-        cu_g_id = cu.curriculum_unit_group_id
+
+        subj = main_cu.subject
         spec_flag = subj.without_specifying_schedule
 
-        r_cu_ids = rj.get('related_curriculum_unit_ids')
-        r_cus = []
-        if r_cu_ids is not None:
-            for r_cu_id in r_cu_ids:
-                r_cu = db.session.query(CurriculumUnit).filter_by(id=r_cu_id).one_or_none()
-                if not r_cu:
-                    return jsonify({"ok": False, "error": f"Invalid related_curriculum_unit_id {r_cu_id}"}), 400
-                if not (r_cu.subject_id == cu.subject_id or r_cu.curriculum_unit_group_id == cu_g_id):
-                    return jsonify({"ok": False, "error": f"Oh no, unrelated related_curriculum_unit_id {r_cu_id}"}), 400
-                r_cus.append(r_cu)
-
-        # Если предмет требует указания преподавателя/аудитории
+        # 2) Если предмет требует расписания, проверяем обязательные поля
         if not spec_flag:
-            miss = require_schedule_fields(rj)
-            if miss:
+            missing = require_schedule_fields(rj)
+            if missing:
                 return jsonify({
                     "ok": False,
-                    "error": f"Missing fields for scheduled subject: {', '.join(miss)}"
+                    "error": f"Missing fields for scheduled subject: {', '.join(missing)}"
                 }), 400
 
-        # Создаем новый черновик
-        draft = ScheduledLessonDraft(
-            curriculum_unit_id = cu_id,
-            stud_group_subnums = rj['stud_group_subnums'],
-            type               = rj['lesson_type'],
-            form               = rj['lesson_form'],
-            week_day           = rj['week_day'],
-            week_type          = rj['week_type'],
-            lesson_num         = rj['lesson_num'],
-            teacher_id         = rj['teacher_id'],
-            comment            = rj.get('scheduled_lesson_comment')
-        )
+        # 3) Обрабатываем related_curriculum_unit_ids
+        related_cu_ids = rj.get("related_curriculum_unit_ids") or []
+        related_cus, cu_errors = validate_related_cus(main_cu, related_cu_ids)
+        if cu_errors:
+            return jsonify({"ok": False, "error": "; ".join(cu_errors)}), 400
+
+        # 4) Подготавливаем общие поля (common_data)
+        common_data = {
+            "stud_group_subnums": rj["stud_group_subnums"],
+            "type": rj["lesson_type"],
+            "form": rj["lesson_form"],
+            "week_day": rj["week_day"],
+            "week_type": rj["week_type"],
+            "lesson_num": rj["lesson_num"],
+            "comment": rj.get("scheduled_lesson_comment")
+        }
         if not spec_flag:
-            draft.teacher_id = rj['teacher_id']
-            draft.classroom = rj['classroom']
-        db.session.add(draft)
+            common_data["teacher_id"] = rj["teacher_id"]
+            # classroom обязателен, только если форма != 'remote' и нет непустого комментария
+            form_val = rj["lesson_form"]
+            comment_val = rj.get("scheduled_lesson_comment", "")
+            has_nonempty_comment = isinstance(comment_val, str) and comment_val.strip() != ""
+            if form_val != "remote" and not has_nonempty_comment or rj.get("classroom") is not None:
+                common_data["classroom"] = rj["classroom"]
 
-        # Создаем черновики для смежных занятий, если они есть
-        if r_cus:
-            for r_cu in r_cus:
-                related_draft = ScheduledLessonDraft(
-                    curriculum_unit_id=r_cu.id,
-                    stud_group_subnums=rj['stud_group_subnums'],
-                    type=rj['lesson_type'],
-                    form=rj['lesson_form'],
-                    week_day=rj['week_day'],
-                    week_type=rj['week_type'],
-                    lesson_num=rj['lesson_num'],
-                    teacher_id=rj['teacher_id'],
-                    comment=rj.get('scheduled_lesson_comment')
-                )
-                if not spec_flag:
-                    related_draft.teacher_id = rj['teacher_id']
-                    related_draft.classroom = rj['classroom']
-                db.session.add(related_draft)
+        # 5) Функция для создания одного ScheduledLessonDraft
+        new_drafts = []
 
-    # ===== PATCH =====
+        def create_draft_for_cu(cu_obj):
+            d = ScheduledLessonDraft(curriculum_unit_id=cu_obj.id, **common_data)
+            db.session.add(d)
+            db.session.flush()  # чтобы d.id сразу заполнился
+            new_drafts.append(d)
+
+        # 5.1) Создаём для главного CU
+        b, e = validate_hours(main_cu.id,
+                              common_data["type"],
+                              common_data["stud_group_subnums"],
+                              common_data["week_type"])
+        if not b:
+            valid_hours_errors.append(e)
+        create_draft_for_cu(main_cu)
+        # 5.2) Создаём для каждого related CU
+        for rc in related_cus:
+            b, e = validate_hours(rc.id,
+                                  common_data["type"],
+                                  common_data["stud_group_subnums"],
+                                  common_data["week_type"])
+            if not b:
+                valid_hours_errors.append(e)
+            create_draft_for_cu(rc)
+
+        if valid_hours_errors:
+            db.session.rollback()
+            return jsonify({"ok": False, "error": "; ".join(valid_hours_errors)}), 400
+
+        db.session.commit()
+
+        # 8) Формируем ответ
+        payload = [draft_lesson_to_json(d) for d in new_drafts]
+        return jsonify({"ok": True, "created": payload}), 201
+
+    # === PATCH: обновление одного draft + (опционально) связанных draft-ов ===
+
     if request.method == "PATCH":
-        r_draft = []
-        r_draft_ids = rj.get('related_schedule_lesson_ids')
-        if r_draft_ids is not None:
-            for r_draft_id in r_draft_ids:
-                r_d = db.session.query(ScheduledLessonDraft).filter_by(id=r_draft_id).one_or_none()
-                if not r_d:
-                    return jsonify({"ok": False, "error": f"Related draft with ID {r_draft_id} not found"}), 404
-                if (r_d.type != draft.type
-                        or r_d.week_day != draft.week_day
-                        or r_d.week_type != draft.week_type
-                        or r_d.teacher_id != draft.teacher_id):
-                    return jsonify({"ok": False, "error": f"Draft {r_draft_id} has different parameters (type, week_day, week_type, teacher)"}), 400
+        # 1) Получаем связанные драфты, если переданы related_schedule_lesson_ids
+        related_ids = rj.get("related_schedule_lesson_ids") or []
+        related_objs, rd_errors = validate_related_drafts(draft, related_ids)
+        if rd_errors:
+            return jsonify({"ok": False, "error": "; ".join(rd_errors)}), 400
 
-                    # Check if curriculum units are related (same subject or curriculum group)
-                if not (r_d.curriculum_unit.subject_id == draft.curriculum_unit.subject_id or
-                        r_d.curriculum_unit.curriculum_unit_group_id == draft.curriculum_unit.curriculum_unit_group_id):
-                    return jsonify({"ok": False, "error": f"Draft {r_draft_id} has unrelated curriculum unit"}), 400
-                r_draft.append(r_d)
         subj = draft.curriculum_unit.subject
         spec_flag = subj.without_specifying_schedule
-        # Если предмет не безрасписанный, то при любом обновлении
-        # проверяем, что поля присутствуют
+
+        # 2) Определяем новую форму: либо та, что пришла, либо старая
+        new_form = rj.get("lesson_form", draft.form)
+        new_comment = rj.get("scheduled_lesson_comment", draft.comment or "")
+
+        # 3) Если предмет требует расписания, проверяем обязательные поля:
         if not spec_flag:
-            miss = require_schedule_fields(rj)
-            if miss:
+            temp = {"lesson_form": new_form, "scheduled_lesson_comment": new_comment}
+            temp.update(rj)
+            missing = require_schedule_fields(temp)
+            if missing:
                 return jsonify({
                     "ok": False,
-                    "error": f"Missing fields for scheduled subject: {', '.join(miss)}"
+                    "error": f"Missing fields for scheduled subject: {', '.join(missing)}"
                 }), 400
-        # обновляем только разрешённые поля
-        for field in allowed_fields:
-            if field in rj:
-                setattr(draft, field, rj[field])
 
-        if r_draft:
-            for r_d in r_draft:
-                for field in allowed_fields:
-                    if field in rj:
-                        setattr(r_d, field, rj[field])
+        # 4) Обновляем основной draft
+        for fld in allowed_fields:
+            if fld in rj:
+                setattr(draft, fld, rj[fld])
+        b, e = validate_hours(draft.curriculum_unit_id,
+                              draft.type,
+                              draft.stud_group_subnums,
+                              draft.week_type)
+        if not b:
+            valid_hours_errors.append(e)
+        # 5) Обновляем связанные драфты
+        for rd in related_objs:
+            for fld in allowed_fields:
+                if fld in rj:
+                    setattr(rd, fld, rj[fld])
+            b, e = validate_hours(rd.curriculum_unit_id,
+                                  rd.type,
+                                  rd.stud_group_subnums,
+                                  rd.week_type)
+            if not b:
+                valid_hours_errors.append(e)
 
-    # ===== Общая проверка часов в неделю =====
-    cu_id = draft.curriculum_unit_id
-    cu = db.session.query(CurriculumUnit).filter_by(id=cu_id).one_or_none()
-    allowed = {
-        'lecture': cu.hours_lect_per_week,
-        'pract':   cu.hours_pract_per_week,
-        'lab':     cu.hours_lab_per_week
-    }.get(draft.type, 0)
-    existing = db.session.query(ScheduledLessonDraft) \
-        .filter_by(curriculum_unit_id=cu.id, type=draft.type)
-    if request.method == 'PATCH':
-        existing = existing.filter(ScheduledLessonDraft.id != draft.id)
-    total = existing.count() + 1
-    if total > allowed:
-        return jsonify({
-            "ok": False,
-            "error": (
-                f"Превышено количество занятий типа '{draft.type}' в неделю: "
-                f"допускается {allowed}, пытаетесь {total}"
-            )
-        }), 400
+        if valid_hours_errors:
+            db.session.rollback()
+            return jsonify({"ok": False, "error": "; ".join(valid_hours_errors)}), 400
 
+    # 9) Сохраняем изменения
     db.session.commit()
-    data = draft_lesson_to_json(draft)
-    data["ok"] = True
-    return jsonify(data)
 
+    # 10) Возвращаем обновлённый основной draft
+    out = draft_lesson_to_json(draft)
+    out["ok"] = True
+    return jsonify(out), 200
 
 @app.route('/api/schedule/lesson/to_draft', methods=["POST"])
 @utils.check_auth_4_api()
