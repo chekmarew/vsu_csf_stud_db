@@ -90,7 +90,7 @@
                         <tr>
                             <th>{% if certificates_with_num|length > 0 %}<input type="checkbox" id="input_certificates_with_num_all" class="form-control">{% endif %}</th>
                             <th>Дата время присвоения номера</th>
-							<th>Номер</th>
+                            <th>Номер</th>
                             <th>Факультет</th>
                             <th>Фамилия имя отчество</th>
                             <th>Курс</th>
@@ -101,8 +101,8 @@
                         {% for cert in certificates_with_num %}
                         <tr>
                             <td><input type="checkbox" class="input_certificates_with_num form-control" data-cert-id="{{ cert.id }}"></td>
-                            <td>{{ cert.request_time.strftime('%d.%m.%Y %H:%M') }}</td>
-							<td>{{ cert.print_num }}</td>
+                            <td>{{ cert.print_time.strftime('%d.%m.%Y %H:%M') }}</td>
+                            <td>{{ cert.print_num }}</td>
                             <td>{{ cert.specialty.faculty.name_short }}</td>
                             <td>
                                 <a href="{{ url_for('student', id=cert.student_id) if current_user.admin_user and current_user.admin_user.active else url_for('att_marks_report_student', id=cert.student_id) }}">{{ cert.surname }} {{ cert.firstname }}{% if cert.middlename %} {{ cert.middlename }}{% endif %}</a>
