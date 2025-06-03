@@ -866,7 +866,7 @@ class CurriculumUnit(db.Model):
     journalize_relations = ('practice_teachers',)
 
     @property
-    def visible_attrs(self):
+    def visible_attrs_4_report(self):
         attrs = tuple()
         if self.mark_type != "no_att":
             if self.hours_att_1 > 0:
@@ -880,10 +880,6 @@ class CurriculumUnit(db.Model):
             if self.mark_type in ("exam", "test_diff"):
                 attrs += ("att_mark_append_ball",)
 
-        if self.use_topic == 'coursework':
-            attrs += ("theme",)
-            attrs += ("teacher",)
-
         if self.has_simple_mark_test_simple:
             attrs += ("simple_mark_test_simple",)
         if self.has_simple_mark_exam:
@@ -894,8 +890,17 @@ class CurriculumUnit(db.Model):
             attrs += ("simple_mark_course_work",)
         if self.has_simple_mark_course_project:
             attrs += ("simple_mark_course_project",)
-
         return attrs
+
+    @property
+    def visible_attrs(self):
+        attrs = self.visible_attrs_4_report
+        if self.use_topic == 'coursework':
+            attrs += ("theme", "teacher")
+        if self.use_topic == 'project_seminar':
+            attrs += ("theme",)
+        return attrs
+
 
     @property
     def visible_ball_average(self):

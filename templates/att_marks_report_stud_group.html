@@ -242,12 +242,12 @@
                         {% endif %}
                     </th>
                     {% for cu in stud_group.curriculum_units %}
-                        <th colspan="{{ cu.visible_attrs|length + cu.visible_ball_average|int + cu.calc_attendance|int + (2 if cu.mark_type != 'no_att' else 0) }}" class="cell-border-right-2 cell-border-top-2 text-center">{{ cu.subject_name_print }}</th>
+                        <th colspan="{{ cu.visible_attrs_4_report|length + cu.visible_ball_average|int + cu.calc_attendance|int + (2 if cu.mark_type != 'no_att' else 0) }}" class="cell-border-right-2 cell-border-top-2 text-center">{{ cu.subject_name_print }}</th>
                     {% endfor %}
                 </tr>
                 <tr>
                     {% for cu in stud_group.curriculum_units %}
-                        <th colspan="{{ cu.visible_attrs|length + cu.visible_ball_average|int + cu.calc_attendance|int + (2 if cu.mark_type != 'no_att' else 0) }}" class="cell-border-top cell-border-right-2 text-center">
+                        <th colspan="{{ cu.visible_attrs_4_report|length + cu.visible_ball_average|int + cu.calc_attendance|int + (2 if cu.mark_type != 'no_att' else 0) }}" class="cell-border-top cell-border-right-2 text-center">
                             {% if cu.get_rights(current_user)["read"] %}
                             <a href="{{ url_for('att_marks', id=cu.id) }}">{{ cu.mark_types_name }}</a>
                             {% else %}
@@ -275,7 +275,7 @@
                         <th class="cell-border-right cell-border-top cell-border-bottom cell-mark text-center">3</th>
                         {% endif %}
                         {% if cu.calc_attendance %}
-                        <th class="{{'cell-border-right' if cu.visible_attrs | length > 0 else 'cell-border-right-2'}} cell-border-top cell-border-bottom cell-mark-total text-center small"><a href="{{ url_for('lessons', _anchor='/curriculum-unit/'+(cu.id|string)) }}" title="% посещаемости">% посещ.</a></th>
+                        <th class="{{'cell-border-right' if cu.visible_attrs_4_report | length > 0 else 'cell-border-right-2'}} cell-border-top cell-border-bottom cell-mark-total text-center small"><a href="{{ url_for('lessons', _anchor='/curriculum-unit/'+(cu.id|string)) }}" title="% посещаемости">% посещ.</a></th>
                         {% endif %}
                         {% if cu.visible_ball_average %}
                         <th class="cell-border-right cell-border-top cell-border-bottom cell-mark-total text-center" title="Средневзешенный балл">Взеш</th>
@@ -336,7 +336,7 @@
                             {% set cu = stud_group.curriculum_units[loop.index0] %}
                             {% if mark %}
                                 {% if mark.exclude == 2 %}
-                                    <td colspan="{{ cu.visible_attrs|length + cu.visible_ball_average|int + cu.calc_attendance|int + (2 if cu.mark_type != 'no_att' else 0) }}" class="cell-mark text-center cell-disabled cell-border-bottom cell-border-right-2">
+                                    <td colspan="{{ cu.visible_attrs_4_report|length + cu.visible_ball_average|int + cu.calc_attendance|int + (2 if cu.mark_type != 'no_att' else 0) }}" class="cell-mark text-center cell-disabled cell-border-bottom cell-border-right-2">
                                         Перезачтено
                                     </td>
                                 {% else %}
@@ -369,7 +369,7 @@
                                             {% set attendance_pct_title = 'Штрафной балл за посещаемость: ' + (mark.ball_attendance_add|string) %}
                                         {% endif %}
                                     {% endif %}
-                                    <td class="{{'cell-border-right' if cu.visible_attrs | length > 0 else 'cell-border-right-2'}} cell-mark-total small cell-border-bottom text-center {% if m_disabled %}cell-disabled{% else %}{{ macros_pct_attendance_class(mark.attendance_pct) }}{% endif %}" title="{{ attendance_pct_title }}">
+                                    <td class="{{'cell-border-right' if cu.visible_attrs_4_report | length > 0 else 'cell-border-right-2'}} cell-mark-total small cell-border-bottom text-center {% if m_disabled %}cell-disabled{% else %}{{ macros_pct_attendance_class(mark.attendance_pct) }}{% endif %}" title="{{ attendance_pct_title }}">
                                        {% if mark.attendance_pct != None %}
                                             {{ mark.attendance_pct }}
                                         {% endif %}
@@ -536,7 +536,7 @@
                             </th>
                             {% endif %}
                             {% if cu.calc_attendance %}
-                                <th class="{{'cell-border-right' if cu.visible_attrs | length > 0 else 'cell-border-right-2'}} cell-mark-total small cell-border-bottom-2 text-center cell-no-padding {{ macros_pct_attendance_class(ball_avg_col['attendance_pct']) }}">
+                                <th class="{{'cell-border-right' if cu.visible_attrs_4_report | length > 0 else 'cell-border-right-2'}} cell-mark-total small cell-border-bottom-2 text-center cell-no-padding {{ macros_pct_attendance_class(ball_avg_col['attendance_pct']) }}">
                                     {% if ball_avg_col['attendance_pct'] != None %}
                                         {{ ball_avg_col['attendance_pct'] }}
                                     {% endif %}
@@ -615,7 +615,7 @@
                             </th>
                             {% endif %}
                             {% if cu.calc_attendance %}
-                            <th class="{{'cell-border-right' if cu.visible_attrs | length > 0 else 'cell-border-right-2'}} cell-mark-total cell-border-bottom-2 text-center"></th>
+                            <th class="{{'cell-border-right' if cu.visible_attrs_4_report | length > 0 else 'cell-border-right-2'}} cell-mark-total cell-border-bottom-2 text-center"></th>
                             {% endif %}
                             {% if cu.visible_ball_average %}
                             <th class="cell-mark-total cell-border-right cell-border-bottom-2 text-center"></th>
