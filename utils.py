@@ -19,8 +19,6 @@ def check_auth_4_api():
             current_user = get_current_user()
             if current_user is None or current_user.is_anonymous:
                 return jsonify({"ok": False, "error": "Пользователь не авторизован"}), 401
-            if not current_user.id:
-                return jsonify({"ok": False, "error": "Метод авторизации для данного пользователя не поддерживается"}), 403
             if not current_user.is_active:
                 return jsonify({"ok": False, "error": "Учётная запись отключена"}), 403
             try:

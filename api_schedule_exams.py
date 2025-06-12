@@ -1,6 +1,9 @@
 from app_config import app, db
-from model import Teacher, CurriculumUnit, Subject, StudGroup, Specialty, Exam, Classroom, Holiday, Person, EducationLevels
+from model import CurriculumUnit, Subject, StudGroup, Specialty, Exam, Classroom, Holiday, EducationLevels
 import utils
+
+import utils_schedule
+
 from utils_auth import get_current_user
 from utils_json import teacher_to_json, exam_to_json
 
@@ -10,22 +13,7 @@ from sqlalchemy import not_, func
 from datetime import datetime, timedelta
 
 
-def _allow_write(u: Person):
-    if u.admin_user is not None and u.admin_user.active:
-        return True
-
-    if u.teacher is not None and u.teacher.active and u.teacher.dean_staff:
-        return True
-
-    # temp
-    if u.login in ('redin_n_a', 'savchenko_n_a', 'shatkov_p_v', 'smirnov_i_g', 'korobejnikova_a_v'):
-        return True
-
-    return False
-
-
 @app.route('/api/schedule/exams', methods=["GET"])
-@utils.check_auth_4_api()
 def api_schedule_exams():
     current_user = get_current_user()
 
@@ -78,7 +66,7 @@ def api_schedule_exams():
     teacher_ids = set()
     subject_ids = set()
     result = {
-        "_allow_write": archive_year is None and archive_semester is None and _allow_write(current_user),
+        "_allow_write": archive_year is None and archive_semester is None and utils_schedule.allow_write(current_user),
         "stud_groups": [],
         "teachers": [],
         "subjects": [],
@@ -169,7 +157,6 @@ def api_schedule_exams():
 
 @app.route('/api/schedule/exams', methods=["POST"])
 @app.route('/api/schedule/exams/<int:exam_id>', methods=["GET", "PATCH", "DELETE"])
-@utils.check_auth_4_api()
 def api_schedule_exam(exam_id=None):
     result = {"ok": False}
     exam = None
@@ -184,7 +171,7 @@ def api_schedule_exam(exam_id=None):
         return jsonify(result)
 
     current_user = get_current_user()
-    if not _allow_write(current_user):
+    if not utils_schedule.allow_write(current_user):
         result["error"] = "Нет прав доступа"
         return jsonify(result), 403
 

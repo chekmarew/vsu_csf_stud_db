@@ -2621,7 +2621,6 @@ def lessons():
 
 @app.route('/schedule/exams', methods=["GET"])
 @app.route('/schedule', methods=["GET"])
-@login_required
 def schedule():
     index_js_file = None
     index_js_file_st_mtime = None
