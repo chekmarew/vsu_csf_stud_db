@@ -35,7 +35,7 @@ from forms import StudentsUnallocatedForm
 from model_history_controller import hist_save_controller
 
 from docs import create_doc, create_doc_curriculum_unit, create_doc_curriculum_unit_simple_marks
-from excel import create_excel_stud_groups
+from excel import create_excel_stud_groups, create_excel_certificates_of_study
 
 from sqlalchemy import not_, or_, and_, func
 
@@ -2597,6 +2597,22 @@ def certificates_of_study_archive(year=None):
     return render_template('certificates_of_study_archive.html', certificates=certificates,
                            year=year, years=years, page=page)
 
+
+@app.route('/certificates_of_study_archive_print/<int:year>', methods=['GET'])
+@login_required
+def certificates_of_study_archive_print(year):
+    if not ((current_user.admin_user is not None and current_user.admin_user.active) or
+            (current_user.teacher is not None and current_user.teacher.active and current_user.teacher.dean_staff)):
+        return render_error(403)
+
+    certificates = db.session.query(CertificateOfStudy).filter(CertificateOfStudy.year == year).filter(CertificateOfStudy.ready_time.isnot(None)).order_by(CertificateOfStudy.num).all()
+
+    f = create_excel_certificates_of_study(certificates)
+    f.seek(0)
+    file_name = "Справки об обучении ФКН %d.xlsx" % year
+    return send_file(f, mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                     as_attachment=True,
+                     download_name=file_name)
 
 @app.route('/schedule/<schedule_type>/<object_type>/<int:object_id>', methods=["GET"])
 @login_required

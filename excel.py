@@ -1,5 +1,5 @@
 from openpyxl import Workbook
-from openpyxl.styles import Border, Side, Font
+from openpyxl.styles import Border, Side, Font, Alignment
 from openpyxl.utils import get_column_letter
 import io
 
@@ -123,4 +123,78 @@ def create_excel_stud_groups(groups, stud_name_format, sub_group_split):
         _fill_worksheet_stud_group(g, ws_n, stud_name_format, sub_group_split)
     wb.remove(ws)
     wb.save(file)
+    return file
+
+
+def _fill_line_certificate_of_study(ws, certificate, i):
+    ws.cell(i, 1, certificate.print_time.strftime("%d.%m.%Y"))
+    ws.cell(i, 2, certificate.print_num)
+    ws.cell(i, 3, certificate.specialty.faculty.name_short)
+
+    if certificate.middlename:
+        student_name = "%s %s %s" % (certificate.surname, certificate.firstname, certificate.middlename)
+    else:
+        student_name = "%s %s" % (certificate.surname, certificate.firstname)
+
+    ws.cell(i, 4, student_name)
+    course_str_parts = []
+    if certificate.course is not None:
+        course_str_parts.append(str(certificate.course))
+
+    if certificate.specialty.education_level == 'master':
+        course_str_parts.append('маг.')
+
+    if certificate.student_status == 'expelled':
+       course_str_parts.append('отчислен' if certificate.student.person.gender == 'M' else 'отчислена')
+
+    if certificate.student_status == 'alumnus':
+       course_str_parts.append('выпускник' if certificate.student.person.gender == 'M' else 'выпускница')
+
+    ws.cell(i, 5, " ".join(course_str_parts))
+    for j in range(1, 6):
+        ws.cell(i, j).border = _border_default
+
+
+def create_excel_certificates_of_study(certificates):
+    wb = Workbook()
+    file = io.BytesIO()
+    ws = wb.active
+
+    for col in ('A', 'E'):
+        ws.column_dimensions[col].width = 14
+    ws.column_dimensions['B'].width = 18
+    ws.column_dimensions['D'].width = 40
+    ws.column_dimensions['C'].width = 22
+
+    ws['A1']='Дата'
+    ws['B1']='Номер'
+    ws['C1']='Факультет'
+    ws['D1']='Фамилия имя отчество'
+    ws['E1']='Курс'
+
+    for cell in ('A1', 'B1', 'C1', 'D1', 'E1'):
+        ws[cell].font = Font(bold=True)
+        ws[cell].border = _border_default
+
+    i = 1
+    prev = None
+    last_num = None
+    for certificate in certificates:
+        if prev is not None and prev.student_id == certificate.student_id:
+            ws.cell(i, 2, "%d-%d-%d" % (certificate.specialty.faculty.ID_DEFAULT, last_num, certificate.num))
+        else:
+            i += 1
+            last_num = certificate.num
+            _fill_line_certificate_of_study(ws, certificate, i)
+        prev = certificate
+
+    for row in ws.iter_rows(min_row=0, max_row=ws.max_row, min_col=0, max_col=2):
+        for cell in row:
+            cell.alignment = Alignment(
+                wrap_text=True,
+                horizontal='left',
+            )
+    ws.freeze_panes = 'A2'
+    wb.save(file)
+
     return file
