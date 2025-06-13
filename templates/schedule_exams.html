@@ -1,0 +1,81 @@
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>ВГУ ФКН БРС Расписание экзаменов</title>
+    {% include '_header.html' %}
+    {% from "_macros_bootstrap" import bootstrap_form_input with context %}
+    {% from "_mark_decorator.html" import macros_mark_class with context %}
+    {% include '_mark_decorator.html' %}
+	<style>
+		.table-header-fixed {
+			position: sticky;
+			top: 0;
+			z-index: 1;
+		}
+	</style>
+</head>
+<body>
+    {% include '_menu.html' %}
+    <div class="container">
+        <h2>Расписание экзаменов</h2>
+        {% if teacher %}
+        <h3>Преподаватель <a href="{{ url_for('teacher_report', id=teacher.id) }}">{{ teacher.person.full_name }}</a></h3>
+        {% endif %}
+        {% if student %}
+        <h3>Студент <a href="{{ url_for('att_marks_report_student', id=student.id) }}">{{ student.person.full_name }}</a></h3>
+        {% endif %}
+        {% if stud_group %}
+        <h3><a href="{{ url_for('stud_group_leader', id=stud_group.id) }}">{{ stud_group.year_print }} {{ stud_group.session_type }}, {{ stud_group.course }} курс{% if stud_group.specialty.education_level == 'master' %} (маг.){% endif %}, {{ stud_group.num }} группа</a></h3>
+        {% endif %}
+        <table class="table table-sm table-bordered">
+            <thead class="thead-light table-header-fixed">
+                <tr>
+                    <th>Дата и время</th>
+                    <th>Предмет</th>
+                    {% if not teacher %}
+                    <th>Преподаватель</th>
+                    {% endif %}
+                    {% if not student and not stud_group %}
+                    <th>Курс</th>
+                    <th>Группа</th>
+                    {% endif %}
+                    {% if teacher or (stud_group != None and stud_group.sub_count > 1) %}
+                    <th>Подгруппы</th>
+                    {% endif %}
+                    <th>Аудитория</th>
+                    <th>Примечание</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for e in exams %}
+                <tr class="{{ 'bg-secondary' if e.etime < now }}">
+                    <td>{{ e.stime.strftime('%d.%m.%Y %H:%M')  }}</td>
+                    <td>
+                        {% if e.curriculum_unit.get_rights(current_user)["write"] %}
+                        <a href="{{ url_for('att_marks', id=e.curriculum_unit.id) }}">{{ e.curriculum_unit.subject.name }}</a>
+                        {% else %}
+                        {{ e.curriculum_unit.subject.name }}
+                        {% endif %}
+                    </td>
+                    {% if not teacher %}
+                    <td>
+                        {{ e.teacher.rank }}<br>
+                        {{ e.teacher.person.full_name }}
+                    </td>
+                    {% endif %}
+                    {% if not student and not stud_group %}
+                    <td>{{ e.curriculum_unit.stud_group.course }}{% if e.curriculum_unit.stud_group.specialty.education_level == 'master' %} маг.{% endif %}</td>
+                    <td title="{{ e.curriculum_unit.stud_group.specialty.full_name }}">{{ e.curriculum_unit.stud_group.num }}</td>
+                    {% endif %}
+                    {% if teacher or (stud_group != None and stud_group.sub_count > 1) %}
+                    <td>{{ e.stud_group_subnums_str }}</td>
+                    {% endif %}
+                    <td>{{ e.classroom if e.classroom }}</td>
+                    <td>{{ e.comment if e.comment }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>

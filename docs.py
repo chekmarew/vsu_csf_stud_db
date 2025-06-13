@@ -7,6 +7,14 @@ _DIR_TEMPLATES = os.path.join(os.path.dirname(__file__), "templates_docs")
 _DIR_TEMPLATES_OUT = os.path.join(os.path.dirname(__file__), "templates_docs_out")
 
 
+_EXAM_DATE_DEFAULT = '___.___._____'
+def _get_exam_date(cu):
+    exam_date = _EXAM_DATE_DEFAULT
+    if len(cu.exams) > 0:
+        exam_date = max((e.stime for e in cu.exams))
+        exam_date = exam_date.strftime('%d.%m.%Y')
+    return exam_date
+
 def create_doc_curriculum_unit(cu, _file_out=None):
     file_out = _file_out if _file_out else os.path.join(_DIR_TEMPLATES_OUT, "%s.odt" % str(cu.id))
     document = {}
@@ -35,7 +43,7 @@ def create_doc_curriculum_unit(cu, _file_out=None):
             v = m.result_print
             if v is None:
                 for k in document["total"].keys():
-                    document["total"][k] = ''
+                    document["total"][k] = '___'
                 break
             else:
                 k = "v%s" % v[1]["value"]
@@ -44,7 +52,7 @@ def create_doc_curriculum_unit(cu, _file_out=None):
         file_template = os.path.join(_DIR_TEMPLATES, "template_att.odt")
 
     t = Template(file_template, file_out)
-    t.render({"document": document, "cu": cu, "att_marks": att_marks, "students_exclude2": students_exclude2})
+    t.render({"document": document, "cu": cu, "att_marks": att_marks, "students_exclude2": students_exclude2, "exam_date": _get_exam_date(cu)})
     for m in att_marks:
         delattr(m, "num")
 
@@ -84,7 +92,7 @@ def create_doc_curriculum_unit_simple_marks(cu, mark_type, _file_out=None):
         v = m.ball_value
         if v is None:
             for k in document["total"].keys():
-                document["total"][k] = ''
+                document["total"][k] = '___'
             break
         else:
             k = "v%s" % v
@@ -92,7 +100,7 @@ def create_doc_curriculum_unit_simple_marks(cu, mark_type, _file_out=None):
 
     t = Template(file_template, file_out)
     # t.render({})
-    t.render({"document": document, "cu": cu, "att_marks": att_marks, "students_exclude2": students_exclude2, "mark_type_name": mark_type_name, "mark_type_is_test_simple": (mark_type == "test_simple")})
+    t.render({"document": document, "cu": cu, "att_marks": att_marks, "students_exclude2": students_exclude2, "mark_type_name": mark_type_name, "mark_type_is_test_simple": (mark_type == "test_simple"), "exam_date": _get_exam_date(cu) if mark_type == "exam" else _EXAM_DATE_DEFAULT})
     for m in att_marks:
         delattr(m, "num")
 

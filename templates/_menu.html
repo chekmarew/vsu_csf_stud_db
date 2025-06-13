@@ -36,7 +36,7 @@
         <span class="navbar-toggler-icon"></span>
     </button>
     <div class="collapse navbar-collapse justify-content-lg-between" id="navbarMenu">
-     <ul class="navbar-nav nav-tabs">
+     <ul class="navbar-nav">
          <li class="nav-item">
             <a href="{{ url_for('index') }}" class="nav-link{{' active' if request.endpoint == 'index' or (current_user.teacher and request.endpoint == 'teacher_report' and request.view_args['id'] == current_user.teacher.id) or (current_user.students|length > 0 and request.endpoint == 'att_marks_report_student' and request.view_args['id'] in (current_user.students | map(attribute='id'))) }}">Главная</a>
          </li>
@@ -81,6 +81,23 @@
                 <a href="{{ url_for('certificates_of_study') }}" class="nav-link{{' active' if request.endpoint in ('certificates_of_study', 'certificates_of_study_archive') }}">Справки об обучении</a>
             </li>
          {% endif %}
+         <!-- Dropdown -->
+        <li class="nav-item dropdown">
+          <a class="nav-link dropdown-toggle{{' active' if request.endpoint in ('schedule', 'schedule_user')}}" href="javascript:void(null);" id="navbarMenuSchedule" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+            Расписание
+          </a>
+          <ul class="dropdown-menu" aria-labelledby="navbarMenuSchedule">
+              <li><a class="dropdown-item disabled" href="javascript:void(null);">Расписание занятий (в разработке)</a></li>
+              <div class="dropdown-divider"></div>
+              <li><a class="dropdown-item" href="{{ url_for('schedule_all') }}/exams">Расписание экзаменов</a></li>
+              {% if current_user.student and current_user.student.stud_group %}
+              <li><a class="dropdown-item" href="{{ url_for('schedule', schedule_type='exams', object_type='student', object_id=current_user.student.id) }}">Моё расписание экзаменов (студент)</a></li>
+              {% endif %}
+              {% if current_user.teacher and current_user.teacher.active %}
+              <li><a class="dropdown-item" href="{{ url_for('schedule', schedule_type='exams', object_type='teacher', object_id=current_user.teacher.id) }}">Моё расписание экзаменов (преподаватель)</a></li>
+              {% endif %}
+          </ul>
+        </li>
 
          {% if current_user.user_rights["persons"] %}
             <li class="nav-item">
@@ -98,7 +115,6 @@
             </li>
          {% endif %}
          {% if current_user.admin_user != None or current_user.teacher != None %}
-
             <li class="nav-item">
                 <a href="{{ url_for('stud_groups_curator') }}" class="nav-link{{' active' if request.endpoint == 'stud_groups_curator' }}">Кураторы</a>
             </li>
@@ -109,6 +125,8 @@
                 <a href="{{ url_for('help') }}" class="nav-link{{' active' if request.endpoint == 'help' }}">Помощь</a>
             </li>
          {% endif %}
+
+
      </ul>
      <ul class="navbar-nav ml-lg-4">
             <li class="nav-item mx-1 py-2">

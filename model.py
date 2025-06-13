@@ -204,6 +204,21 @@ class _ObjectWithStudGroupSubnumsMap:
                 if value[num + 1]:
                     self.stud_group_subnums |= (1 << num)
 
+    @property
+    def stud_group_subnums_str(self):
+        stud_group = self.stud_group if hasattr(self, "stud_group") else self.curriculum_unit.stud_group
+        if stud_group.sub_count == 0:
+            return "—"
+
+        stud_group_subnums_map = self.stud_group_subnums_map
+        r = []
+        for num in range(1, stud_group.sub_count+1):
+            if stud_group_subnums_map[num]:
+                r.append(str(num))
+        return ", ".join(r)
+
+
+
 
 class Person(db.Model):
     __tablename__ = 'person'

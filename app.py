@@ -21,7 +21,7 @@ import utils_auth
 
 from model import StudGroup, Specialty, Subject, SubjectParticular, Teacher, Student, CurriculumUnit, CurriculumUnitStatusHist, \
     LessonStudent, LessonCurriculumUnit, Lesson, \
-    AttMark, AttMarkHist, AdminUser, Person, Department, PersonHist, CertificateOfStudy
+    AttMark, AttMarkHist, AdminUser, Person, Department, PersonHist, Exam, CertificateOfStudy
 from model import MarkSimpleTypeDict
 
 from forms import StudGroupForm, StudentForm, SubjectForm, TeacherForm, PersonForm, \
@@ -2598,6 +2598,54 @@ def certificates_of_study_archive(year=None):
                            year=year, years=years, page=page)
 
 
+@app.route('/schedule/<schedule_type>/<object_type>/<int:object_id>', methods=["GET"])
+@login_required
+def schedule(schedule_type, object_type, object_id: int):
+    t: Teacher = None
+    s: Student = None
+    sg: StudGroup = None
+    if object_type == "teacher":
+        t = db.session.query(Teacher).filter_by(id=object_id).one_or_none()
+        if t is None:
+            return render_error(404)
+
+    elif object_type == "student":
+        s = db.session.query(Student).filter_by(id=object_id).one_or_none()
+        if s is None:
+            return render_error(404)
+        if not s.get_rights(current_user)["read_marks"]:
+            return render_error(403)
+
+    elif object_type == "stud_group":
+        sg = db.session.query(StudGroup).filter_by(id=object_id).one_or_none()
+        if sg is None:
+            return render_error(404)
+    else:
+        return render_error(404)
+
+
+
+    if schedule_type == "exams":
+        q_exams = db.session.query(Exam).join(CurriculumUnit, Exam.curriculum_unit_id==CurriculumUnit.id)
+        if s is not None:
+            q_exams = q_exams.filter(CurriculumUnit.stud_group_id == s.stud_group_id)
+            if s.stud_group is not None and s.stud_group.sub_count > 1 and s.stud_group_subnum > 0:
+                q_exams = q_exams.filter(Exam.stud_group_subnums.op('&')((1<<(s.stud_group_subnum - 1))))
+            q_exams = q_exams.order_by(Exam.stime)
+        if t is not None:
+            q_exams = q_exams.join(StudGroup, CurriculumUnit.stud_group_id == StudGroup.id).filter(StudGroup.active)
+            q_exams = q_exams.filter(Exam.teacher_id == t.id)
+            q_exams = q_exams.order_by(Exam.stime, StudGroup.semester, StudGroup.num, Exam.stud_group_subnums)
+
+        if sg is not None:
+            q_exams = q_exams.filter(CurriculumUnit.stud_group_id == object_id)
+            q_exams = q_exams.order_by(Exam.stime, Exam.stud_group_subnums)
+
+        exams = q_exams.all()
+
+        return render_template('schedule_exams.html', teacher=t, student=s, exams=exams, stud_group=sg, now=datetime.now())
+    else:
+        return render_error(404)
 
 @app.route('/lessons', methods=["GET"])
 @login_required
@@ -2621,7 +2669,7 @@ def lessons():
 
 @app.route('/schedule/exams', methods=["GET"])
 @app.route('/schedule', methods=["GET"])
-def schedule():
+def schedule_all():
     index_js_file = None
     index_js_file_st_mtime = None
 
