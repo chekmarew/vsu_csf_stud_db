@@ -1584,7 +1584,7 @@ class AttMark(db.Model):
                 if self.att_mark_exam >= MARK_RESULT_ATT_MIN_BALL:
                     ball += self.att_mark_exam
                 else:
-                    ball = min(self.att_mark_exam * 2, self.ball_average)
+                    ball = min(self.att_mark_exam * 2, (self.ball_average + self.att_mark_exam))
 
         if self.att_mark_append_ball is not None and self.is_available_att_mark_append_ball:
             ball += self.att_mark_append_ball
