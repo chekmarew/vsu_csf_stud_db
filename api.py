@@ -549,15 +549,11 @@ def api_student_marks(student):
         result_print = mark.result_print
         cu: CurriculumUnit = mark.curriculum_unit
         sg: StudGroup = cu.stud_group
+
         att_mark_j = {
             'id': mark.att_mark_id,
             'curriculum_unit_id': mark.curriculum_unit_id,
-            'att1': mark.att_mark_1,
-            'att2': mark.att_mark_2,
-            'att3': mark.att_mark_3,
             'ball_average': mark.ball_average,
-            'exam': mark.att_mark_exam,
-            'append_ball': mark.att_mark_append_ball,
             'result': result_print[0] if result_print is not None else None,
             'result5': result_print[1]["value"] if result_print is not None else None,
             'attendance_pct': mark.attendance_pct,
@@ -570,13 +566,22 @@ def api_student_marks(student):
             'session_num': sg.session_num,
             'year': sg.year,
             'mark_type': cu.mark_type,
+            'has_simple_mark_test_simple': cu.has_simple_mark_test_simple,
+            'has_simple_mark_exam': cu.has_simple_mark_exam,
+            'has_simple_mark_test_diff': cu.has_simple_mark_test_diff,
+            'has_simple_mark_course_work': cu.has_simple_mark_course_work,
+            'has_simple_mark_course_project': cu.has_simple_mark_course_project,
             'moodle_id': cu.moodle_id,
             'comment': mark.comment
-         }
+        }
+
+        for attr in cu.visible_attrs_4_report:
+            att_mark_j[attr] = getattr(mark, attr)
+
         if student.stud_group_id is not None and cu.mark_type == "exam" and sg.active and student.stud_group_id == sg.id:
             att_mark_j["exam_schedule"] = None
             for exam in cu.exams:
-                if exam.stud_group_subnums[student.stud_group_subnum]:
+                if exam.stud_group_subnums_map[student.stud_group_subnum]:
                     att_mark_j["exam_schedule"] = exam_to_json(exam, stud_group_subnums=False, curriculum_unit_id=False)
 
         att_marks_j.append(att_mark_j)

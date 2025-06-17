@@ -51,7 +51,7 @@
                 <tr class="{{ 'bg-secondary' if e.etime < now }}">
                     <td>{{ e.stime.strftime('%d.%m.%Y %H:%M')  }}</td>
                     <td>
-                        {% if e.curriculum_unit.get_rights(current_user)["write"] %}
+                        {% if e.curriculum_unit.get_rights(current_user)["read"] %}
                         <a href="{{ url_for('att_marks', id=e.curriculum_unit.id) }}">{{ e.curriculum_unit.subject.name }}</a>
                         {% else %}
                         {{ e.curriculum_unit.subject.name }}
