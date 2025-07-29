@@ -15,11 +15,13 @@ with app.app_context():
 
         db.session.add(sg_old)
 
-        if sg_old.semester == 4 and sg_old.specialty.code == "09.03.02":
+        sp = sg_old.specialty
+
+        if sp.semestr_distirib is not None and sp.semestr_distirib == sg_old.semester + 1:
             stud_groups_map[sg_old.id] = 'no_group'
             continue
 
-        if (sg_old.semester == 8 and sg_old.specialty.education_level == 'bachelor') or (sg_old.semester == 11 and sg_old.specialty.education_level == 'specialist') or (sg_old.semester == 4 and sg_old.specialty.education_level == 'master'):
+        if sg_old.semester >= sp.semestr_end:
             stud_groups_map[sg_old.id] = 'alumnus'
             continue
 
