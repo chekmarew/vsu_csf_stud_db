@@ -107,7 +107,7 @@ class StudGroupForm(ModelForm):
     session_start_date = DateField('Дата начала экзаменационной сессии', validators=[validators.Optional()], render_kw={"type": "date"})
     session_end_date = DateField('Дата окончания экзаменационной сессии', validators=[validators.Optional()], render_kw={"type": "date"})
 
-    weeks_training = IntegerField('Недель теоретического обучения', [validators.DataRequired(), validators.NumberRange(min=0, max=255)])
+    weeks_training = IntegerField('Недель теоретического обучения', [validators.NumberRange(min=0, max=255)])
 
     button_save = SubmitField('Сохранить')
     button_delete = SubmitField('Удалить')
