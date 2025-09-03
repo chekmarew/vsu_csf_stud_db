@@ -24,12 +24,18 @@
         <h4>Ваши контактые данные:</h4>
         <div class="row m-2">
             <div class="col-4 col-lg-2 font-weight-bold text-right">E-mail:</div>
-            <div class="col-8 col-lg-3">
+            <div class="col-8 col-lg-4">
                 {{ current_user.email if current_user.email }} <a href="javascript:void(null)" data-toggle="modal" data-target="#modalChangeEmail">{{ 'Изменить' if current_user.email else 'Указать' }}</a>
             </div>
             <div class="col-4 col-lg-2 font-weight-bold text-right">Телефон:</div>
-            <div class="col-8 col-lg-3">
+            <div class="col-8 col-lg-4">
                 {{ current_user.phone_format if current_user.phone }} <a href="javascript:void(null)" data-toggle="modal" data-target="#modalChangePhone">{{ 'Изменить' if current_user.phone else 'Указать' }}</a>
+            </div>
+
+
+            <div class="col-4 col-lg-2 font-weight-bold text-right">Другие контактные данные:</div>
+            <div class="col-8 col-lg-10">
+                {{ current_user.contacts if current_user.contacts }} <a href="javascript:void(null)" data-toggle="modal" data-target="#modalChangeContacts">{{ 'Изменить' if current_user.contacts else 'Указать' }}</a>
             </div>
         </div>
         {% endif %}
@@ -117,17 +123,48 @@
         </div>
     </div>
 
+
+    <div class="modal fade" id="modalChangeContacts" tabindex="-1" role="dialog" aria-labelledby="modalChangeContactsTitle" aria-hidden="true" data-keyboard="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalChangeContactsTitle">Изменение дополнительных контактных данных</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <form id="formChangeContacts">
+                        <div class="row">
+
+                            <div class="col-6 col-lg-3 font-weight-bold">Другие контактные данные</div>
+                            <div class="col-6 col-lg-9"><input type="text" class="form-control" id="contacts" value="{{ current_user.contacts if current_user.contacts }}"></div>
+                            <div class="col-6 col-lg-3 mt-2 align-self-end">Примеры:</div>
+                            <div class="col-6 col-lg-9 mt-2"><small>Для ввода данных, необходимых для доступа к курсам Яндекс необходимо здесь указать телеграм-аккаунт и e-mail от яндекс (если ваш основной почтовый ящик расположен на другом сервисе)</small></div>
+                            <div class="col-6 col-lg-3">Только телеграм</div>
+                            <div class="col-6 col-lg-9"><small>@ivanov_i_i</small></div>
+                            <div class="col-6 col-lg-3">Телеграм и почта</div>
+                            <div class="col-6 col-lg-9"><small>@ivanov_i_i; ivanov_i_i@yandex.ru</small></div>
+
+                        </div>
+
+
+                        <div class="row">
+                            <div class="col-12 invalid-feedback" id="formChangeContactsFeedback" style="display: none;"></div>
+                        </div>
+                        <div class="row mt-2">
+                            <input class="btn btn-success form-control col-11 col-lg-5 mx-auto" type="submit" value="Изменить контактные данные">
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
     {% endif %}
 
 
-    {% if form_allow_jwt_auth %}
-    <script>
-        $('#allow_jwt_auth').change(function(evt){
-            var f = evt.target.form;
-            f.submit();
-        });
-    </script>
-    {% endif %}
+
     {% if person.id == current_user.id %}
     <script>
         $(document).ready(function(){
@@ -178,6 +215,13 @@
                         el_submit.removeAttr("disabled");
                         if (data.ok)
                         {
+                            if (data.changeWithoutCode)
+                            {
+                                alert('E-mail успешно изменён');
+                                document.location.reload();
+                                return;
+                            }
+
                             $("#email").removeAttr("required");
                             $('.auth-code-email-elem').show();
 
@@ -329,6 +373,14 @@
                         el_submit.removeAttr("disabled");
                         if (data.ok)
                         {
+                            if (data.changeWithoutCode)
+                            {
+                                alert('Номер телефона успешно изменён');
+                                document.location.reload();
+                                return;
+                            }
+
+
                             $("#phone").removeAttr("required");
                             $('.auth-code-phone-elem').show();
 
@@ -433,7 +485,47 @@
                 }
                 return false;
         });
+
+        /* Change Contacts */
+
+        $('#formChangeContacts').submit(function(e){
+            e.preventDefault();
+
+            $('#formChangeContactsFeedback').text('').hide();
+            var el_submit = $(e.target).find('input[type="submit"]');
+            el_submit.attr("disabled", "disabled");
+            $("#contacts").attr("disabled", "disabled");
+            $.post("{{ url_for('api_current_user_change_contacts') }}", {"contacts": $("#contacts").val().trim()},  function(data){
+                el_submit.removeAttr("disabled");
+                if (data.ok)
+                {
+                    alert('Контактные данные успешно изменены');
+                    document.location.reload();
+                    return;
+                }else
+                {
+                    el_submit.removeAttr("disabled");
+                    $("#contacts").removeAttr("disabled");
+                }
+            }).fail(function(jqXHR) {
+                el_submit.removeAttr("disabled");
+                $("#contacts").removeAttr("disabled");
+
+                if (jqXHR.responseJSON && jqXHR.responseJSON.error) {
+                    $('#formChangeContactsFeedback').text(jqXHR.responseJSON.error);
+                }
+                else
+                {
+                    $('#formChangeContactsFeedback').text("Произошла ошибка. Повторите запрос позже.");
+                }
+                $('#formChangeContactsFeedback').show();
+            });
+
+            return false;
+        })
+
     });
+
     </script>
     {% endif %}
 </body>

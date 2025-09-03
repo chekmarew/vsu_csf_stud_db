@@ -404,6 +404,26 @@ def api_current_user_change_phone_request_code():
     return jsonify(res), http_code
 
 
+
+@app.route('/api/current_user/change_contacts', methods=["POST"])
+@check_auth_4_api()
+def api_current_user_change_contacts():
+    current_user: Person = get_current_user()
+    contacts = request.form.get("contacts", "").strip()
+
+    if not contacts:
+        contacts = None
+    else:
+        if len(contacts) > 4000:
+            contacts = contacts[:4000]
+
+    current_user.contacts = contacts
+    db.session.add(current_user)
+    hist_save_controller(db.session, current_user, current_user)
+    db.session.commit()
+    return jsonify({"ok": True})
+
+
 def _current_user_change_profile_accept_code(f):
     @wraps(f)
     def wrapper():

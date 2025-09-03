@@ -360,6 +360,16 @@ def user_request_code_4_change_phone(u: Person, phone: int):
         res["error_code"] = 400
         return res
 
+    # TEMP
+    if not u.phone:
+        u.phone = phone
+        db.session.add(u)
+        hist_save_controller(db.session, u, u)
+        db.session.commit()
+        res["changeWithoutCode"] = True
+        res["ok"] = True
+    # END TEMP
+
     phone_str = "+%d" % phone
 
     code_old = None
