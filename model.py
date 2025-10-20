@@ -249,7 +249,7 @@ class Person(db.Model):
     @property
     def surname_old(self):
         r = []
-        for h in self.history.filter(PersonHist.surname != self.surname).filter(PersonHist.etime >= datetime.now() - timedelta(days=150)).order_by(PersonHist.stime.desc()).all():
+        for h in self.history.filter(PersonHist.surname != self.surname).filter(PersonHist.etime >= datetime.now() - timedelta(days=60)).order_by(PersonHist.stime.desc()).all():
             if h.surname not in r:
                 r.append(h.surname)
         if len(r) == 0:
