@@ -8,9 +8,19 @@
                 {% else %}
                 {{ student.full_name }}
                 {% endif %}
-                <strong class="ml-3">{{ student.kind_of_study_activity_name }}</strong>
             </dd>
-
+            <dt class="col-lg-3 col-12 text-left text-lg-right">
+                Финансирование:
+            </dt>
+            <dd class="col-lg-3 col-12">
+                {{ student.financing_name }}
+            </dd>
+            <dt class="col-lg-3 col-12 text-left text-lg-right">
+                Вид учебной деятельности:
+            </dt>
+            <dd class="col-lg-3 col-12">
+                {{ student.kind_of_study_activity_name }}
+            </dd>
             {% if student.stud_group %}
                 <dt class="col-lg-3 col-12 text-left text-lg-right">
                     Курс:
