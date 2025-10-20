@@ -3,7 +3,7 @@ from datetime import datetime
 from app_config import db
 from model import StudGroup, Subject, SubjectParticular, Teacher, Student, StudentStates, StudentStateDict, \
     CurriculumUnit, AttMark, MarkTypes, MarkTypeDict, AdminUser, Specialty, Department, Person, CertificateOfStudy, \
-    TopicTypeDict, TopicTypes, Financing, FinancingDict
+    TopicTypeDict, TopicTypes, Financing, FinancingDict, KindOfStudyActivity, KindOfStudyActivityDict
 from wtforms import validators, Form, SubmitField, IntegerField, StringField, SelectField, HiddenField, PasswordField, FormField, BooleanField, DateField, TextAreaField
 from wtforms.widgets import ListWidget, CheckboxInput
 from wtforms_alchemy import ModelForm, ModelFieldList, QuerySelectMultipleField
@@ -134,6 +134,12 @@ class StudentForm(ModelForm):
                               get_label=lambda f: FinancingDict[f],
                               allow_blank=False, validators=[validators.DataRequired()])
 
+    kind_of_study_activity = QuerySelectField('Вид учебной деятельности',
+                              query_factory=lambda: KindOfStudyActivity,
+                              get_pk=lambda f: f,
+                              get_label=lambda f: KindOfStudyActivityDict[f],
+                              allow_blank=False, validators=[validators.DataRequired()])
+
     specialty = QuerySelectField('Направление (специальность)',
                                  query_factory=lambda: db.session.query(Specialty).filter(Specialty.active).
                                  order_by(Specialty.education_level_order, Specialty.code,
@@ -220,6 +226,12 @@ class PersonSearchForm(Form):
                               query_factory=lambda: Financing,
                               get_pk=lambda f: f,
                               get_label=lambda f: FinancingDict[f],
+                              blank_text='Не важно', allow_blank=True,
+                              validators=[validators.Optional()])
+    student_kind_of_study_activity = QuerySelectField('Вид учебной деятельности',
+                              query_factory=lambda: KindOfStudyActivity,
+                              get_pk=lambda f: f,
+                              get_label=lambda f: KindOfStudyActivityDict[f],
                               blank_text='Не важно', allow_blank=True,
                               validators=[validators.Optional()])
     student_status = QuerySelectField('Состояние',

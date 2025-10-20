@@ -39,6 +39,7 @@
             {# student #}
             {{ bootstrap_form_input(form.student_id) }}
             {{ bootstrap_form_input(form.student_financing) }}
+            {{ bootstrap_form_input(form.student_kind_of_study_activity) }}
             {{ bootstrap_form_input(form.student_status) }}
             {{ bootstrap_form_input(form.student_alumnus_year) }}
             {{ bootstrap_form_input(form.student_expelled_year) }}
@@ -85,6 +86,7 @@
                 {% if role == 'Student' %}
                 <th>№ Билета</th>
                 <th>Финансирование</th>
+                <th>Вид учебной деятельности</th>
                 <th>Курс</th>
                 <th>Группа</th>
                 {% endif %}
@@ -173,6 +175,9 @@
                         </td>
                         <td>
                             {{ s.financing_name }}
+                        </td>
+                        <td>
+                            {{ s.kind_of_study_activity_name }}
                         </td>
                         <td>
                             {{ s.course if s.status == 'study' }}

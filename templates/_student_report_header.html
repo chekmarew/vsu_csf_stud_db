@@ -8,7 +8,9 @@
                 {% else %}
                 {{ student.full_name }}
                 {% endif %}
+                <strong class="ml-3">{{ student.kind_of_study_activity_name }}</strong>
             </dd>
+
             {% if student.stud_group %}
                 <dt class="col-lg-3 col-12 text-left text-lg-right">
                     Курс:
@@ -44,12 +46,6 @@
                     {% if student.stud_group_subnum %}
                         ({{ student.stud_group_subnum }})
                     {% endif %}
-                </dd>
-                <dt class="col-lg-3 col-12 text-left text-lg-right">
-                    Направление / специальность:
-                </dt>
-                <dd class="col-lg-9 col-12">
-                    {{ student.stud_group.specialty.full_name }}
                 </dd>
             {% else %}
                 {% if student.semester %}
@@ -90,6 +86,11 @@
                         {{ student.expelled_year }} года
                     </dd>
                 {% endif %}
-
             {% endif %}
+            <dt class="col-lg-3 col-12 text-left text-lg-right">
+                Направление / специальность:
+            </dt>
+            <dd class="col-lg-9 col-12">
+                {{ student.specialty.full_name }}
+            </dd>
         </dl>

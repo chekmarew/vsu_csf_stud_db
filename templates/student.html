@@ -17,6 +17,7 @@
             {{ bootstrap_form_input(form.status) }}
             {{ bootstrap_form_input(form.semester) }}
             {{ bootstrap_form_input(form.financing) }}
+            {{ bootstrap_form_input(form.kind_of_study_activity) }}
             {{ bootstrap_form_input(form.specialty) }}
             {{ bootstrap_form_input(form.stud_group) }}
             {{ bootstrap_form_input(form.stud_group_subnum, type='number') }}
@@ -86,7 +87,6 @@
             input_status.find('option[value="alumnus"]').text('успешно закончила обучение');
             input_status.find('option[value="expelled"]').text('отчислена');
             {% endif %}
-
 
             input_stud_group.change(function(){
                 if (input_stud_group.val() == "__None" || input_status.val() != 'study')

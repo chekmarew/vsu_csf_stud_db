@@ -352,6 +352,9 @@
                                 {% else %}
                                     {{ s.full_name_short }}
                                 {% endif %}
+                                {% if s.foreigner %}
+                                <span class="badge badge-warning ml-2 float-right" title="иностранный студент">И</span>
+                                {% endif %}
                             </div>
                         </td>
                         {% for l in lessons %}

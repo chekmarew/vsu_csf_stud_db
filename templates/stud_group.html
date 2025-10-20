@@ -88,9 +88,6 @@
                                     <div class="col-2">{{ s.id }}</div>
                                     <div class="col-3">
                                         <a href="{{ url_for('student', id=s.id) }}">{{ s.full_name }}</a>
-                                        {% if s.foreigner %}
-                                            <span class="badge badge-warning" title="изучает русский язык как иностранный"></span>
-                                        {% endif %}
                                     </div>
                                     {% if group.sub_count %}
                                         <div class="col-1">

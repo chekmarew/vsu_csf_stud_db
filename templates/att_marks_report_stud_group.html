@@ -330,6 +330,9 @@
                                 {% else %}
                                     {{ r['student'].full_name_short }}
                                 {% endif %}
+                                {% if r['student'].foreigner %}
+                                <span class="badge badge-warning ml-2 float-right" title="иностранный студент">И</span>
+                                {% endif %}
                             </div>
                         </td>
                         {% for mark in r['att_marks'] %}

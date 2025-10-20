@@ -83,6 +83,12 @@ FinancingDict = {
     'contract': "договор"
 }
 
+KindOfStudyActivity = ('student', 'student_foreign')
+KindOfStudyActivityDict = {
+    'student': "студент",
+    'student_foreign': "студент иностранный"
+}
+
 # Типы занятий
 LessonTypes = ('seminar', 'lecture')
 
@@ -426,6 +432,7 @@ class Student(db.Model, _Person, _ObjectWithSemester):
     expelled_year = db.Column('student_expelled_year', db.SMALLINT)
     status = db.Column('student_status', db.Enum(*StudentStateDict.keys()), nullable=False)
     financing = db.Column('financing', db.Enum(*FinancingDict.keys()), nullable=False)
+    kind_of_study_activity = db.Column('kind_of_study_activity', db.Enum(*KindOfStudyActivityDict.keys()), nullable=False)
     particular_subjects = db.relationship('SubjectParticular',
         secondary=db.Table(
             'student_subject_particular',
@@ -436,14 +443,6 @@ class Student(db.Model, _Person, _ObjectWithSemester):
     certificates_of_study = db.relationship('CertificateOfStudy', lazy='dynamic',
                                backref='student')
 
-    # foreigner = db.Column('student_foreigner', db.BOOLEAN, nullable=False, default=False)
-    @property
-    def foreigner(self):
-        for sp in self.particular_subjects:
-            if sp.id in SubjectParticular.IDS_FOREIGN_LANGUAGE:
-                return True
-        return False
-
     @property
     def status_name(self):
         if self.status and self.status in StudentStateDict:
@@ -453,6 +452,15 @@ class Student(db.Model, _Person, _ObjectWithSemester):
     def financing_name(self):
         if self.financing and self.financing in FinancingDict:
             return FinancingDict[self.financing]
+
+    @property
+    def kind_of_study_activity_name(self):
+        if self.kind_of_study_activity and self.kind_of_study_activity in KindOfStudyActivityDict:
+            return KindOfStudyActivityDict[self.kind_of_study_activity]
+
+    @property
+    def foreigner(self):
+        return self.kind_of_study_activity == 'student_foreign'
 
     @property
     def active(self):

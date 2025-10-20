@@ -488,6 +488,8 @@ def persons():
             else:
                 if form.student_financing.data is not None:
                     q = q.filter(Student.financing == form.student_financing.data)
+                if form.student_kind_of_study_activity.data is not None:
+                    q = q.filter(Student.kind_of_study_activity == form.student_kind_of_study_activity.data)
                 if form.student_status.data is not None:
                     q = q.filter(Student.status == form.student_status.data)
                 if form.student_group.data is not None:
