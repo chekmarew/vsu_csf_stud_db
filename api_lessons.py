@@ -429,6 +429,7 @@ def api_lessons(lesson_id):
                     "firstname": s.person.firstname,
                     "middlename": s.person.middlename,
                     "gender": s.person.gender,
+                    "kind_of_study_activity": s.kind_of_study_activity,
                     "attendance": lesson_student.attendance,
                     "comment": lesson_student.comment
                 }
@@ -899,6 +900,7 @@ def _api_lessons_curriculum_units(current_user, rj):
             "surname_old": s.person.surname_old,
             "firstname": s.firstname,
             "middlename": s.middlename,
+            "kind_of_study_activity": s.kind_of_study_activity,
             "gender": s.person.gender
         }
         if stud_group.active and stud_group.sub_count > 1:

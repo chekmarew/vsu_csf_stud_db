@@ -271,6 +271,10 @@
                     <div class="col-2">
                         {{ att_mark.att_mark_id|safe }}
                         {{ att_mark.object_data.student.full_name }}
+                        {% if att_mark.object_data.student.foreigner %}
+                            <br/>
+                            <span class="badge badge-warning mt-1" title="иностранный студент">иностранный студент</span>
+                        {% endif %}
                     </div>
                     <div class="col-1-half d-flex">
                         <div class="align-self-center">
