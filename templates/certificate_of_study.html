@@ -67,6 +67,12 @@
                         Если требуется справка за предыдущую ступень обучения, то необходимо <a href="{{ url_for('index', show_all_roles=True) }}">перейти ко всем учётным записям</a> и из-под нужной учётной записи студента заказать справку.
                     </div>
 					{% endif %}
+                    {% if student.financing == 'budget' %}
+                    <div class="alert alert-warning my-1" role="alert">
+                        Обратите внимание. Справка о <u>стипендии</u> через эту форму не оформляется.<br>
+                        Для получения такой справки обратитесь в <a href="https://www.vsu.ru/ru/university/structure/mfc/" target="_blank">многофункциональный центр ВГУ</a> (каб. 148, тел.: <a href="tel:+74732555646">+7(473)255-56-46</a>, <a href="tel:+74732281160*1056">+7(473)228-11-60 доб. 1056</a>)
+                    </div>
+                    {% endif %}
                     {% endif %}
                     <form method="post">
                         {% autoescape false %}
