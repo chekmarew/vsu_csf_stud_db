@@ -170,22 +170,6 @@ def send_code_sms(phone):
         res["error_code"] = 403
         return res
 
-    # Temp
-    allow_send_sms = False
-    if user.teacher and user.teacher.active:
-        allow_send_sms = True
-    if user.admin_user and user.admin_user.active:
-        allow_send_sms = True
-    if not allow_send_sms:
-        res["error"] = "Для данной учётной записи аутентификация при помощи SMS временно недоступна."
-        if user.email is not None:
-            res["error"] += " Попробуйте выполнить вход по e-mail."
-        elif user.login is not None:
-            res["error"] += " Попробуйте выполнить вход по логину и паролю."
-        res["error_code"] = 503
-        return res
-    # End temp
-
     if _check_exists_auth_code('phone', phone):
         res["error"] = "Код для входа уже был запрошен. Повторите запрос позже"
         res["error_code"] = 400
@@ -375,16 +359,6 @@ def user_request_code_4_change_phone(u: Person, phone: int):
 
         res["error_code"] = 400
         return res
-
-    # TEMP
-    if not u.phone:
-        u.phone = phone
-        db.session.add(u)
-        hist_save_controller(db.session, u, u)
-        db.session.commit()
-        res["changeWithoutCode"] = True
-        res["ok"] = True
-    # END TEMP
 
     phone_str = "+%d" % phone
 
