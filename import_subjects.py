@@ -54,7 +54,9 @@ with app.app_context():
 
         for stud_group in stud_groups_q.all():
             e_level = stud_group.specialty.education_level
-            if e_level == 'master':
+            simple_subject = subject_name in ("Безопасность жизнедеятельности", "Основы военной подготовки")
+
+            if e_level == 'master' or simple_subject:
                 hours_att_1 = hours_att_2 = hours_att_3 = 0
             elif e_level == 'bachelor' and semester == 8:
                 hours_att_3 = 0
@@ -82,14 +84,14 @@ with app.app_context():
                 hours_att_1=hours_att_1,
                 hours_att_2=hours_att_2,
                 hours_att_3=hours_att_3,
-                mark_type=("no_att" if e_level == "master" else mark_type),
+                mark_type=("no_att" if e_level == "master" or simple_subject else mark_type),
                 closed=False,
                 department_id=department_id,
                 hours_lect=hours_lect,
                 hours_pract=hours_pract,
                 hours_lab=hours_lab
             )
-            if e_level == "master":
+            if e_level == "master" or simple_subject:
                 if mark_type == "test_simple":
                     cu_new.has_simple_mark_test_simple = True
                 if mark_type == "exam":
