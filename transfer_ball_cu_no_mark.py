@@ -17,7 +17,8 @@ with app.app_context():
     semesters = (1, 3, 5, 7, 9) if month < 9 else (2, 4, 6, 8, 10)
     for cu_old in db.session.query(CurriculumUnit).join(StudGroup).filter(CurriculumUnit.mark_type == 'no_mark').filter(not_(StudGroup.active)).filter(StudGroup.year == year).filter(StudGroup.semester.in_(semesters)).order_by(CurriculumUnit.subject_id, StudGroup.semester, StudGroup.num).all():
         cu_new = db.session.query(CurriculumUnit).join(StudGroup).filter(StudGroup.active).filter(CurriculumUnit.subject_id == cu_old.subject_id).filter(StudGroup.year == (year + 1 if cu_old.stud_group.semester % 2 == 0 else year)).filter(StudGroup.semester == (cu_old.stud_group.semester + 1)).filter(StudGroup.num == cu_old.stud_group.num).one()
-
+        if cu_old.subject.name in ('Введение в специальность',):
+            continue
         for att_mark_old in cu_old.att_marks:
             s = att_mark_old.student
             if s.status != "study" or s.stud_group_id is None or s.stud_group_id != cu_new.stud_group_id:
