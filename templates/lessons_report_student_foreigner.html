@@ -186,6 +186,12 @@
            border-left-color: rgb(189,183,107);
         }
 
+        .legend {
+            position: sticky;
+            left: 15px;
+            width: fit-content;
+        }
+
 
     </style>
 </head>
@@ -218,7 +224,7 @@
                             {{ dt.strftime("%d.%m") }}
                         </th>
                     {% endfor %}
-                    <th rowspan="6" class="cell-border-top-2 cell-border-bottom-2 cell-attendance text-center cell-border-left-2 cell-border-right-2">
+                    <th rowspan="6" class="cell-border-top-2 cell-border-bottom-2 cell-attendance text-center cell-border-left-2 cell-border-right-2" title="% посещаемости за семестр">
                         %
                     </th>
                 </tr>
@@ -239,7 +245,7 @@
                             {{ s.stud_group.num }}
                             {% endif %}
                         </td>
-                        <td class="cell-student-name cell-bg cell-border-left cell-border-right-2 {{ class_top }}">
+                        <td class="cell-student-name cell-bg cell-border-left cell-border-right-2 {{ class_top }}" title="{{ s.person.full_name }}">
                             <div class="text-nowrap">
                                 {% if s.get_rights(current_user)["read_marks"] %}
                                 <a href="{{ url_for('lessons_report_student', id=s.id, year=s.stud_group.year, semester=s.stud_group.semester) if s.stud_group else url_for('att_marks_report_student', id=s.id) }}">
@@ -257,7 +263,7 @@
                                 data-html="true"
                                 data-placement="auto"
                                 title="
-                                <div class='h4-rem'>{{ s.full_name }} {{ dt.strftime("%d.%m.%Y") }}({{ ["пн", "вт", "ср", "чт", "пт", "сб", "вс"][dt.weekday()] }})</div>
+                                <div class='h4-rem'>{{ s.person.full_name }} {{ dt.strftime("%d.%m.%Y") }}({{ ["пн", "вт", "ср", "чт", "пт", "сб", "вс"][dt.weekday()] }})</div>
                                 {% for ls in cell %}
                                     {% set l = ls.lesson_curriculum_unit.lesson %}
                                     {% set cu = ls.lesson_curriculum_unit.curriculum_unit %}
@@ -271,7 +277,7 @@
 
                             </td>
                         {% endfor %}
-                        <td class="text-center {{ class_top }} cell-border-left-2 cell-border-right-2 {{ macros_pct_attendance_class(students_attendance_pct[loop.index0]) }}">
+                        <td class="text-center {{ class_top }} cell-border-left-2 cell-border-right-2 {{ macros_pct_attendance_class(students_attendance_pct[loop.index0]) }}" title="{{ s.person.full_name }}">
                             {{ students_attendance_pct[loop.index0] if students_attendance_pct[loop.index0] != None }}
                         </td>
                     </tr>
@@ -279,31 +285,33 @@
 
             </tbody>
         </table>
-        <p class="h4-rem mt-3">Условные обозначения</p>
-        <table class="table-attendance">
-            <tbody>
-                <tr>
-                    <td class="cell-border-left cell-border-top cell-attendance text-center attendance0">н</td>
-                    <td class="cell-border-left cell-border-top cell-border-right">отсутствовал(а) на всех занятиях в течение дня</td>
-                </tr>
-                <tr>
-                    <td class="cell-border-left cell-border-top cell-attendance text-center attendance1">+</td>
-                    <td class="cell-border-left cell-border-top cell-border-right">присутствовал(а) на всех занятиях в течение дня</td>
-                </tr>
-                <tr>
-                    <td class="cell-border-left cell-border-top cell-attendance text-center attendance2">у</td>
-                    <td class="cell-border-left cell-border-top cell-border-right">отсутствовал(а) хотя бы на одном занятии по уважительной причине, если в течение дня нет &laquo;н&raquo;</td>
-                </tr>
-                <tr>
-                    <td class="cell-border-left cell-border-top cell-attendance text-center attendance3">?</td>
-                    <td class="cell-border-left cell-border-top cell-border-right">отсутствовал(а) хотя бы на одном или занятии, но при этом в течение дня есть &laquo;+&raquo; или &laquo;у&raquo;</td>
-                </tr>
-                <tr>
-                    <td class="cell-border-left cell-border-top cell-border-bottom cell-attendance text-center cell-disabled"></td>
-                    <td class="cell-border-left cell-border-top cell-border-bottom cell-border-right">не было занятий в этот день у студента</td>
-                </tr>
-            </tbody>
-        </table>
+        <div class="legend mt-3">
+            <p class="h4-rem font-weight-bold">Условные обозначения</p>
+            <table class="table-attendance">
+                <tbody>
+                    <tr>
+                        <td class="cell-border-left cell-border-top cell-attendance text-center attendance0">н</td>
+                        <td class="cell-border-left cell-border-top cell-border-right">отсутствовал(а) на всех занятиях в течение дня</td>
+                    </tr>
+                    <tr>
+                        <td class="cell-border-left cell-border-top cell-attendance text-center attendance1">+</td>
+                        <td class="cell-border-left cell-border-top cell-border-right">присутствовал(а) на всех занятиях в течение дня</td>
+                    </tr>
+                    <tr>
+                        <td class="cell-border-left cell-border-top cell-attendance text-center attendance2">у</td>
+                        <td class="cell-border-left cell-border-top cell-border-right">отсутствовал(а) хотя бы на одном занятии по уважительной причине, если в течение дня нет &laquo;н&raquo;</td>
+                    </tr>
+                    <tr>
+                        <td class="cell-border-left cell-border-top cell-attendance text-center attendance3">?</td>
+                        <td class="cell-border-left cell-border-top cell-border-right">отсутствовал(а) хотя бы на одном или занятии, но при этом в течение дня есть &laquo;+&raquo; или &laquo;у&raquo;</td>
+                    </tr>
+                    <tr>
+                        <td class="cell-border-left cell-border-top cell-border-bottom cell-attendance text-center cell-disabled"></td>
+                        <td class="cell-border-left cell-border-top cell-border-bottom cell-border-right">не было занятий в этот день у студента</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
     </div>
     <script>
         $(function () {
