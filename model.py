@@ -471,6 +471,7 @@ class Student(db.Model, _Person, _ObjectWithSemester):
         return {
             "stud_groups": False,
             "persons": False,
+            "report_student_foreigner": False,
             "rating": True
         }
 
@@ -774,6 +775,7 @@ class Teacher(db.Model, _Person):
             "stud_groups": self.department_leader or self.dean_staff or self.right_read_all or self.department_secretary,
         }
         r["persons"] = r["stud_groups"]
+        r["report_student_foreigner"] = r["persons"]
         r["rating"] = r["stud_groups"] or (self.department is not None and Department.ID_DEFAULT in (self.department.id, self.department.parent_department_id))
         return r
 
@@ -1258,6 +1260,7 @@ class AdminUser(db.Model, _Person):
             "stud_groups": True,
             "rating": True,
             "persons": True,
+            "report_student_foreigner": True
         }
 
     @property

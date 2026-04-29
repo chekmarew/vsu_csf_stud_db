@@ -7,11 +7,10 @@ from datetime import timedelta
 
 class Config:
 
-    SQLALCHEMY_DATABASE_URI = "mysql+pymysql://user:pass@localhost/db"
+    SQLALCHEMY_DATABASE_URI = "mysql+pymysql://fkn_att2:fkn_att2@localhost/fkn_att2"
     SQLALCHEMY_COMMIT_ON_TEARDOWN = False # Autocommit
     SQLALCHEMY_TRACK_MODIFICATIONS = False # ??? Если не прописать, то будет Warning
-    SECRET_KEY = '$_SECRET_KEY_$'
-
+    SECRET_KEY = '$eKReT_KEeeY$uper'
     PERMANENT_SESSION_LIFETIME = timedelta(days=3)
 
     DATE_TIME_FORMAT = '%d.%m.%Y %H:%M:%S'
@@ -29,7 +28,7 @@ class Config:
     SMS_SENDER = '+7-900-000-00-00'
 
     MOODLE_LINK = "https://edu.vsu.ru/course/view.php?id=%d"
-    
+    SERVER_NAME = 'localhost:5005'
 
 
 app = Flask(__name__)

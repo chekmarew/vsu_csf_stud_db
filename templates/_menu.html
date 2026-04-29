@@ -58,11 +58,6 @@
             </li>
          {% endif %}
 
-         {% if current_user.teacher != None and current_user.teacher.favorite_students|length > 0 %}
-            <li class="nav-item">
-                <a href="{{ url_for('favorite_teacher_students', id=current_user.teacher.id) }}" class="nav-link{{' active' if request.endpoint == 'favorite_teacher_students' and request.view_args['id'] == current_user.teacher.id }}">Мой список студентов</a>
-            </li>
-         {% endif %}
          {% if current_user.user_rights["rating"] %}
          <li class="nav-item">
              <a href="{{ url_for('rating') }}" class="nav-link{{' active' if request.endpoint == 'rating' }}">Рейтинг студентов</a>
@@ -121,6 +116,26 @@
             <li class="nav-item">
                 <a href="{{ url_for('stud_groups_leader') }}" class="nav-link{{' active' if request.endpoint == 'stud_groups_leader' }}">Старосты</a>
             </li>
+
+            {% if (current_user.teacher != None and current_user.teacher.favorite_students|length > 0) or current_user.user_rights["report_student_foreigner"] %}
+            <!-- Dropdown -->
+            <li class="nav-item dropdown">
+              <a class="nav-link dropdown-toggle{{' active' if (request.endpoint == 'favorite_teacher_students' and current_user.teacher and request.view_args['id'] == current_user.teacher.id) or (request.endpoint == 'lessons_report_student_foreigner') }}" href="javascript:void(null);" id="navbarMenuOther" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                Прочее
+              </a>
+              <ul class="dropdown-menu" aria-labelledby="navbarMenuOther">
+                  {% if current_user.teacher != None and current_user.teacher.favorite_students|length > 0 %}
+                    <li><a class="dropdown-item{{' active' if request.endpoint == 'favorite_teacher_students' and request.view_args['id'] == current_user.teacher.id }}" href="{{ url_for('favorite_teacher_students', id=current_user.teacher.id) }}">Мой список студентов</a></li>
+                  {% endif %}
+                  {% if current_user.user_rights["report_student_foreigner"] %}
+                    <li><a class="dropdown-item{{' active' if request.endpoint == 'lessons_report_student_foreigner' }}" href="{{ url_for('lessons_report_student_foreigner') }}">Посещаемость иностранных студентов</a></li>
+                  {% endif %}
+              </ul>
+            </li>
+            {% endif %}
+
+
+
             <li class="nav-item">
                 <a href="{{ url_for('help') }}" class="nav-link{{' active' if request.endpoint == 'help' }}">Помощь</a>
             </li>

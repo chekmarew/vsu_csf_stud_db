@@ -2131,6 +2131,71 @@ def lessons_report_student(id):
     return render_template('lessons_report_student.html', student=s, form=form, lessons=lessons, att_marks=marks, attendance_pct=attendance_pct)
 
 
+@app.route('/lessons_report_student_foreigner')
+@login_required
+def lessons_report_student_foreigner():
+    if not current_user.user_rights.get("report_student_foreigner", False):
+        return render_error(403)
+
+
+    students = db.session.query(Student). \
+        join(Person, Student.person_id == Person.id). \
+        join(Specialty, Student.specialty_id == Specialty.id). \
+        outerjoin(StudGroup, Student.stud_group_id == StudGroup.id). \
+        filter(Student.status=='study').filter(Student.kind_of_study_activity=='student_foreign'). \
+        order_by(Specialty.education_level_order, Student.semester, StudGroup.num, Person.surname, Person.firstname, Person.middlename).\
+        all()
+
+    stud_ids = [s.id for s in students]
+    if len(stud_ids) > 0:
+        q_cu_ids = db.session.query(CurriculumUnit.id).join(StudGroup, StudGroup.id == CurriculumUnit.stud_group_id).filter(StudGroup.active)
+        lessons_student = (db.session.query(LessonStudent).\
+            join(Lesson, Lesson.id == LessonStudent.lesson_id).\
+            filter(LessonStudent.curriculum_unit_id.in_(q_cu_ids)).\
+            filter(LessonStudent.student_id.in_(stud_ids))).order_by(Lesson.date, Lesson.lesson_num).all()
+    else:
+        lessons_student = []
+
+    dates = []
+    for ls in lessons_student:
+        dt = ls.lesson_curriculum_unit.lesson.date
+        if dt not in dates:
+            dates.append(dt)
+
+    report = [[[] for _ in range(len(dates))] for _ in range(len(stud_ids))]
+
+    for ls in lessons_student:
+        dt = ls.lesson_curriculum_unit.lesson.date
+        student_id = ls.student_id
+
+        i = stud_ids.index(student_id)
+        j = dates.index(dt)
+        report[i][j].append(ls)
+
+    report_summary = [[None for _ in range(len(dates))] for _ in range(len(stud_ids))]
+    for i, row in enumerate(report):
+        for j, cell in enumerate(row):
+            if len(cell) > 0:
+                report_summary[i][j] = 3
+                for a_v in (0, 1, 2):
+                    if all((ls.attendance == a_v for ls in cell)):
+                        report_summary[i][j] = a_v
+                        break
+                if report_summary[i][j] == 3 and all((ls.attendance in (1, 2) for ls in cell)):
+                    report_summary[i][j] = 2
+
+
+    students_attendance_pct = [None for _ in stud_ids]
+    for i, row in enumerate(report):
+        _lessons_student = [cell for sub in row for cell in sub]
+        if len(_lessons_student) > 0:
+            students_attendance_pct[i] = round(100 * sum((1 for ls in _lessons_student if ls.attendance)) / len(_lessons_student), 2)
+            if students_attendance_pct[i] - int(students_attendance_pct[i]) == 0:
+                students_attendance_pct[i] = int(students_attendance_pct[i])
+
+    return render_template('lessons_report_student_foreigner.html', students=students, students_attendance_pct=students_attendance_pct, dates=dates, report=report, report_summary=report_summary)
+
+
 @app.route('/stud_group_leader/<int:id>')
 @login_required
 def stud_group_leader(id):

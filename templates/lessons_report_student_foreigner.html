@@ -1,0 +1,324 @@
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>ВГУ ФКН БРС Отчёт по посещаемости занятий иностранными студентами</title>
+    {% include '_header.html' %}
+    {% from "_mark_decorator.html" import macros_pct_attendance_class with context %}
+    {% include '_mark_decorator.html' %}
+    <style>
+        .header-fixed {
+            max-width: calc(100vw - 45px);
+            width: fit-content;
+            position: sticky;
+            left: 15px;
+        }
+
+        .table-attendance
+        {
+            border-collapse: separate;
+            border-spacing: 0;
+        }
+
+        .table-attendance td, .table-attendance th
+        {
+           padding: 0.25rem
+        }
+        .table-attendance thead
+        {
+           background-color: #e9ecef;
+           position: sticky;
+           top: 0;
+           z-index: 1;
+        }
+        .cell-attendance
+        {
+            width: 42px;
+            min-width: 42px;
+            max-width: 42px;
+            font-size: small;
+        }
+        .cell-num
+        {
+            width: 30px;
+            min-width: 30px;
+            max-width: 30px;
+            position: sticky;
+            left: 15px;
+        }
+
+        .cell-course
+        {
+            width: 30px;
+            min-width: 30px;
+            max-width: 30px;
+            position: sticky;
+            left: 45px;
+        }
+        .cell-group-num
+        {
+            width: 30px;
+            min-width: 30px;
+            max-width: 30px;
+            position: sticky;
+            left: 75px;
+        }
+        .cell-student-name
+        {
+            position: sticky;
+            left: 105px;
+        }
+
+        .cell-bg {
+            background-color: #ffffff;
+            z-index 0;
+        }
+        .cell-head
+        {
+            background-color: #e9ecef;
+        }
+
+        .cell-border-left
+        {
+            border-left-color: #343a40;
+            border-left-width: 1px;
+            border-left-style: solid;
+        }
+        .cell-border-left-2
+        {
+            border-left-color: #343a40;
+            border-left-width: 2px;
+            border-left-style: solid;
+        }
+        .cell-border-right
+        {
+            border-right-color: #343a40;
+            border-right-width: 1px;
+            border-right-style: solid;
+        }
+        .cell-border-right-2
+        {
+            border-right-color: #343a40;
+            border-right-width: 2px;
+            border-right-style: solid;
+        }
+        .cell-border-top
+        {
+            border-top-color: #343a40;
+            border-top-width: 1px;
+            border-top-style: solid;
+        }
+        .cell-border-top-2
+        {
+            border-top-color: #343a40;
+            border-top-width: 2px;
+            border-top-style: solid;
+        }
+        .cell-border-bottom
+        {
+            border-bottom-color: #343a40;
+            border-bottom-width: 1px;
+            border-bottom-style: solid;
+        }
+        .cell-border-bottom-2
+        {
+            border-bottom-color: #343a40;
+            border-bottom-width: 2px;
+            border-bottom-style: solid;
+        }
+        .cell-disabled
+        {
+            background-color: #a0a0a0;
+        }
+        .cell-fixed-left
+        {
+            position: sticky;
+            left: 15px;
+            z-index: 1;
+            background-color: #e9ecef;
+        }
+
+        .attendance1
+        {
+            background-color: rgba(0, 128, 0, 0.25);
+        }
+        .attendance2
+        {
+            background-color: rgba(255, 193, 7, 0.25);
+        }
+
+        .attendance0
+        {
+            background-color: rgba(255, 0, 0, 0.75);
+            color: rgb(255, 255, 255);
+        }
+
+        .attendance3
+        {
+            background-color: rgba(255, 165, 0, 0.75);
+        }
+
+        .attendance0 a
+        {
+            color: rgb(255, 255, 255);
+        }
+        .attendance0 .text-danger
+        {
+            color: rgb(255, 255, 255) !important;
+        }
+
+        .tooltip-l .tooltip-inner {
+           color: black;
+           text-align: left;
+           background-color: #fff3cd;
+           border: 1px solid #721c24;
+           max-width: 350px;
+        }
+        .tooltip-l .tooltip.bs-tooltip-top .arrow:before {
+           border-left-color: rgb(189,183,107);
+        }
+        .tooltip-l .tooltip.bs-tooltip-right .arrow:before {
+           border-left-color: rgb(189,183,107);
+        }
+        .tooltip-l .tooltip.bs-tooltip-bottom .arrow:before {
+           border-left-color: rgb(189,183,107);
+        }
+        .tooltip-l .tooltip.bs-tooltip-left .arrow:before {
+           border-left-color: rgb(189,183,107);
+        }
+
+
+    </style>
+</head>
+<body style="width: fit-content; min-width: 100vw;">
+    {% include '_menu.html' %}
+    {% include '_left_padding_div.html' %}
+    <div class="container-fluid">
+        <h2 class="header-fixed">Отчёт по посещаемости занятий иностранными студентами</h2>
+
+        <table class="table-attendance table-hover">
+            <thead>
+                <tr>
+                    <th class="cell-num cell-head cell-border-left-2 cell-border-top-2 cell-border-bottom-2 text-center">
+                        №
+                    </th>
+
+                    <th class="cell-course cell-head cell-border-left cell-border-top-2 cell-border-bottom-2 text-center" title="Курс">
+                        К
+                    </th>
+
+                    <th class="cell-group-num cell-head cell-border-left cell-border-top-2 cell-border-bottom-2 text-center" title="Группа">
+                        Гр
+                    </th>
+
+                    <th class="cell-student-name cell-head cell-border-left cell-border-right-2 cell-border-top-2 cell-border-bottom-2 text-center">
+                        Ф.И.О.
+                    </th>
+                    {% for dt in dates %}
+                        <th class="cell-border-top-2 cell-border-bottom-2 cell-attendance text-center{% if not loop.last %} cell-border-right{% endif %}">
+                            {{ dt.strftime("%d.%m") }}
+                        </th>
+                    {% endfor %}
+                    <th rowspan="6" class="cell-border-top-2 cell-border-bottom-2 cell-attendance text-center cell-border-left-2 cell-border-right-2">
+                        %
+                    </th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for s in students %}
+                    {% set row_index = loop.index0 %}
+                    <tr>
+                        {% set class_top = ('' if loop.first else 'cell-border-top') + (' cell-border-bottom-2' if loop.last else '')  %}
+                        <td class="cell-num cell-bg cell-border-left-2 {{ class_top }}">
+                            {{ loop.index }}
+                        </td>
+                        <td class="cell-course cell-bg cell-border-left {{ class_top }}">
+                            {{ s.course }}
+                        </td>
+                        <td class="cell-group-num cell-bg cell-border-left {{ class_top }}" title="{{ s.specialty.full_name }}">
+                            {% if s.stud_group %}
+                            {{ s.stud_group.num }}
+                            {% endif %}
+                        </td>
+                        <td class="cell-student-name cell-bg cell-border-left cell-border-right-2 {{ class_top }}">
+                            <div class="text-nowrap">
+                                {% if s.get_rights(current_user)["read_marks"] %}
+                                <a href="{{ url_for('lessons_report_student', id=s.id, year=s.stud_group.year, semester=s.stud_group.semester) if s.stud_group else url_for('att_marks_report_student', id=s.id) }}">
+                                    {{ s.full_name_short }}
+                                </a>
+                                {% else %}
+                                    {{ s.full_name_short }}
+                                {% endif %}
+                            </div>
+                        </td>
+                        {% for cell in report[loop.index0] %}
+                            {% set dt = dates[loop.index0] %}
+                            <td class="text-center cell-attendance {{ class_top }}{% if cell|length == 0 %} cell-disabled{% endif %} attendance{{report_summary[row_index][loop.index0]}} {% if not loop.last %} cell-border-right{% endif %}"{% if cell|length > 0 %}
+                                data-toggle="tooltip"
+                                data-html="true"
+                                data-placement="auto"
+                                title="
+                                <div class='h4-rem'>{{ s.full_name }} {{ dt.strftime("%d.%m.%Y") }}({{ ["пн", "вт", "ср", "чт", "пт", "сб", "вс"][dt.weekday()] }})</div>
+                                {% for ls in cell %}
+                                    {% set l = ls.lesson_curriculum_unit.lesson %}
+                                    {% set cu = ls.lesson_curriculum_unit.curriculum_unit %}
+                                    {% set subject = cu.subject %}
+                                    <div class='mt-1'><a href='{{ url_for("lessons", _anchor="/curriculum-unit/"+(cu.id|string)) }}' target='_blank'>{{ l.lesson_num }}. {{ subject.short_name or subject.name }} {{ l.teacher.person.full_name_short }} {{ls.attendance_str_comment}}</div>
+                                {% endfor %}
+                                "
+                            {% endif %}>
+
+                                {{ ["н", "+", "у", "?"][report_summary[row_index][loop.index0]] }}
+
+                            </td>
+                        {% endfor %}
+                        <td class="text-center {{ class_top }} cell-border-left-2 cell-border-right-2 {{ macros_pct_attendance_class(students_attendance_pct[loop.index0]) }}">
+                            {{ students_attendance_pct[loop.index0] if students_attendance_pct[loop.index0] != None }}
+                        </td>
+                    </tr>
+                {% endfor %}
+
+            </tbody>
+        </table>
+        <p class="h4-rem mt-3">Условные обозначения</p>
+        <table class="table-attendance">
+            <tbody>
+                <tr>
+                    <td class="cell-border-left cell-border-top cell-attendance text-center attendance0">н</td>
+                    <td class="cell-border-left cell-border-top cell-border-right">отсутствовал(а) на всех занятиях в течение дня</td>
+                </tr>
+                <tr>
+                    <td class="cell-border-left cell-border-top cell-attendance text-center attendance1">+</td>
+                    <td class="cell-border-left cell-border-top cell-border-right">присутствовал(а) на всех занятиях в течение дня</td>
+                </tr>
+                <tr>
+                    <td class="cell-border-left cell-border-top cell-attendance text-center attendance2">у</td>
+                    <td class="cell-border-left cell-border-top cell-border-right">отсутствовал(а) хотя бы на одном занятии по уважительной причине, если в течение дня нет &laquo;н&raquo;</td>
+                </tr>
+                <tr>
+                    <td class="cell-border-left cell-border-top cell-attendance text-center attendance3">?</td>
+                    <td class="cell-border-left cell-border-top cell-border-right">отсутствовал(а) хотя бы на одном или занятии, но при этом в течение дня есть &laquo;+&raquo; или &laquo;у&raquo;</td>
+                </tr>
+                <tr>
+                    <td class="cell-border-left cell-border-top cell-border-bottom cell-attendance text-center cell-disabled"></td>
+                    <td class="cell-border-left cell-border-top cell-border-bottom cell-border-right">не было занятий в этот день у студента</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    <script>
+        $(function () {
+            $('[data-toggle="tooltip"]').tooltip({
+                delay: {
+                  "show": 500,
+                  "hide": 2000
+                },
+                customClass: "tooltip-l"
+            })
+            $('[data-toggle="tooltip"]').on('show.bs.tooltip', function() {
+                // Hide all other tooltips currently visible on the page
+                $('[data-toggle="tooltip"]').not(this).tooltip('hide');
+            });
+        })
+    </script>
+</body>
+</html>
