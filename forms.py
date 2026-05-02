@@ -634,13 +634,21 @@ class LoginForm(_LoginForm):
     password = PasswordField('Пароль', validators=[validators.DataRequired(message='Пароль не может быть пустым')])
 
 
+_render_kw_code = {
+    "inputmode": "numeric",
+    "autocomplete": "one-time-code",
+    "pattern": "[0-9]{6}",
+    "maxlength": 6
+}
+
+
 class LoginEmailForm(_LoginForm):
     email = StringField('E-mail', validators=[validators.DataRequired(), validators.Email()], filters=[lambda val: val.lower().strip() if val else None])
-    code = IntegerField('Введите код, отправленный на ваш e-mail', validators=[validators.Optional(), validators.NumberRange(min=100000, max=999999, message='Проверочный код должен состоять из 6-ти цифр')], render_kw={"autocomplete": "off"})
+    code = IntegerField('Введите код, отправленный на ваш e-mail', validators=[validators.Optional(), validators.NumberRange(min=100000, max=999999, message='Проверочный код должен состоять из 6-ти цифр')], render_kw=dict(_render_kw_code))
     button_send_email = SubmitField('Отправить код на E-mail')
 
 
 class LoginSMSForm(_LoginForm):
     phone = IntegerField('Телефон', validators=[validators.DataRequired(), validators.NumberRange(min=79000000000, max=79999999999)])
-    code = IntegerField('Введите код из SMS', validators=[validators.Optional(), validators.NumberRange(min=100000, max=999999, message='Проверочный код должен состоять из 6-ти цифр')], render_kw={"autocomplete": "off"})
+    code = IntegerField('Введите код из SMS', validators=[validators.Optional(), validators.NumberRange(min=100000, max=999999, message='Проверочный код должен состоять из 6-ти цифр')], render_kw=dict(_render_kw_code))
     button_send_sms = SubmitField('Отправить SMS с кодом')

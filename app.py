@@ -112,8 +112,13 @@ def login_email():
     wait_sec = None
     if 'wait_email_user' in session and 'wait_email_max_time' in session and session['wait_email_max_time'] > int(datetime.now().timestamp()):
         form.email.data = session['wait_email_user']
-        form.email.render_kw = {"disabled": True}
-        form.code.render_kw = {'autofocus': True}
+        if form.email.render_kw is None:
+            form.email.render_kw = {}
+        form.email.render_kw["disabled"] = True
+
+        if form.code.render_kw is None:
+            form.code.render_kw = {}
+        form.code.render_kw['autofocus'] = True
         wait_sec = session['wait_email_max_time'] - int(datetime.now().timestamp())
 
         if 'wait_email_second_factor' in session and 'temporary_entrance' in session:
@@ -160,8 +165,14 @@ def login_sms():
 
     if 'wait_sms_user' in session and 'wait_sms_max_time' in session and session['wait_sms_max_time'] > int(datetime.now().timestamp()):
         form.phone.data = session['wait_sms_user']
-        form.phone.render_kw = {"disabled": True}
-        form.code.render_kw = {'autofocus': True}
+
+        if form.phone.render_kw is None:
+            form.phone.render_kw = {}
+        form.phone.render_kw["disabled"] = True
+
+        if form.code.render_kw is None:
+            form.code.render_kw = {}
+        form.code.render_kw['autofocus'] = True
         wait_sec = session['wait_sms_max_time'] - int(datetime.now().timestamp())
 
         if 'wait_email_second_factor' in session and 'temporary_entrance' in session:
