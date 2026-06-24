@@ -1,0 +1,289 @@
+{% extends "base.html" %}
+
+{% block title %}Обмен {{ 'семинаром' if exchange_type == 'seminar' else 'профилем' }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Обмен {{ 'проектным семинаром' if exchange_type == 'seminar' else 'профилем обучения' }}</h2>
+
+    <!-- Навигация -->
+    <nav aria-label="breadcrumb" class="mb-4">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="/">Главная</a></li>
+            <li class="breadcrumb-item active">Обмен {{ 'семинаром' if exchange_type == 'seminar' else 'профилем' }}</li>
+        </ol>
+    </nav>
+
+    {% if error %}
+        <div class="alert alert-warning">
+            <i class="fas fa-exclamation-triangle"></i> {{ error }}
+        </div>
+    {% else %}
+
+    <!-- Текущее распределение -->
+    <div class="card mb-4 border-info">
+        <div class="card-header bg-info text-white">
+            <h5 class="mb-0">
+                <i class="fas fa-map-marker-alt"></i>
+                Ваше текущее распределение
+            </h5>
+        </div>
+        <div class="card-body">
+            <p class="lead mb-0">
+                <strong>
+                    {% if exchange_type == 'seminar' %}
+                        {{ current_item.name }}
+                    {% else %}
+                        {{ current_item.specialization }} ({{ current_item.code }})
+                    {% endif %}
+                </strong>
+            </p>
+        </div>
+    </div>
+
+    <!-- Форма подачи заявки -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">
+                <i class="fas fa-exchange-alt"></i>
+                {% if existing_request %}
+                    Ваша текущая заявка на обмен
+                {% else %}
+                    Подать заявку на обмен
+                {% endif %}
+            </h5>
+        </div>
+        <div class="card-body">
+            {% if existing_request %}
+            <div class="alert alert-info mb-3">
+                <strong>Статус заявки:</strong>
+                {% if existing_request.status == 'open' %}
+                    <span class="badge badge-primary">Открыта</span> — ищем партнёра для обмена
+                {% elif existing_request.status == 'pending' %}
+                    <span class="badge badge-warning">Ожидание</span> — есть предложение об обмене
+                {% elif existing_request.status == 'matched' %}
+                    <span class="badge badge-success">Пара найдена</span> — ожидает подтверждения администратора
+                {% endif %}
+            </div>
+            {% endif %}
+
+            <form id="exchangeForm">
+                <input type="hidden" id="student_id" value="{{ student_id }}">
+                <input type="hidden" id="exchange_type" value="{{ exchange_type }}">
+
+                <div class="form-group">
+                    <label for="desired_item">
+                        <strong>Куда хотите перейти:</strong>
+                    </label>
+                    <select class="form-control form-control-lg" id="desired_item" required>
+                        <option value="">-- Выберите {{ 'семинар' if exchange_type == 'seminar' else 'профиль' }} --</option>
+                        {% for item in available_items %}
+                        <option value="{{ item.id }}"
+                            {% if existing_request and existing_request.desired_item_id == item.id %}selected{% endif %}>
+                            {% if exchange_type == 'seminar' %}
+                                {{ item.name }}
+                            {% else %}
+                                {{ item.specialization }} ({{ item.code }})
+                            {% endif %}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="comment">Комментарий (необязательно):</label>
+                    <textarea class="form-control" id="comment" rows="2"
+                              placeholder="Например, причина желания обмена">{{ existing_request.student_comment if existing_request and existing_request.student_comment else '' }}</textarea>
+                </div>
+
+                <div class="btn-group">
+                    <button type="submit" class="btn btn-primary btn-lg">
+                        <i class="fas fa-paper-plane"></i>
+                        {{ 'Обновить заявку' if existing_request else 'Подать заявку' }}
+                    </button>
+                    {% if existing_request %}
+                    <button type="button" class="btn btn-outline-danger btn-lg" id="cancelRequestBtn">
+                        <i class="fas fa-times"></i> Отменить заявку
+                    </button>
+                    {% endif %}
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Активные предложения обмена -->
+    {% if active_pairs %}
+    <div class="card mb-4 border-warning">
+        <div class="card-header bg-warning text-dark">
+            <h5 class="mb-0">
+                <i class="fas fa-bell"></i>
+                Предложения обмена ({{ active_pairs|length }})
+            </h5>
+        </div>
+        <div class="card-body">
+            {% for pair in active_pairs %}
+            <div class="alert {% if pair.status == 'pending_admin' %}alert-success{% else %}alert-info{% endif %} mb-3">
+                <div class="row align-items-center">
+                    <div class="col-md-8">
+                        <h6 class="mb-1">
+                            <i class="fas fa-user"></i> {{ pair.partner_name }}
+                        </h6>
+                        <p class="mb-1">
+                            <small>
+                                <strong>Отдаёт:</strong> {{ pair.partner_current }}<br>
+                                <strong>Хочет:</strong> {{ pair.partner_desired }}
+                            </small>
+                        </p>
+                        <small class="text-muted">
+                            Создано: {{ pair.created_at.strftime('%d.%m.%Y %H:%M') }}
+                        </small>
+                    </div>
+                    <div class="col-md-4 text-right">
+                        {% if pair.status == 'pending_admin' %}
+                            <span class="badge badge-success badge-lg p-2">
+                                <i class="fas fa-clock"></i> Ожидает одобрения админа
+                            </span>
+                        {% elif not pair.my_confirmed %}
+                            <div class="btn-group-vertical">
+                                <button class="btn btn-success confirm-pair-btn mb-1" data-pair-id="{{ pair.id }}">
+                                    <i class="fas fa-check"></i> Подтвердить
+                                </button>
+                                <button class="btn btn-outline-danger reject-pair-btn" data-pair-id="{{ pair.id }}">
+                                    <i class="fas fa-times"></i> Отклонить
+                                </button>
+                            </div>
+                        {% else %}
+                            <span class="badge badge-info p-2">
+                                <i class="fas fa-check"></i> Вы подтвердили, ждём партнёра
+                            </span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Кнопка поиска кандидатов -->
+    {% if existing_request and existing_request.status == 'open' %}
+    <div class="card mb-4 border-success">
+        <div class="card-header bg-success text-white">
+            <h5 class="mb-0">
+                <i class="fas fa-search"></i> Поиск кандидатов для обмена
+            </h5>
+        </div>
+        <div class="card-body">
+            <p>Найдите студентов, которые хотят обменяться местами. Система покажет подходящих кандидатов.</p>
+            <a href="{{ url_for('exchange_candidates_page', request_id=existing_request.id) }}"
+               class="btn btn-success btn-lg">
+                <i class="fas fa-users"></i> Найти кандидатов
+            </a>
+        </div>
+    </div>
+    {% endif %}
+
+    {% endif %}
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    // Подача/обновление заявки
+    const form = document.getElementById("exchangeForm");
+    if (form) {
+        form.addEventListener("submit", function(e) {
+            e.preventDefault();
+
+            const desiredItem = document.getElementById("desired_item").value;
+            if (!desiredItem) {
+                alert("Выберите желаемый {{ 'семинар' if exchange_type == 'seminar' else 'профиль' }}");
+                return;
+            }
+
+            const data = {
+                student_id: parseInt(document.getElementById("student_id").value),
+                exchange_type: document.getElementById("exchange_type").value,
+                desired_item_id: parseInt(desiredItem),
+                comment: document.getElementById("comment").value
+            };
+
+            fetch("/exchange/submit", {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify(data)
+            })
+            .then(res => res.json())
+            .then(result => {
+                if (result.error) {
+                    alert("Ошибка: " + result.error);
+                } else {
+                    alert(result.message);
+                    location.reload();
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                alert("Ошибка при отправке заявки");
+            });
+        });
+    }
+
+    // Отмена заявки
+    const cancelBtn = document.getElementById("cancelRequestBtn");
+    if (cancelBtn) {
+        cancelBtn.addEventListener("click", function() {
+            if (!confirm("Вы уверены, что хотите отменить заявку? Все предложения об обмене также будут отменены.")) return;
+
+            fetch("/exchange/cancel/{{ existing_request.id if existing_request else 0 }}", {
+                method: "POST",
+                headers: {"Content-Type": "application/json"}
+            })
+            .then(res => res.json())
+            .then(result => {
+                if (result.error) {
+                    alert("Ошибка: " + result.error);
+                } else {
+                    alert(result.message);
+                    location.reload();
+                }
+            });
+        });
+    }
+
+    // Подтверждение пары
+    document.querySelectorAll(".confirm-pair-btn").forEach(btn => {
+        btn.addEventListener("click", function() {
+            const pairId = this.dataset.pairId;
+            if (!confirm("Подтвердить обмен?")) return;
+            respondToPair(pairId, 'confirm');
+        });
+    });
+
+    // Отклонение пары
+    document.querySelectorAll(".reject-pair-btn").forEach(btn => {
+        btn.addEventListener("click", function() {
+            const pairId = this.dataset.pairId;
+            if (!confirm("Отклонить предложение обмена?")) return;
+            respondToPair(pairId, 'reject');
+        });
+    });
+
+    function respondToPair(pairId, action) {
+        fetch(`/exchange/respond/${pairId}`, {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({ action: action })
+        })
+        .then(res => res.json())
+        .then(result => {
+            if (result.error) {
+                alert("Ошибка: " + result.error);
+            } else {
+                alert(result.message);
+                location.reload();
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

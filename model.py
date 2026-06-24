@@ -2001,3 +2001,150 @@ class CertificateOfStudy(db.Model):
 class Holiday(db.Model):
     __tablename__ = 'holiday'
     date = db.Column('date', db.Date, primary_key=True)
+
+
+class StudentFromInfosys(db.Model):
+    __tablename__ = 'student_from_infosys'
+    student_id = db.Column(db.BigInteger, primary_key=True)
+    student_surname = db.Column(db.String(255), nullable=False)
+    student_firstname = db.Column(db.String(255), nullable=False)
+    student_middlename = db.Column(db.String(255), nullable=True)
+
+class ProjectSeminar(db.Model):
+    __tablename__ = 'project_seminars'
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(255), nullable=False)
+    semester = db.Column(db.SmallInteger)
+
+class StudentRating(db.Model):
+    __tablename__ = 'student_ratings'
+    student_id = db.Column(db.BigInteger, db.ForeignKey('student.student_id'), primary_key=True)
+    average_score = db.Column(db.Float, nullable=False)     # Средний балл
+    category = db.Column(db.SmallInteger, nullable=False)   # 1 — бюджет, 2 — договор, 3 — вне конкурса
+
+class StudentProjectPriority(db.Model):
+    __tablename__ = 'project_seminar_priorities'
+    id = db.Column(db.Integer, primary_key=True)
+    student_id = db.Column(db.BigInteger, db.ForeignKey('student.student_id', ondelete='CASCADE'), nullable=False)
+    priority_number = db.Column(db.Integer, nullable=False)
+    seminar_id = db.Column(db.Integer, db.ForeignKey('project_seminars.id'), nullable=False)
+
+    __table_args__ = (
+        db.UniqueConstraint('student_id', 'priority_number', name='unique_student_priority'),
+    )
+
+
+class StudentDistribution(db.Model):
+    """Результаты распределения студентов по профилям/семинарам"""
+    __tablename__ = 'student_distributions'
+
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    student_id = db.Column(db.BigInteger, db.ForeignKey('student.student_id', ondelete='CASCADE'), nullable=False)
+    distribution_type = db.Column(db.String(20), nullable=False)
+    item_id = db.Column(db.Integer, nullable=False)
+    distributed_at = db.Column(db.DateTime, default=datetime.now)
+    is_original = db.Column(db.Boolean, default=True)
+    exchange_pair_id = db.Column(db.Integer, db.ForeignKey('exchange_pairs.id', ondelete='SET NULL'), nullable=True)
+
+    student = db.relationship('Student', backref='distributions')
+
+    __table_args__ = (
+        db.UniqueConstraint('student_id', 'distribution_type', name='unique_student_distribution'),
+    )
+
+    def get_item_name(self):
+        """Получить название профиля или семинара"""
+        if self.distribution_type == 'seminar':
+            seminar = ProjectSeminar.query.get(self.item_id)
+            return seminar.name if seminar else None
+        else:
+            specialty = Specialty.query.get(self.item_id)
+            return specialty.specialization if specialty else None
+
+
+class ExchangeRequest(db.Model):
+    """Заявка на обмен профилем/семинаром"""
+    __tablename__ = 'exchange_requests'
+
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    student_id = db.Column(db.BigInteger, db.ForeignKey('student.student_id', ondelete='CASCADE'), nullable=False)
+    exchange_type = db.Column(db.String(20), nullable=False)
+    current_item_id = db.Column(db.Integer, nullable=False)
+    desired_item_id = db.Column(db.Integer, nullable=False)
+    status = db.Column(db.String(20), default='open', nullable=False)
+    is_active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.now)
+    updated_at = db.Column(db.DateTime, default=datetime.now, onupdate=datetime.now)
+    student_comment = db.Column(db.Text, nullable=True)
+
+    student = db.relationship('Student', backref='exchange_requests')
+
+    def get_current_item_name(self):
+        """Получить название текущего профиля/семинара"""
+        if self.exchange_type == 'seminar':
+            seminar = ProjectSeminar.query.get(self.current_item_id)
+            return seminar.name if seminar else None
+        else:
+            specialty = Specialty.query.get(self.current_item_id)
+            return specialty.specialization if specialty else None
+
+    def get_desired_item_name(self):
+        """Получить название желаемого профиля/семинара"""
+        if self.exchange_type == 'seminar':
+            seminar = ProjectSeminar.query.get(self.desired_item_id)
+            return seminar.name if seminar else None
+        else:
+            specialty = Specialty.query.get(self.desired_item_id)
+            return specialty.specialization if specialty else None
+
+
+class ExchangePair(db.Model):
+    """Пара для обмена"""
+    __tablename__ = 'exchange_pairs'
+
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    request1_id = db.Column(db.Integer, db.ForeignKey('exchange_requests.id', ondelete='CASCADE'), nullable=False)
+    request2_id = db.Column(db.Integer, db.ForeignKey('exchange_requests.id', ondelete='CASCADE'), nullable=False)
+    initiated_by = db.Column(db.BigInteger, db.ForeignKey('student.student_id'), nullable=False)
+
+    student1_confirmed = db.Column(db.Boolean, default=False)
+    student2_confirmed = db.Column(db.Boolean, default=False)
+    student1_confirmed_at = db.Column(db.DateTime, nullable=True)
+    student2_confirmed_at = db.Column(db.DateTime, nullable=True)
+
+    admin_confirmed = db.Column(db.Boolean, default=False)
+    admin_id = db.Column(db.Integer, db.ForeignKey('admin_user.admin_user_id'), nullable=True)
+    admin_comment = db.Column(db.Text, nullable=True)
+    admin_processed_at = db.Column(db.DateTime, nullable=True)
+
+    status = db.Column(db.String(20), default='pending_students', nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.now)
+    updated_at = db.Column(db.DateTime, default=datetime.now, onupdate=datetime.now)
+
+    request1 = db.relationship('ExchangeRequest', foreign_keys=[request1_id], backref='pairs_as_first')
+    request2 = db.relationship('ExchangeRequest', foreign_keys=[request2_id], backref='pairs_as_second')
+    initiator = db.relationship('Student', foreign_keys=[initiated_by])
+    admin = db.relationship('AdminUser', foreign_keys=[admin_id])
+
+
+class ExchangeHistory(db.Model):
+    """История обменов для аудита"""
+    __tablename__ = 'exchange_history'
+
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    exchange_pair_id = db.Column(db.Integer, db.ForeignKey('exchange_pairs.id'), nullable=False)
+
+    student1_id = db.Column(db.BigInteger, nullable=False)
+    student1_old_item_id = db.Column(db.Integer, nullable=False)
+    student1_new_item_id = db.Column(db.Integer, nullable=False)
+
+    student2_id = db.Column(db.BigInteger, nullable=False)
+    student2_old_item_id = db.Column(db.Integer, nullable=False)
+    student2_new_item_id = db.Column(db.Integer, nullable=False)
+
+    exchange_type = db.Column(db.String(20), nullable=False)
+    approved_by = db.Column(db.Integer, db.ForeignKey('admin_user.admin_user_id'), nullable=True)
+    executed_at = db.Column(db.DateTime, default=datetime.now)
+
+    pair = db.relationship('ExchangePair', backref='history')
+    admin = db.relationship('AdminUser', foreign_keys=[approved_by])

@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+
+{% block title %}Управление распределением{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2><i class="fas fa-sitemap"></i> Управление распределением</h2>
+
+    <div class="row mt-4">
+        <!-- Семинары -->
+        <div class="col-md-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-chalkboard-teacher"></i> Проектные семинары
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center mb-3">
+                        <div class="col-4">
+                            <h3>{{ seminar_stats.total_priorities }}</h3>
+                            <small class="text-muted">Выбрали приоритеты</small>
+                        </div>
+                        <div class="col-4">
+                            <h3>{{ seminar_stats.distributed }}</h3>
+                            <small class="text-muted">Распределено</small>
+                        </div>
+                        <div class="col-4">
+                            <h3>{{ seminar_stats.exchange_requests }}</h3>
+                            <small class="text-muted">Заявок на обмен</small>
+                        </div>
+                    </div>
+
+                    <div class="btn-group-vertical w-100">
+                        <a href="{{ url_for('admin_seminar_distribution') }}" class="btn btn-primary">
+                            <i class="fas fa-play"></i> Распределить по семинарам
+                        </a>
+                        <a href="{{ url_for('admin_view_distribution', distribution_type='seminar') }}" class="btn btn-outline-primary">
+                            <i class="fas fa-eye"></i> Просмотр распределения
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Профили -->
+        <div class="col-md-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-graduation-cap"></i> Профили обучения
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center mb-3">
+                        <div class="col-4">
+                            <h3>{{ profile_stats.total_priorities }}</h3>
+                            <small class="text-muted">Выбрали приоритеты</small>
+                        </div>
+                        <div class="col-4">
+                            <h3>{{ profile_stats.distributed }}</h3>
+                            <small class="text-muted">Распределено</small>
+                        </div>
+                        <div class="col-4">
+                            <h3>{{ profile_stats.exchange_requests }}</h3>
+                            <small class="text-muted">Заявок на обмен</small>
+                        </div>
+                    </div>
+
+                    <div class="btn-group-vertical w-100">
+                        <a href="{{ url_for('admin_profile_distribution') }}" class="btn btn-success">
+                            <i class="fas fa-play"></i> Распределить по профилям
+                        </a>
+                        <a href="{{ url_for('admin_view_distribution', distribution_type='profile') }}" class="btn btn-outline-success">
+                            <i class="fas fa-eye"></i> Просмотр распределения
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Обмены -->
+    <div class="card mt-4">
+        <div class="card-header bg-warning">
+            <h5 class="mb-0">
+                <i class="fas fa-exchange-alt"></i> Управление обменами
+            </h5>
+        </div>
+        <div class="card-body">
+            <a href="{{ url_for('admin_exchanges') }}" class="btn btn-warning btn-lg">
+                <i class="fas fa-arrow-right"></i> Перейти к обменам
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

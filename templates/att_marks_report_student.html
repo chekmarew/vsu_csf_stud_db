@@ -234,6 +234,9 @@
             {% if 'INFOSYS_STUDENT_CARD_LINK' in config and student.student_ext_id and ((current_user.admin_user and current_user.admin_user.active) or (current_user.teacher and current_user.teacher.active and current_user.teacher.dean_staff)) %}
                 <a href="{{ config['INFOSYS_STUDENT_CARD_LINK']|format(student.student_ext_id) }}" class="ml-2 btn btn-warning" target="_blank" data-toggle="tooltip" data-placement="top" title="Авторизуйтесь в infosys.vsu.ru перед открытием ссылки">Карточка студента InfoSys</a>
             {% endif %}
+               <a href="{{ url_for('student_dashboard', student_id=student.id) }}" class="ml-2 btn btn-success">
+                   Мои распределения и обмены
+               </a>
         </div>
         {% if current_user.teacher and current_user.teacher.active and student.person_id != current_user.id %}
         <div class="py-1">

@@ -59,6 +59,8 @@ class PersonForm(ModelForm):
     button_save = SubmitField('Сохранить')
     button_delete = SubmitField('Удалить')
 
+class PersonAllowJWTAuthForm(Form):
+    allow_jwt_auth = BooleanField('Согласие')
 
 class StudGroupForm(ModelForm):
     class Meta:

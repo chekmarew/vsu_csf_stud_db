@@ -89,7 +89,7 @@
           <ul class="dropdown-menu" aria-labelledby="navbarMenuSchedule">
               <li><a class="dropdown-item disabled" href="javascript:void(null);">Расписание занятий (в разработке)</a></li>
               <div class="dropdown-divider"></div>
-              <li><a class="dropdown-item" href="{{ url_for('schedule_all') }}/exams">Расписание экзаменов</a></li>
+              <li><a class="dropdown-item" href="{{ url_for('schedule') }}/exams">Расписание экзаменов</a></li>
               {% if current_user.student and current_user.student.stud_group %}
               <li><a class="dropdown-item" href="{{ url_for('schedule', schedule_type='exams', object_type='student', object_id=current_user.student.id) }}">Моё расписание экзаменов (студент)</a></li>
               {% endif %}

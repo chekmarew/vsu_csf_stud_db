@@ -1,0 +1,322 @@
+{% extends "base.html" %}
+
+{% block title %}Распределение по семинарам{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <h2><i class="fas fa-chalkboard-teacher"></i> Распределение по семинарам</h2>
+
+    <a href="{{ url_for('admin_distribution_dashboard') }}" class="btn btn-secondary mb-3">
+        <i class="fas fa-arrow-left"></i> Назад
+    </a>
+
+    <!-- Фильтры -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">Параметры</h5>
+        </div>
+        <div class="card-body">
+            <form method="GET" class="form-inline">
+                <div class="form-group mr-3">
+                    <label for="semester" class="mr-2">Семестр:</label>
+                    <select name="semester" id="semester" class="form-control">
+                        {% for sem in available_semesters %}
+                        <option value="{{ sem }}" {% if sem == current_semester %}selected{% endif %}>
+                            {{ sem }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group mr-3">
+                    <label for="category" class="mr-2">Категория:</label>
+                    <select name="category" id="category" class="form-control">
+                        <option value="">Все</option>
+                        {% for cat in categories %}
+                        <option value="{{ cat.id }}" {% if cat.id == current_category %}selected{% endif %}>
+                            {{ cat.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-filter"></i> Применить
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Информация -->
+    <div class="alert alert-info">
+        <strong>Студентов с приоритетами:</strong> {{ student_priorities|length }}<br>
+        <strong>Доступных семинаров:</strong> {{ seminars|length }}<br>
+        <strong>Уже распределено:</strong> {{ existing_distributions|length }}
+    </div>
+
+    <!-- Кнопки действий -->
+    <div class="btn-group mb-4">
+        <button id="runDistributionBtn" class="btn btn-success btn-lg"
+                {% if not student_priorities %}disabled{% endif %}>
+            <i class="fas fa-play"></i> Запустить распределение
+        </button>
+        <button id="saveDistributionBtn" class="btn btn-primary btn-lg" disabled>
+            <i class="fas fa-save"></i> Сохранить результаты
+        </button>
+    </div>
+
+    <!-- Настройки распределения -->
+    <div class="card mb-4" id="distributionSettings" style="display: none;">
+        <div class="card-header">
+            <h5 class="mb-0">Настройки распределения</h5>
+        </div>
+        <div class="card-body">
+            <div class="form-group">
+                <label for="maxPerSeminar">Максимум студентов на семинар:</label>
+                <input type="number" id="maxPerSeminar" class="form-control" value="20" min="1" style="width: 100px;">
+            </div>
+            <button id="confirmDistributionBtn" class="btn btn-success">
+                <i class="fas fa-check"></i> Подтвердить и запустить
+            </button>
+            <button id="cancelDistributionBtn" class="btn btn-secondary">
+                Отмена
+            </button>
+        </div>
+    </div>
+
+    <!-- Результаты распределения -->
+    <div id="distributionResults" style="display: none;">
+        <div class="alert alert-success">
+            <h5>Результаты распределения</h5>
+            <p id="distributionStats"></p>
+        </div>
+
+        <div class="row" id="seminarCards">
+            <!-- Карточки семинаров будут добавлены динамически -->
+        </div>
+    </div>
+
+    <!-- Список семинаров -->
+    {% if seminars %}
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">Доступные семинары</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                {% for sem in seminars %}
+                <div class="col-md-4 mb-2">
+                    <div class="card">
+                        <div class="card-body py-2">
+                            <strong>{{ sem.name }}</strong>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Текущий список студентов -->
+    {% if student_priorities %}
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0">Студенты с приоритетами</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped table-sm">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>ФИО</th>
+                            <th>Средний балл</th>
+                            <th>Категория</th>
+                            <th>Приоритеты</th>
+                            <th>Текущее распределение</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for student_id, data in student_priorities.items() %}
+                        <tr>
+                            <td>{{ student_id }}</td>
+                            <td>{{ data.name }}</td>
+                            <td>{{ "%.2f"|format(data.average_score) }}</td>
+                            <td>
+                                {% if data.category == 1 %}Бюджет
+                                {% elif data.category == 2 %}Договор
+                                {% elif data.category == 3 %}Вне конкурса
+                                {% else %}{{ data.category }}{% endif %}
+                            </td>
+                            <td>
+                                <small>
+                                {% for p in data.priorities|sort(attribute='priority') %}
+                                    {{ p.priority }}:
+                                    {% for sem in seminars if sem.id == p.seminar_id %}
+                                        {{ sem.name }}
+                                    {% endfor %}
+                                    {% if not loop.last %}<br>{% endif %}
+                                {% endfor %}
+                                </small>
+                            </td>
+                            <td>
+                                {% if student_id in existing_distributions %}
+                                    {% for sem in seminars if sem.id == existing_distributions[student_id] %}
+                                        <span class="badge badge-success">{{ sem.name }}</span>
+                                    {% endfor %}
+                                {% else %}
+                                    <span class="badge badge-secondary">Не распределён</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="alert alert-warning">
+        <i class="fas fa-exclamation-triangle"></i>
+        Нет студентов с выбранными приоритетами для указанного семестра.
+    </div>
+    {% endif %}
+</div>
+
+<script>
+let distributionData = null;
+
+// Семинары как JavaScript объект (уже словари)
+const seminars = {{ seminars|tojson }};
+const currentSemester = {{ current_semester if current_semester else 'null' }};
+const currentCategory = {{ current_category if current_category else 'null' }};
+
+document.getElementById('runDistributionBtn').addEventListener('click', function() {
+    document.getElementById('distributionSettings').style.display = 'block';
+});
+
+document.getElementById('cancelDistributionBtn').addEventListener('click', function() {
+    document.getElementById('distributionSettings').style.display = 'none';
+});
+
+document.getElementById('confirmDistributionBtn').addEventListener('click', function() {
+    const maxPerSeminar = parseInt(document.getElementById('maxPerSeminar').value);
+
+    this.disabled = true;
+    this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Выполняется...';
+
+    fetch('/admin/distribution/seminars/run', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            semester: currentSemester,
+            category: currentCategory,
+            max_per_seminar: maxPerSeminar
+        })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.error) {
+            alert('Ошибка: ' + data.error);
+            return;
+        }
+
+        distributionData = data.distribution;
+
+        // Показываем статистику
+        document.getElementById('distributionStats').innerHTML = `
+            Всего студентов: ${data.stats.total_students}<br>
+            Распределено: ${data.stats.distributed}<br>
+            Не распределено: ${data.stats.not_distributed}
+        `;
+
+        // Создаём карточки семинаров
+        const cardsContainer = document.getElementById('seminarCards');
+        cardsContainer.innerHTML = '';
+
+        // Создаём map для быстрого поиска названия семинара
+        const seminarMap = {};
+        seminars.forEach(s => { seminarMap[s.id] = s.name; });
+
+        for (const [semId, semData] of Object.entries(data.stats.seminars)) {
+            const students = distributionData.filter(d => d.seminar_id == semId);
+
+            const card = document.createElement('div');
+            card.className = 'col-md-4 mb-3';
+            card.innerHTML = `
+                <div class="card">
+                    <div class="card-header">
+                        <strong>${semData.name}</strong>
+                        <span class="badge badge-primary float-right">${semData.count}/${semData.max}</span>
+                    </div>
+                    <div class="card-body" style="max-height: 300px; overflow-y: auto;">
+                        <ul class="list-group list-group-flush">
+                            ${students.map((s, idx) => `
+                                <li class="list-group-item d-flex justify-content-between align-items-center py-1">
+                                    <small>${idx + 1}. ID: ${s.student_id} (${s.average_score.toFixed(2)})</small>
+                                    <span class="badge badge-${s.priority_got === 1 ? 'success' : s.priority_got === 2 ? 'info' : 'secondary'}">${s.priority_got} прио</span>
+                                </li>
+                            `).join('')}
+                        </ul>
+                    </div>
+                </div>
+            `;
+            cardsContainer.appendChild(card);
+        }
+
+        document.getElementById('distributionSettings').style.display = 'none';
+        document.getElementById('distributionResults').style.display = 'block';
+        document.getElementById('saveDistributionBtn').disabled = false;
+    })
+    .catch(err => {
+        console.error(err);
+        alert('Произошла ошибка при выполнении запроса');
+    })
+    .finally(() => {
+        this.disabled = false;
+        this.innerHTML = '<i class="fas fa-check"></i> Подтвердить и запустить';
+    });
+});
+
+document.getElementById('saveDistributionBtn').addEventListener('click', function() {
+    if (!distributionData || distributionData.length === 0) {
+        alert('Нет данных для сохранения');
+        return;
+    }
+
+    if (!confirm(`Сохранить распределение для ${distributionData.length} студентов?\n\nВнимание: это перезапишет существующее распределение!`)) {
+        return;
+    }
+
+    this.disabled = true;
+    this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Сохранение...';
+
+    fetch('/admin/distribution/seminars/save', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            distributions: distributionData.map(d => ({
+                student_id: d.student_id,
+                seminar_id: d.seminar_id
+            }))
+        })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.error) {
+            alert('Ошибка: ' + data.error);
+        } else {
+            alert(data.message);
+            location.reload();
+        }
+    })
+    .catch(err => {
+        console.error(err);
+        alert('Произошла ошибка при сохранении');
+    })
+    .finally(() => {
+        this.disabled = false;
+        this.innerHTML = '<i class="fas fa-save"></i> Сохранить результаты';
+    });
+});
+</script>
+{% endblock %}

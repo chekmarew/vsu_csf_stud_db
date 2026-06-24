@@ -1,0 +1,209 @@
+{% extends "base.html" %}
+
+{% block title %}Распределение по профилям/проектным семинарам{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>
+        <i class="fas fa-user-graduate"></i>
+        Личный кабинет
+    </h2>
+
+    <div class="alert alert-info">
+        <strong>{{ student.person.full_name }}</strong><br>
+        <small>
+            Семестр: {{ student.semester }} |
+            Курс: {{ student.course }} |
+            Специальность: {{ student.specialty.name if student.specialty else 'Не указана' }}
+        </small>
+    </div>
+
+    <div class="row">
+        <!-- ПРОЕКТНЫЕ СЕМИНАРЫ -->
+        <div class="col-md-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-chalkboard-teacher"></i>
+                        Проектные семинары
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if seminar_distribution %}
+                        <div class="alert alert-success">
+                            <strong>Вы распределены на:</strong><br>
+                            {{ seminar_distribution.get_item_name() }}
+                        </div>
+
+                        {% if can_exchange %}
+                        <a href="{{ url_for('exchange_page', exchange_type='seminar', student_id=student.id) }}"
+                           class="btn btn-warning btn-block">
+                            <i class="fas fa-exchange-alt"></i>
+                            {% if seminar_request %}
+                                Управление заявкой на обмен
+                            {% else %}
+                                Подать заявку на обмен
+                            {% endif %}
+                        </a>
+                        {% endif %}
+                    {% else %}
+                        {% if can_select_seminars %}
+                            {% if has_seminar_priorities %}
+                                <div class="alert alert-info">
+                                    <i class="fas fa-check"></i> Приоритеты выбраны. Ожидайте распределения.
+                                </div>
+                                <a href="{{ url_for('seminars_project', student_id=student.id) }}"
+                                   class="btn btn-outline-primary btn-block mb-2">
+                                    <i class="fas fa-edit"></i> Изменить приоритеты
+                                </a>
+                                <a href="{{ url_for('rating_table') }}"
+                                   class="btn btn-info btn-block">
+                                    <i class="fas fa-list-ol"></i> Посмотреть рейтинг
+                                </a>
+                            {% else %}
+                                <div class="alert alert-warning">
+                                    <i class="fas fa-exclamation-triangle"></i>
+                                    Вы ещё не выбрали приоритеты семинаров!
+                                </div>
+                                <a href="{{ url_for('seminars_project', student_id=student.id) }}"
+                                   class="btn btn-primary btn-block btn-lg">
+                                    <i class="fas fa-arrow-right"></i> Выбрать приоритеты
+                                </a>
+                            {% endif %}
+                        {% else %}
+                            <p class="text-muted">
+                                Выбор семинаров доступен в 1 и 3 семестрах.
+                            </p>
+                        {% endif %}
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+<!-- ПРОФИЛИ ОБУЧЕНИЯ -->
+<div class="col-md-6 mb-4">
+    <div class="card h-100">
+        <div class="card-header bg-success text-white">
+            <h5 class="mb-0">
+                <i class="fas fa-graduation-cap"></i>
+                Профиль обучения
+            </h5>
+        </div>
+        <div class="card-body">
+            {% if profile_distribution %}
+                <div class="alert alert-success">
+                    <strong>Ваш профиль обучения:</strong><br>
+                    {{ profile_distribution.get_item_name() }}
+                </div>
+                {% if can_exchange and student.semester == 5 %}
+                <a href="{{ url_for('exchange_page', exchange_type='profile', student_id=student.id) }}"
+                   class="btn btn-warning btn-block">
+                    <i class="fas fa-exchange-alt"></i>
+                    {% if profile_request %}
+                        Управление заявкой на обмен
+                    {% else %}
+                        Подать заявку на обмен
+                    {% endif %}
+                </a>
+                {% endif %}
+            {% else %}
+                {% if student.semester == 5 %}
+                    {% if has_profile_priorities %}
+                        <div class="alert alert-info">
+                            <i class="fas fa-check"></i> Приоритеты выбраны. Ожидайте распределения.
+                        </div>
+                        <a href="{{ url_for('department_selection', student_id=student.id) }}"
+                           class="btn btn-outline-success btn-block">
+                            <i class="fas fa-edit"></i> Изменить приоритеты
+                        </a>
+                    {% else %}
+                        <div class="alert alert-warning">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            Вы ещё не выбрали приоритеты профилей!
+                        </div>
+                        <a href="{{ url_for('department_selection', student_id=student.id) }}"
+                           class="btn btn-success btn-block btn-lg">
+                            <i class="fas fa-arrow-right"></i> Выбрать приоритеты
+                        </a>
+                    {% endif %}
+                {% elif student.semester > 5 %}
+                    <div class="alert alert-secondary">
+                        Вы не распределены на профиль. Изменение профиля после 5-го семестра недоступно.
+                    </div>
+                {% else %}
+                    <p class="text-muted">
+                        Выбор профилей доступен в 5 семестре.
+                    </p>
+                {% endif %}
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+    <!-- Активные заявки на обмен -->
+    {% if seminar_request or profile_request %}
+    <div class="card mt-4">
+        <div class="card-header bg-warning">
+            <h5 class="mb-0">
+                <i class="fas fa-bell"></i>
+                Активные заявки на обмен
+            </h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                {% if seminar_request %}
+                <div class="col-md-6">
+                    <div class="alert alert-info">
+                        <h6><i class="fas fa-chalkboard-teacher"></i> Обмен семинаром</h6>
+                        <p class="mb-1">
+                            <strong>Хотите на:</strong> {{ seminar_request.get_desired_item_name() }}
+                        </p>
+                        <p class="mb-0">
+                            <strong>Статус:</strong>
+                            {% if seminar_request.status == 'open' %}
+                                <span class="badge badge-primary">Ищем партнёра</span>
+                            {% elif seminar_request.status == 'pending' %}
+                                <span class="badge badge-warning">Ожидает подтверждения</span>
+                            {% elif seminar_request.status == 'matched' %}
+                                <span class="badge badge-success">Ожидает одобрения админа</span>
+                            {% endif %}
+                        </p>
+                        <a href="{{ url_for('exchange_page', exchange_type='seminar', student_id=student.id) }}"
+                           class="btn btn-sm btn-outline-primary mt-2">
+                            Подробнее
+                        </a>
+                    </div>
+                </div>
+                {% endif %}
+
+                {% if profile_request %}
+                <div class="col-md-6">
+                    <div class="alert alert-info">
+                        <h6><i class="fas fa-graduation-cap"></i> Обмен профилем</h6>
+                        <p class="mb-1">
+                            <strong>Хотите на:</strong> {{ profile_request.get_desired_item_name() }}
+                        </p>
+                        <p class="mb-0">
+                            <strong>Статус:</strong>
+                            {% if profile_request.status == 'open' %}
+                                <span class="badge badge-primary">Ищем партнёра</span>
+                            {% elif profile_request.status == 'pending' %}
+                                <span class="badge badge-warning">Ожидает подтверждения</span>
+                            {% elif profile_request.status == 'matched' %}
+                                <span class="badge badge-success">Ожидает одобрения админа</span>
+                            {% endif %}
+                        </p>
+                        <a href="{{ url_for('exchange_page', exchange_type='profile', student_id=student.id) }}"
+                           class="btn btn-sm btn-outline-primary mt-2">
+                            Подробнее
+                        </a>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+</div>
+{% endblock %}

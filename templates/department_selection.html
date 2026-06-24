@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+
+{% block title %}Выбор специализации{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Выбор профиля</h2>
+    <p class="mb-4">Пожалуйста, расставьте приоритеты для доступных профилей (1 - наивысший приоритет)</p>
+
+    <form id="specializationForm">
+        <input type="hidden" id="student_id" value="{{ student.id }}">
+
+        <div class="row">
+            {% for priority in range(1, max_priorities + 1) %}
+            <div class="col-md-4 mb-3">
+                <div class="card">
+                    <div class="card-header">
+                        Приоритет {{ priority }}
+                    </div>
+                    <div class="card-body">
+                        <select class="form-control priority-select" data-priority="{{ priority }}">
+                            <option value="">-- Выберите специализацию --</option>
+                            {% for spec in specializations %}
+                            <option value="{{ spec.id }}"
+                                {% if priorities.get(priority) == spec.id %}selected{% endif %}>
+                                {{ spec.specialization }} ({{ spec.code }})
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <button type="submit" class="btn btn-primary">Сохранить приоритеты</button>
+    </form>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('specializationForm');
+
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        // Собираем приоритеты
+        const priorities = [];
+        const selects = document.querySelectorAll('.priority-select');
+        let isValid = true;
+
+        selects.forEach(select => {
+            if (!select.value) {
+                isValid = false;
+                select.classList.add('is-invalid');
+            } else {
+                select.classList.remove('is-invalid');
+                priorities.push(select.value);
+            }
+        });
+
+        if (!isValid) {
+            alert('Пожалуйста, выберите специализации для всех приоритетов');
+            return;
+        }
+
+        // Проверяем уникальность и количество
+        if (new Set(priorities).size !== 7) {  // Изменено с 6 на 7
+            alert('Каждая специализация должна быть выбрана только один раз, и должно быть ровно 7 приоритетов');
+            return;
+        }
+
+        // Отправляем данные
+        fetch(`/submit_department_priorities/${document.getElementById('student_id').value}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                priorities: priorities
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                alert('Ошибка: ' + data.error);
+            } else {
+                alert(data.message);
+                window.location.reload();
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Произошла ошибка при сохранении');
+        });
+    });
+});
+</script>
+{% endblock %}

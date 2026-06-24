@@ -3,10 +3,12 @@ import io
 
 from datetime import datetime
 
-from flask import request, session, render_template, redirect, url_for, send_from_directory, send_file, flash
+from flask import request, session, render_template, redirect, url_for, send_from_directory, send_file, flash, jsonify
 from flask_login import LoginManager, login_required, login_user, logout_user, current_user
+from flask_jwt_extended import jwt_required, get_jwt_identity
 
 from app_config import app, db
+from auth_config import AuthCodeConfig
 
 import api
 import api_auth_jwt
@@ -19,26 +21,25 @@ import utils
 import utils_info_student
 import utils_auth
 
-from model import StudGroup, Specialty, Subject, SubjectParticular, Teacher, Student, CurriculumUnit, CurriculumUnitStatusHist, \
+from model import StudGroup, Specialty, Subject, SubjectParticular, Teacher, Student, CurriculumUnit, \
+    CurriculumUnitStatusHist, MarkSimpleTypeDict, \
     LessonStudent, LessonCurriculumUnit, Lesson, \
-    AttMark, AttMarkHist, AdminUser, Person, Department, PersonHist, Exam, CertificateOfStudy
-from model import MarkSimpleTypeDict
+    AttMark, AttMarkHist, AdminUser, Person, Department, PersonHist, CertificateOfStudy, StudentFromInfosys, \
+    ProjectSeminar, StudentRating, StudentProjectPriority, ExchangeRequest, ExchangePair, ExchangeHistory, \
+    StudentDistribution
 
-from forms import StudGroupForm, StudentForm, SubjectForm, TeacherForm, PersonForm, \
-    PersonSearchForm, \
+from forms import StudGroupForm, StudentForm, SubjectForm, TeacherForm, PersonForm, PersonAllowJWTAuthForm, PersonSearchForm, \
     CurriculumUnitForm, CurriculumUnitPracticeTeacherAddForm, TeacherAddDepartmentPartTimeJobForm, \
     CurriculumUnitCopyForm, AttMarksForm, \
-    StudGroupsPrintForm, RatingForm, LessonsReportForm, AdminUserForm, CertificateOfStudyForm, LoginForm, \
-    LoginEmailForm, LoginSMSForm, AttMarksStudentAddForm
+    StudGroupsPrintForm, RatingForm, LessonsReportForm, AdminUserForm, CertificateOfStudyForm, LoginForm, LoginEmailForm, LoginSMSForm
 from forms import StudentsUnallocatedForm
 
 from model_history_controller import hist_save_controller
 
 from docs import create_doc, create_doc_curriculum_unit, create_doc_curriculum_unit_simple_marks
-from excel import create_excel_stud_groups, create_excel_certificates_of_study
+from excel import create_excel_stud_groups
 
-from sqlalchemy import not_, or_, and_, func
-
+from sqlalchemy import not_, or_, and_, func, desc
 
 # flask-login
 login_manager = LoginManager()
@@ -184,6 +185,20 @@ def login_sms():
                 form.code.errors.append(auth_res["error"])
 
     return render_template('login_sms.html', form=form,  wait_sec=wait_sec, second_factor=session.get('wait_sms_second_factor', False))
+
+
+@app.route("/login_jwt", methods=["GET"])
+@jwt_required()
+def login_jwt():
+    user = db.session.query(Person).filter_by(id=get_jwt_identity()).one_or_none()
+
+    if user is None:
+        return render_error(403)
+
+    session.permanent = True
+    login_user(user)
+
+    return redirect(request.args.get("next") or url_for('index'))
 
 
 @login_manager.user_loader
@@ -486,10 +501,6 @@ def persons():
             if form.student_id.data is not None:
                 q = q.filter(Student.id == form.student_id.data)
             else:
-                if form.student_financing.data is not None:
-                    q = q.filter(Student.financing == form.student_financing.data)
-                if form.student_kind_of_study_activity.data is not None:
-                    q = q.filter(Student.kind_of_study_activity == form.student_kind_of_study_activity.data)
                 if form.student_status.data is not None:
                     q = q.filter(Student.status == form.student_status.data)
                 if form.student_group.data is not None:
@@ -545,6 +556,12 @@ def persons():
         if form.card_number.data is not None:
             q = q.filter(Person.card_number == form.card_number.data)
 
+        if getattr(AuthCodeConfig, "USE_ALLOW_JWT_AUTH", True):
+            if form.allow_jwt_auth.data == 'yes':
+                q = q.filter(Person.allow_jwt_auth)
+            if form.allow_jwt_auth.data == 'no':
+                q = q.filter(not_(Person.allow_jwt_auth))
+
         q = q.order_by(Person.surname, Person.firstname, Person.middlename)
         page = 1
         if 'page' in request.args:
@@ -555,6 +572,9 @@ def persons():
 
         result = q.paginate(page=page, error_out=False)
 
+    if not getattr(AuthCodeConfig, "USE_ALLOW_JWT_AUTH", True):
+        del form.allow_jwt_auth
+
     return render_template('persons.html', persons=result, form=form, role=role)
 
 
@@ -564,7 +584,7 @@ def person(id):
     if current_user.admin_user is None or (not current_user.admin_user.active):
         return render_error(403)
     if id == 'new':
-        p = Person()
+        p = Person(allow_jwt_auth=False)
     else:
         try:
             id = int(id)
@@ -595,7 +615,7 @@ def person(id):
         if id == 'new':
             return redirect(url_for('person', id=p.id))
 
-    return render_template('person.html', person=p, form=form)
+    return render_template('person.html', person=p, form=form, config_use_allow_jwt_auth=getattr(AuthCodeConfig, "USE_ALLOW_JWT_AUTH", True))
 
 
 @app.route('/profile/<int:id>', methods=['GET', 'POST'])
@@ -608,7 +628,20 @@ def profile(id):
     if p is None:
         return render_error(404)
 
-    return render_template('profile.html', person=p)
+    if getattr(AuthCodeConfig, "USE_ALLOW_JWT_AUTH", True):
+        if request.method == "POST":
+            form_allow_jwt_auth = PersonAllowJWTAuthForm(request.form)
+            p.allow_jwt_auth = form_allow_jwt_auth.allow_jwt_auth.data
+            db.session.add(p)
+            hist_save_controller(db.session, p, current_user)
+            db.session.commit()
+        else:
+            form_allow_jwt_auth = PersonAllowJWTAuthForm()
+            form_allow_jwt_auth.allow_jwt_auth.data = p.allow_jwt_auth
+    else:
+        form_allow_jwt_auth = None
+
+    return render_template('profile.html', person=p, form_allow_jwt_auth=form_allow_jwt_auth)
 
 
 @app.route('/student/<id>', methods=['GET', 'POST'])
@@ -1556,12 +1589,6 @@ def att_marks(id):
 
     form = AttMarksForm(request.form, obj=cu)
 
-    form_student_add = None
-
-    if current_user.admin_user is not None and current_user.admin_user.active:
-        if cu.stud_group.active and not cu.closed and not cu.pass_department:
-            form_student_add = AttMarksStudentAddForm()
-
     all_teachers = lambda: cu.practice_teachers + [cu.teacher]
 
     if (current_user.admin_user is not None and current_user.admin_user.active) or current_user.teacher.id == cu.teacher_id:
@@ -1710,8 +1737,7 @@ def att_marks(id):
     return render_template(
         'att_marks.html',
         curriculum_unit=cu,
-        form=form,
-        form_student_add=form_student_add
+        form=form
     )
 
 
@@ -1864,71 +1890,6 @@ def att_marks_report_stud_group(id):
     return render_template(
         'att_marks_report_stud_group_print.html' if "print" in request.args else 'att_marks_report_stud_group.html',
         stud_group=group, result=result, ball_avg=ball_avg, sort_key=sort_key, previous_stud_groups_map=_previous_stud_groups_map(group, current_user))
-
-
-@app.route('/att_marks/<int:id>/student/add', methods=['GET', 'POST'])
-@login_required
-def att_marks_student_add(id):
-    cu = db.session.query(CurriculumUnit).filter(CurriculumUnit.id == id).one_or_none()
-    if cu is None:
-        return render_error(404)
-
-    if current_user.admin_user is None or not current_user.admin_user.active:
-        return render_error(403)
-    if (not cu.stud_group.active) or cu.closed or cu.pass_department:
-        return render_error(403)
-
-    form = AttMarksStudentAddForm(request.form)
-
-    student_id = form.student.data
-
-    s = db.session.query(Student).filter(Student.id == student_id).one_or_none()
-    if s is None:
-        return render_error(404)
-
-    if s.status != "study":
-        return render_error(400)
-
-    for a in cu.att_marks:
-        if a.student_id == student_id:
-            return redirect(url_for('att_marks', id=id))
-
-    group_subnum = form.group_subnum.data
-
-    att_mark = AttMark(curriculum_unit=cu, student=s, manual_add=True, group_subnum=group_subnum)
-    cu.att_marks.append(att_mark)
-
-    db.session.add(cu)
-
-    hist_save_controller(db.session, cu, current_user, check_journalize_attributes=False)
-
-    db.session.commit()
-    return redirect(url_for('att_marks', id=id))
-
-
-@app.route('/att_marks/<int:id>/student/remove/<int:student_id>')
-@login_required
-def att_marks_student_remove(id, student_id):
-    cu = db.session.query(CurriculumUnit).filter(CurriculumUnit.id == id).one_or_none()
-    if cu is None:
-        return render_error(404)
-
-    if current_user.admin_user is None or not current_user.admin_user.active:
-        return render_error(403)
-    if (not cu.stud_group.active) or cu.closed or cu.pass_department:
-        return render_error(403)
-
-    att_mark = None
-    for a in cu.att_marks:
-        if a.student_id == student_id:
-            att_mark = a
-            break
-    if att_mark:
-        db.session.query(AttMarkHist).filter_by(att_mark_id=att_mark.att_mark_id).delete()
-        db.session.delete(att_mark)
-        db.session.commit()
-
-    return redirect(url_for('att_marks', id=id))
 
 
 @app.route('/lessons_report_stud_group/<int:id>')
@@ -2433,7 +2394,6 @@ def rating():
 
     return render_template('rating.html', data=data, avg_ball=avg_ball, stage=stage, form=form)
 
-
 @app.route('/stud_groups_print', methods=['GET', 'POST'])
 @login_required
 def stud_groups_print():
@@ -2494,6 +2454,1749 @@ def stud_groups_print():
         return render_template("stud_groups_print.html", form=form,
                                stud_groups=l_stud_groups,
                                stud_groups_lists=stud_groups_lists)
+
+@app.route('/submit_priorities', methods=['POST'])
+@login_required
+def submit_priorities():
+    data = request.get_json()
+
+    student = next(iter(current_user.students), None)
+    if not student:
+        return render_error(403)
+
+    # if not student or student.semester not in [1, 3, 5]:
+    #     return render_error(403)
+
+    if not StudentFromInfosys.query.filter_by(student_id=student.id).first():
+        return render_error(403)
+
+    student_id = student.id
+
+    seminars = ProjectSeminar.query.filter_by(semester=student.semester-2).all()
+    seminar_ids = [s.id for s in seminars]
+
+    expected_count = len(seminar_ids)
+    if expected_count == 0:
+        return jsonify({"error": "Для текущего семестра нет доступных семинаров."}), 400
+
+    try:
+        priorities = [int(data[f"priority_{i}"]) for i in range(1, expected_count + 1)]
+    except (KeyError, TypeError, ValueError):
+        return jsonify({
+            "error": f"Все {expected_count} приоритетов обязательны и должны быть числами."
+        }), 400
+
+    if len(set(priorities)) != expected_count:
+        return jsonify({"error": "Приоритеты должны быть уникальными!"}), 400
+
+    if not all(p in seminar_ids for p in priorities):
+        return jsonify({"error": "Некорректные ID семинаров в приоритетах!"}), 400
+
+    StudentProjectPriority.query.filter_by(student_id=student_id).delete()
+
+    for i, seminar_id in enumerate(priorities):
+        db.session.add(StudentProjectPriority(
+            student_id=student_id,
+            priority_number=i + 1,
+            seminar_id=seminar_id
+        ))
+
+    db.session.commit()
+    return jsonify({"message": "Приоритеты успешно сохранены!"})
+
+
+@app.route('/get_priorities', methods=['GET'])
+@login_required
+def get_priorities():
+    student = next(iter(current_user.students), None)
+    if not student:
+        return render_error(403)
+
+    if not student or student.semester not in [1, 3, 6]:
+        return render_error(403)
+
+    if not StudentFromInfosys.query.filter_by(student_id=student.id).first():
+        return render_error(403)
+
+    priorities = StudentProjectPriority.query.filter_by(student_id=student.id).all()
+    if not priorities:
+        return jsonify({"error": "Приоритеты не найдены"}), 404
+
+    result = {f"priority_{p.priority_number}": p.seminar_id for p in priorities}
+    return jsonify(result)
+
+
+@app.route('/seminars_project/<int:student_id>', methods=['GET'])
+@login_required
+def seminars_project(student_id):
+    student = next((s for s in current_user.students if s.id == student_id), None)
+    if not student:
+        return render_error(403)
+
+    if not student or student.semester not in [1, 3, 5]:
+        return render_error(403)
+
+    if not StudentFromInfosys.query.filter_by(student_id=student.id).first():
+        return render_error(403)
+
+    seminars = ProjectSeminar.query.filter_by(semester=student.semester-2).all()
+    priorities = StudentProjectPriority.query.filter_by(student_id=student_id).all()
+    priority_map = {p.priority_number: p.seminar_id for p in priorities}
+
+    return render_template(
+        'seminars_project.html',
+        student_id=student.id,
+        seminar_options=seminars,
+        priorities=priority_map,
+        seminar_count=len(seminars)
+    )
+
+@app.route('/rating_table', methods=['GET'])
+@login_required
+def rating_table():
+    student = next(iter(current_user.students), None)
+    if not student:
+        return render_error(403)
+    student_id = student.id
+    if not student or student.semester not in [1, 3, 5]:
+        return render_error(403)
+
+    if not StudentFromInfosys.query.filter_by(student_id=student.id).first():
+        return render_error(403)
+
+    student_rating = StudentRating.query.filter_by(student_id=student_id).first()
+    if not student_rating:
+        return render_template('seminar_rating.html', error="Рейтинг не найден", student_id=student_id)
+    category = student_rating.category
+    print(f"Student {student_id} category: {category}, type: {type(category)}")
+
+    priorities = StudentProjectPriority.query.filter_by(student_id=student_id).\
+        order_by(StudentProjectPriority.priority_number).all()
+    if not priorities:
+        return render_template('seminar_rating.html', error="Приоритеты не выбраны", student_id=student_id)
+
+    ratings = db.session.query(
+        StudentRating,
+        StudentFromInfosys.student_surname,
+        StudentFromInfosys.student_firstname,
+        StudentFromInfosys.student_middlename
+    ).join(StudentFromInfosys, StudentRating.student_id == StudentFromInfosys.student_id).\
+        filter(StudentRating.category == category).\
+        order_by(desc(StudentRating.average_score)).all()
+
+    print(f"Retrieved ratings for category {category}: {[(r.student_id, r.category) for r, _, _, _ in ratings]}")
+
+    seminar_tables = []
+    for priority in priorities:
+        seminar = ProjectSeminar.query.get(priority.seminar_id)
+        if not seminar:
+            continue
+
+        seminar_priorities = StudentProjectPriority.query.filter_by(seminar_id=seminar.id).all()
+        seminar_student_ids = [p.student_id for p in seminar_priorities]
+
+        seminar_ratings = [
+            (r, ln, fn, mn) for r, ln, fn, mn in ratings
+            if r.student_id in seminar_student_ids
+        ]
+
+        table_data = []
+        for idx, (rating, last_name, first_name, middle_name) in enumerate(seminar_ratings):
+            full_name = f"{last_name} {first_name} {middle_name or ''}".strip()
+            student_priority = next(
+                (p.priority_number for p in seminar_priorities if p.student_id == rating.student_id),
+                None
+            )
+            table_data.append({
+                'student_id': rating.student_id,
+                'full_name': full_name,
+                'average_score': float(rating.average_score),
+                'rank': idx + 1,
+                'is_admitted': idx + 1 <= 20,
+                'priority_number': student_priority,
+                'is_current_student': rating.student_id == student_id
+            })
+
+        seminar_tables.append({
+            'seminar_name': seminar.name,
+            'seminar_id': seminar.id,
+            'ratings': table_data
+        })
+
+    return render_template(
+        'seminar_rating.html',
+        seminar_tables=seminar_tables,
+        category=category,
+        student_id=student_id
+    )
+
+@app.route('/admin/rating', methods=['GET', 'POST'])
+@login_required
+def admin_rating():
+    if current_user.admin_user is None:
+        return render_error(403)
+
+    if request.method == 'POST':
+        data = request.get_json()
+        student_id = data.get('student_id')
+        average_score = data.get('average_score')
+
+        print(f"Received POST data: student_id={student_id}, average_score={average_score}")
+
+        if not all([student_id, average_score is not None]):
+            return jsonify({"error": "Все поля обязательны"}), 400
+
+        try:
+            average_score = float(average_score)
+            if not 0 <= average_score <= 100:
+                raise ValueError
+        except (ValueError, TypeError):
+            return jsonify({"error": "Средний балл должен быть числом от 0 до 100"}), 400
+
+        student_from_infosys = StudentFromInfosys.query.get(student_id)
+        if not student_from_infosys:
+            return jsonify({"error": "Студент с таким ID не найден"}), 404
+
+        real_student = Student.query.get(student_id)
+        if not real_student:
+            return jsonify({"error": "Студент не найден в базе"}), 404
+
+        category = 1 if real_student.financing == 'бюджет' else 2
+
+        rating = StudentRating.query.filter_by(student_id=student_id).first()
+        if rating:
+            rating.average_score = average_score
+            rating.category = category
+        else:
+            rating = StudentRating(
+                student_id=student_id,
+                average_score=average_score,
+                category=category
+            )
+            db.session.add(rating)
+
+        db.session.commit()
+        print(f"Saved rating: student_id={student_id}, category={category}")
+
+        return jsonify({"message": "Данные сохранены"})
+
+    ratings = db.session.query(
+        StudentRating,
+        StudentFromInfosys.student_surname,
+        StudentFromInfosys.student_firstname,
+        StudentFromInfosys.student_middlename
+    ).join(StudentFromInfosys, StudentRating.student_id == StudentFromInfosys.student_id).all()
+
+    ratings_with_full_name = []
+    for rating, last_name, first_name, middle_name in ratings:
+        full_name = f"{last_name} {first_name} {middle_name or ''}".strip()
+        student = Student.query.get(rating.student_id)
+        if student:
+            category = 1 if student.financing == 'бюджет' else 2
+        else:
+            category = rating.category
+        ratings_with_full_name.append((rating, full_name, category))
+
+    print(f"Retrieved admin ratings: {[(r.student_id, cat) for r, _, cat in ratings_with_full_name]}")
+
+    return render_template('admin_rating.html', ratings=ratings_with_full_name)
+
+
+
+
+
+
+
+class DepartmentPriority(db.Model):
+    __tablename__ = 'department_priorities'
+
+    id = db.Column(db.Integer, primary_key=True)
+    student_id = db.Column(db.BigInteger, db.ForeignKey('student.student_id', ondelete='CASCADE'), nullable=False)
+    priority = db.Column(db.Integer, nullable=False)
+    specialty_id = db.Column(db.Integer, db.ForeignKey('specialty.specialty_id', ondelete='CASCADE'), nullable=False)
+
+    __table_args__ = (
+        db.UniqueConstraint('student_id', 'priority', name='_student_priority_uc'),
+        db.UniqueConstraint('student_id', 'specialty_id', name='_student_specialty_uc'),
+    )
+
+
+@app.route('/profile_selection/<int:student_id>', methods=['GET'])
+@login_required
+def department_selection(student_id):
+    student = next((s for s in current_user.students if s.id == student_id), None)
+    if not student:
+        return "Нет доступа: студент не найден", 403
+
+    student_specialty = Specialty.query.get(student.specialty_id)
+    if not student_specialty:
+        return "Специальность студента не найдена", 404
+
+    current_semester = student.semester
+    distribution_semester = student_specialty.semestr_distirib
+    if not distribution_semester or current_semester != distribution_semester - 1:
+        return "Выбор профилей пока недоступен", 403
+
+    if student_specialty.semestr_distirib:
+        base_specialty = student_specialty
+    else:
+        base_specialty = Specialty.query.get(student_specialty.parent_specialty_id)
+        if not base_specialty:
+            return "Базовая специальность для распределения не найдена", 404
+
+    available_specializations = Specialty.query.filter(
+        db.or_(
+            Specialty.parent_specialty_id == base_specialty.id,
+            db.and_(
+                Specialty.name == base_specialty.name,
+                Specialty.specialization != '',
+                Specialty.id != base_specialty.id
+            )
+        ),
+        Specialty.specialization != '',
+        Specialty.semestr_distirib.is_(None),
+        Specialty.education_standart == 'fgos3++',
+        Specialty.code == base_specialty.code
+    ).all()
+
+    if not available_specializations:
+        return "Нет доступных специализаций для выбора", 404
+
+    current_priorities = DepartmentPriority.query.filter_by(
+        student_id=student_id
+    ).order_by(DepartmentPriority.priority).all()
+
+    priorities_data = {p.priority: p.specialty_id for p in current_priorities}
+
+    return render_template(
+        'department_selection.html',
+        student=student,
+        specializations=available_specializations,
+        priorities=priorities_data,
+        max_priorities=len(available_specializations)
+    )
+
+
+app.route('/save_distribution', methods=['POST'])
+
+
+@login_required
+def admin_save_distribution():
+    if current_user.admin_user is None:
+        return jsonify({"error": "Нет доступа"}), 403
+
+    data = request.get_json()
+    distribution_type = data.get('distribution_type')
+    distributions = data.get('distributions', [])
+
+    if distribution_type not in ['seminar', 'profile']:
+        return jsonify({"error": "Неверный тип распределения"}), 400
+
+    try:
+        for dist in distributions:
+            student_id = dist['student_id']
+            item_id = dist['item_id']
+
+            existing = StudentDistribution.query.filter_by(
+                student_id=student_id,
+                distribution_type=distribution_type
+            ).first()
+
+            if existing:
+                existing.item_id = item_id
+                existing.distributed_at = datetime.now()
+            else:
+                new_dist = StudentDistribution(
+                    student_id=student_id,
+                    distribution_type=distribution_type,
+                    item_id=item_id,
+                    is_original=True
+                )
+                db.session.add(new_dist)
+
+        db.session.commit()
+        return jsonify({"message": f"Сохранено {len(distributions)} распределений"})
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/submit_department_priorities/<int:student_id>', methods=['POST'])
+@login_required
+def submit_department_priorities(student_id):
+    student = next((s for s in current_user.students if s.id == student_id), None)
+    if not student:
+        return jsonify({"error": "Нет доступа"}), 403
+
+    try:
+        data = request.get_json()
+        priorities = data.get('priorities', [])
+
+        if len(priorities) != 7:
+            return jsonify({"error": "Необходимо указать ровно 7 приоритетов"}), 400
+
+        if len(set(priorities)) != 7:
+            return jsonify({"error": "Все специализации должны быть уникальными"}), 400
+
+        DepartmentPriority.query.filter_by(student_id=student_id).delete()
+
+        for priority_num, specialty_id in enumerate(priorities, 1):
+            new_priority = DepartmentPriority(
+                student_id=student_id,
+                priority=priority_num,
+                specialty_id=specialty_id
+            )
+            db.session.add(new_priority)
+
+        db.session.commit()
+        return jsonify({"message": "Приоритеты успешно сохранены!"})
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/manage_ratings', methods=['GET', 'POST'])
+@login_required
+def manage_ratings():
+    if not (current_user.admin_user is not None and current_user.admin_user.active):
+        return render_error(403)
+
+    if request.method == 'POST':
+        try:
+            data = request.get_json()
+            student_id = data.get('student_id')
+            average_score = data.get('average_score')
+
+            student = db.session.query(Student).filter_by(id=student_id).one_or_none()
+            if not student:
+                return jsonify({"error": "Студент с таким ID не найден"}), 404
+
+            category = 1 if student.financing == 'бюджет' else 2
+
+            existing_rating = StudentRating.query.filter_by(student_id=student_id).first()
+
+            if existing_rating:
+                existing_rating.average_score = average_score
+                existing_rating.category = category
+            else:
+                new_rating = StudentRating(
+                    student_id=student_id,
+                    average_score=average_score,
+                    category=category
+                )
+                db.session.add(new_rating)
+
+            db.session.commit()
+            return jsonify({"message": "Рейтинг успешно сохранён!"})
+
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({"error": str(e)}), 500
+
+    ratings = db.session.query(StudentRating, Student, Person).\
+        join(Student, StudentRating.student_id == Student.id).\
+        join(Person, Student.person_id == Person.id).\
+        all()
+
+    ratings_list = []
+    for rating, student, person in ratings:
+        full_name = person.full_name
+        category = 1 if student.financing == 'бюджет' else 2
+        ratings_list.append((rating, full_name, category))
+
+    return render_template('manage_ratings.html', ratings=ratings_list)
+
+
+@app.route('/profile_allocation', methods=['GET'])
+@login_required
+def department_allocation():
+    priorities = db.session.query(
+        DepartmentPriority.student_id,
+        DepartmentPriority.priority,
+        DepartmentPriority.specialty_id,
+        StudentRating.average_score,
+        Person.surname,
+        Person.firstname,
+        Person.middlename,
+        Student.specialty_id.label('student_specialty_id')
+    ).join(
+        StudentRating, DepartmentPriority.student_id == StudentRating.student_id
+    ).join(
+        Student, DepartmentPriority.student_id == Student.id
+    ).join(
+        Person, Student.person_id == Person.id
+    ).order_by(
+        DepartmentPriority.student_id, DepartmentPriority.priority
+    ).all()
+
+    base_specialty_ids = set()
+    student_specialties = {}
+    for p in priorities:
+        student_specialties[p.student_id] = p.student_specialty_id
+        base_specialty_ids.add(p.student_specialty_id)
+
+    departments = []
+    for base_specialty_id in base_specialty_ids:
+        base_specialty = Specialty.query.get(base_specialty_id)
+        if not base_specialty:
+            continue
+
+        if not base_specialty.semestr_distirib:
+            base_specialty = Specialty.query.get(base_specialty.parent_specialty_id)
+            if not base_specialty:
+                continue
+
+        available_specializations = Specialty.query.filter(
+            db.or_(
+                Specialty.parent_specialty_id == base_specialty.id,
+                db.and_(
+                    Specialty.name == base_specialty.name,
+                    Specialty.specialization != '',
+                    Specialty.id != base_specialty.id
+                )
+            ),
+            Specialty.specialization != '',
+            Specialty.semestr_distirib.is_(None),
+            Specialty.education_standart == 'fgos3++',
+            Specialty.code == base_specialty.code
+        ).all()
+
+        departments.extend(available_specializations)
+
+    departments = list({dep.id: dep for dep in departments}.values())
+
+    student_priorities = {}
+    for p in priorities:
+        if p.student_id not in student_priorities:
+            student_priorities[p.student_id] = {
+                'priorities': [],
+                'average_score': float(p.average_score),
+                'name': f"{p.surname} {p.firstname} {p.middlename or ''}".strip()
+            }
+        student_priorities[p.student_id]['priorities'].append({
+            'specialty_id': p.specialty_id,
+            'priority': p.priority
+        })
+
+    num_students = len(student_priorities)
+    num_departments = len(departments)
+    if num_departments == 0:
+        return jsonify({"error": "Нет доступных профилей для распределения"}), 404
+
+    max_slots = round(num_students / num_departments)
+
+    department_lists = {dep.id: {'name': dep.specialization, 'students': []} for dep in departments}
+
+    sorted_students = sorted(
+        student_priorities.items(),
+        key=lambda x: x[1]['average_score'],
+        reverse=True
+    )
+
+    allocated_students = set()
+    for student_id, data in sorted_students:
+        if student_id in allocated_students:
+            continue
+        for pref in data['priorities']:
+            specialty_id = pref['specialty_id']
+            if specialty_id in department_lists and len(department_lists[specialty_id]['students']) < max_slots:
+                department_lists[specialty_id]['students'].append({
+                    'student_id': student_id,
+                    'name': data['name'],
+                    'average_score': data['average_score']
+                })
+                allocated_students.add(student_id)
+                break
+
+    for dep_id in department_lists:
+        department_lists[dep_id]['students'].sort(
+            key=lambda x: x['average_score'], reverse=True
+        )
+
+    return render_template(
+        'department_allocation.html',
+        department_lists=department_lists,
+        max_slots=max_slots
+    )
+
+
+
+def get_student_full_name(student):
+    if student and student.person:
+        return student.person.full_name
+    return None
+
+
+def get_available_profiles(student):
+    base_specialty = Specialty.query.get(student.specialty_id)
+
+    if not base_specialty:
+        return []
+
+    if not base_specialty.semestr_distirib:
+        base_specialty = Specialty.query.get(base_specialty.parent_specialty_id)
+        if not base_specialty:
+            return []
+
+    return Specialty.query.filter(
+        or_(
+            Specialty.parent_specialty_id == base_specialty.id,
+            and_(
+                Specialty.name == base_specialty.name,
+                Specialty.specialization != '',
+                Specialty.id != base_specialty.id
+            )
+        ),
+        Specialty.specialization != '',
+        Specialty.semestr_distirib.is_(None),
+        Specialty.education_standart == 'fgos3++'
+    ).all()
+
+
+def get_available_seminars(student):
+    """Получить доступные семинары для студента"""
+    return ProjectSeminar.query.filter_by(semester=student.semester - 2).all()
+
+@app.route('/exchange/<exchange_type>/<int:student_id>', methods=['GET'])
+@login_required
+def exchange_page(exchange_type, student_id):
+
+    student = next((s for s in current_user.students if s.id == student_id), None)
+    if not student:
+        return render_error(403)
+
+    if exchange_type not in ['seminar', 'profile']:
+        return render_error(400)
+
+    if student.semester not in [1, 3, 5]:
+        return render_template('exchange.html',
+                               error="Обмен доступен только в 1, 3 и 5 семестрах",
+                               student_id=student_id,
+                               exchange_type=exchange_type,
+                               student=student)
+
+    distribution = StudentDistribution.query.filter_by(
+        student_id=student_id,
+        distribution_type=exchange_type
+    ).first()
+
+    if not distribution:
+        return render_template('exchange.html',
+                               error="Вы ещё не распределены. Дождитесь результатов распределения.",
+                               student_id=student_id,
+                               exchange_type=exchange_type,
+                               student=student)
+
+    if exchange_type == 'seminar':
+        current_item = ProjectSeminar.query.get(distribution.item_id)
+        all_items = get_available_seminars(student)
+        available_items = [item for item in all_items if item.id != distribution.item_id]
+    else:
+        current_item = Specialty.query.get(distribution.item_id)
+        all_items = get_available_profiles(student)
+        available_items = [item for item in all_items if item.id != distribution.item_id]
+
+    existing_request = ExchangeRequest.query.filter_by(
+        student_id=student_id,
+        exchange_type=exchange_type,
+        is_active=True
+    ).first()
+
+    active_pairs = []
+    if existing_request:
+        pairs_query = ExchangePair.query.filter(
+            or_(
+                ExchangePair.request1_id == existing_request.id,
+                ExchangePair.request2_id == existing_request.id
+            ),
+            ExchangePair.status.in_(['pending_students', 'pending_admin'])
+        ).all()
+
+        for pair in pairs_query:
+            if pair.request1_id == existing_request.id:
+                partner_request = ExchangeRequest.query.get(pair.request2_id)
+                my_confirmed = pair.student1_confirmed
+            else:
+                partner_request = ExchangeRequest.query.get(pair.request1_id)
+                my_confirmed = pair.student2_confirmed
+
+            partner_student = Student.query.get(partner_request.student_id)
+
+            active_pairs.append({
+                'id': pair.id,
+                'partner_name': get_student_full_name(partner_student),
+                'partner_current': partner_request.get_current_item_name(),
+                'partner_desired': partner_request.get_desired_item_name(),
+                'my_confirmed': my_confirmed,
+                'status': pair.status,
+                'created_at': pair.created_at
+            })
+
+    return render_template(
+        'exchange.html',
+        student=student,
+        student_id=student_id,
+        exchange_type=exchange_type,
+        current_item=current_item,
+        available_items=available_items,
+        existing_request=existing_request,
+        active_pairs=active_pairs
+    )
+
+@app.route('/exchange/submit', methods=['POST'])
+@login_required
+def submit_exchange_request():
+
+    data = request.get_json()
+    student_id = data.get('student_id')
+    exchange_type = data.get('exchange_type')
+    desired_item_id = data.get('desired_item_id')
+    comment = data.get('comment', '')
+
+    student = next((s for s in current_user.students if s.id == student_id), None)
+    if not student:
+        return jsonify({"error": "Нет доступа"}), 403
+
+    if exchange_type not in ['seminar', 'profile']:
+        return jsonify({"error": "Неверный тип обмена"}), 400
+
+    distribution = StudentDistribution.query.filter_by(
+        student_id=student_id,
+        distribution_type=exchange_type
+    ).first()
+
+    if not distribution:
+        return jsonify({"error": "Вы не распределены"}), 400
+
+    if distribution.item_id == int(desired_item_id):
+        return jsonify({"error": "Нельзя обменяться на то же место"}), 400
+
+    existing = ExchangeRequest.query.filter_by(
+        student_id=student_id,
+        exchange_type=exchange_type,
+        is_active=True
+    ).first()
+
+    if existing:
+        existing.desired_item_id = int(desired_item_id)
+        existing.student_comment = comment
+        existing.status = 'open'
+        existing.updated_at = datetime.now()
+        db.session.commit()
+        return jsonify({"message": "Заявка обновлена!", "request_id": existing.id})
+
+    new_request = ExchangeRequest(
+        student_id=student_id,
+        exchange_type=exchange_type,
+        current_item_id=distribution.item_id,
+        desired_item_id=int(desired_item_id),
+        student_comment=comment,
+        status='open',
+        is_active=True
+    )
+    db.session.add(new_request)
+    db.session.commit()
+
+    return jsonify({"message": "Заявка подана!", "request_id": new_request.id})
+
+@app.route('/exchange/cancel/<int:request_id>', methods=['POST'])
+@login_required
+def cancel_exchange_request(request_id):
+
+    exchange_request = ExchangeRequest.query.get_or_404(request_id)
+
+    student = next((s for s in current_user.students if s.id == exchange_request.student_id), None)
+    if not student:
+        return jsonify({"error": "Нет доступа"}), 403
+
+    pairs = ExchangePair.query.filter(
+        or_(
+            ExchangePair.request1_id == request_id,
+            ExchangePair.request2_id == request_id
+        ),
+        ExchangePair.status.in_(['pending_students', 'pending_admin'])
+    ).all()
+
+    for pair in pairs:
+        pair.status = 'cancelled'
+        other_request_id = pair.request2_id if pair.request1_id == request_id else pair.request1_id
+        other_request = ExchangeRequest.query.get(other_request_id)
+        if other_request:
+            other_request.status = 'open'
+
+    exchange_request.status = 'cancelled'
+    exchange_request.is_active = False
+
+    db.session.commit()
+
+    return jsonify({"message": "Заявка отменена"})
+
+
+@app.route('/exchange/candidates/<int:request_id>', methods=['GET'])
+@login_required
+def exchange_candidates_page(request_id):
+    my_request = ExchangeRequest.query.get_or_404(request_id)
+
+    student = next((s for s in current_user.students if s.id == my_request.student_id), None)
+    if not student:
+        return render_error(403)
+
+    return render_template(
+        'candidates.html',
+        my_request=my_request,
+        student=student,
+        current_item_name=my_request.get_current_item_name(),
+        desired_item_name=my_request.get_desired_item_name()
+    )
+
+@app.route('/exchange/candidates/<int:request_id>/list', methods=['GET'])
+@login_required
+def get_exchange_candidates(request_id):
+    my_request = ExchangeRequest.query.get_or_404(request_id)
+
+    student = next((s for s in current_user.students if s.id == my_request.student_id), None)
+    if not student:
+        return jsonify({"error": "Нет доступа"}), 403
+
+    filter_type = request.args.get('filter', 'all')
+
+    query = db.session.query(ExchangeRequest, Student, Person).join(
+        Student, ExchangeRequest.student_id == Student.id
+    ).join(
+        Person, Student.person_id == Person.id
+    ).filter(
+        ExchangeRequest.exchange_type == my_request.exchange_type,
+        ExchangeRequest.id != my_request.id,
+        ExchangeRequest.is_active == True,
+        ExchangeRequest.status == 'open',
+        Student.semester == student.semester
+    )
+
+    candidates = query.all()
+
+    result = []
+    for cand_request, cand_student, cand_person in candidates:
+        wants_my_place = cand_request.desired_item_id == my_request.current_item_id
+        has_my_desired = cand_request.current_item_id == my_request.desired_item_id
+        is_full_match = wants_my_place and has_my_desired
+
+        match_type = 'none'
+        if is_full_match:
+            match_type = 'full'
+        elif wants_my_place:
+            match_type = 'wants_my_place'
+        elif has_my_desired:
+            match_type = 'has_my_desired'
+
+        if filter_type == 'full_match' and match_type != 'full':
+            continue
+        if filter_type == 'wants_my_place' and not wants_my_place:
+            continue
+        if filter_type == 'has_my_desired' and not has_my_desired:
+            continue
+
+        result.append({
+            'request_id': cand_request.id,
+            'student_id': cand_student.id,
+            'student_name': cand_person.full_name,
+            'current_item_id': cand_request.current_item_id,
+            'current_item_name': cand_request.get_current_item_name(),
+            'desired_item_id': cand_request.desired_item_id,
+            'desired_item_name': cand_request.get_desired_item_name(),
+            'match_type': match_type,
+            'is_full_match': is_full_match
+        })
+
+    result.sort(key=lambda x: (not x['is_full_match'], x['match_type']))
+
+    return jsonify(result)
+
+@app.route('/exchange/propose', methods=['POST'])
+@login_required
+def propose_exchange():
+    data = request.get_json()
+    my_request_id = data.get('my_request_id')
+    partner_request_id = data.get('partner_request_id')
+
+    my_request = ExchangeRequest.query.get_or_404(my_request_id)
+    partner_request = ExchangeRequest.query.get_or_404(partner_request_id)
+
+    student = next((s for s in current_user.students if s.id == my_request.student_id), None)
+    if not student:
+        return jsonify({"error": "Нет доступа"}), 403
+
+    if not (my_request.desired_item_id == partner_request.current_item_id and
+            my_request.current_item_id == partner_request.desired_item_id):
+        return jsonify({"error": "Обмен возможен только при полном совпадении желаний"}), 400
+
+    existing_pair = ExchangePair.query.filter(
+        or_(
+            and_(ExchangePair.request1_id == my_request_id,
+                 ExchangePair.request2_id == partner_request_id),
+            and_(ExchangePair.request1_id == partner_request_id,
+                 ExchangePair.request2_id == my_request_id)
+        ),
+        ExchangePair.status.in_(['pending_students', 'pending_admin'])
+    ).first()
+
+    if existing_pair:
+        return jsonify({"error": "Предложение об обмене уже существует"}), 400
+
+    new_pair = ExchangePair(
+        request1_id=my_request_id,
+        request2_id=partner_request_id,
+        initiated_by=my_request.student_id,
+        student1_confirmed=True,
+        student1_confirmed_at=datetime.now(),
+        student2_confirmed=False,
+        status='pending_students'
+    )
+    db.session.add(new_pair)
+
+    my_request.status = 'pending'
+    partner_request.status = 'pending'
+
+    db.session.commit()
+
+    return jsonify({
+        "message": "Предложение отправлено! Ожидайте подтверждения.",
+        "pair_id": new_pair.id
+    })
+
+@app.route('/exchange/respond/<int:pair_id>', methods=['POST'])
+@login_required
+def respond_to_exchange(pair_id):
+    data = request.get_json()
+    action = data.get('action')
+
+    pair = ExchangePair.query.get_or_404(pair_id)
+
+    request1 = ExchangeRequest.query.get(pair.request1_id)
+    request2 = ExchangeRequest.query.get(pair.request2_id)
+
+    student = next(iter(current_user.students), None)
+    if not student:
+        return jsonify({"error": "Нет доступа"}), 403
+
+    is_student1 = request1.student_id == student.id
+    is_student2 = request2.student_id == student.id
+
+    if not (is_student1 or is_student2):
+        return jsonify({"error": "Вы не участвуете в этом обмене"}), 403
+
+    if action == 'confirm':
+        if is_student1:
+            pair.student1_confirmed = True
+            pair.student1_confirmed_at = datetime.now()
+        else:
+            pair.student2_confirmed = True
+            pair.student2_confirmed_at = datetime.now()
+
+        if pair.student1_confirmed and pair.student2_confirmed:
+            pair.status = 'pending_admin'
+            request1.status = 'matched'
+            request2.status = 'matched'
+
+        db.session.commit()
+        return jsonify({"message": "Обмен подтверждён!"})
+
+    elif action == 'reject':
+        pair.status = 'cancelled'
+        request1.status = 'open'
+        request2.status = 'open'
+
+        db.session.commit()
+        return jsonify({"message": "Обмен отклонён"})
+
+    return jsonify({"error": "Неверное действие"}), 400
+
+@app.route('/admin/exchanges', methods=['GET'])
+@login_required
+def admin_exchanges():
+    if current_user.admin_user is None:
+        return render_error(403)
+
+    filter_type = request.args.get('type', 'all')
+
+    stats = {
+        'pending_admin': ExchangePair.query.filter_by(status='pending_admin').count(),
+        'pending_students': ExchangePair.query.filter_by(status='pending_students').count(),
+        'approved': ExchangePair.query.filter_by(status='approved').count(),
+        'total_requests': ExchangeRequest.query.filter_by(is_active=True).count()
+    }
+
+    query = ExchangePair.query.filter_by(status='pending_admin')
+    pending_pairs = query.all()
+
+    pairs_data = []
+    for pair in pending_pairs:
+        req1 = ExchangeRequest.query.get(pair.request1_id)
+        req2 = ExchangeRequest.query.get(pair.request2_id)
+
+        if filter_type != 'all' and req1.exchange_type != filter_type:
+            continue
+
+        student1 = Student.query.get(req1.student_id)
+        student2 = Student.query.get(req2.student_id)
+
+        pairs_data.append({
+            'pair_id': pair.id,
+            'exchange_type': req1.exchange_type,
+            'student1_name': get_student_full_name(student1),
+            'student1_current': req1.get_current_item_name(),
+            'student2_name': get_student_full_name(student2),
+            'student2_current': req2.get_current_item_name(),
+            'created_at': pair.created_at
+        })
+
+    history_query = db.session.query(
+        ExchangeHistory, ExchangePair
+    ).join(
+        ExchangePair, ExchangeHistory.exchange_pair_id == ExchangePair.id
+    ).order_by(ExchangeHistory.executed_at.desc()).limit(50)
+
+    history = []
+    for hist, pair in history_query.all():
+        student1 = Student.query.get(hist.student1_id)
+        student2 = Student.query.get(hist.student2_id)
+        admin = AdminUser.query.get(hist.approved_by) if hist.approved_by else None
+
+        history.append({
+            'executed_at': hist.executed_at,
+            'exchange_type': hist.exchange_type,
+            'student1_name': get_student_full_name(student1),
+            'student2_name': get_student_full_name(student2),
+            'status': pair.status,
+            'admin_name': get_student_full_name(admin) if admin else 'Система'
+        })
+
+    return render_template(
+        'admin_exchanges.html',
+        pending_pairs=pairs_data,
+        history=history,
+        stats=stats,
+        filter_type=filter_type
+    )
+
+@app.route('/admin/exchanges/<int:pair_id>', methods=['POST'])
+@login_required
+def admin_process_exchange(pair_id):
+
+    if current_user.admin_user is None:
+        return jsonify({"error": "Нет доступа"}), 403
+
+    data = request.get_json()
+    action = data.get('action')
+    comment = data.get('comment', '')
+
+    pair = ExchangePair.query.get_or_404(pair_id)
+
+    if pair.status != 'pending_admin':
+        return jsonify({"error": "Этот обмен уже обработан"}), 400
+
+    req1 = ExchangeRequest.query.get(pair.request1_id)
+    req2 = ExchangeRequest.query.get(pair.request2_id)
+
+    if action == 'approve':
+        dist1 = StudentDistribution.query.filter_by(
+            student_id=req1.student_id,
+            distribution_type=req1.exchange_type
+        ).first()
+
+        dist2 = StudentDistribution.query.filter_by(
+            student_id=req2.student_id,
+            distribution_type=req2.exchange_type
+        ).first()
+
+        if not dist1 or not dist2:
+            return jsonify({"error": "Распределения не найдены"}), 400
+
+        history = ExchangeHistory(
+            exchange_pair_id=pair.id,
+            student1_id=req1.student_id,
+            student1_old_item_id=dist1.item_id,
+            student1_new_item_id=dist2.item_id,
+            student2_id=req2.student_id,
+            student2_old_item_id=dist2.item_id,
+            student2_new_item_id=dist1.item_id,
+            exchange_type=req1.exchange_type,
+            approved_by=current_user.admin_user.id
+        )
+        db.session.add(history)
+
+        dist1.item_id, dist2.item_id = dist2.item_id, dist1.item_id
+        dist1.is_original = False
+        dist2.is_original = False
+        dist1.exchange_pair_id = pair.id
+        dist2.exchange_pair_id = pair.id
+
+        pair.status = 'approved'
+        pair.admin_confirmed = True
+        pair.admin_id = current_user.admin_user.id
+        pair.admin_comment = comment
+        pair.admin_processed_at = datetime.now()
+
+        req1.status = 'completed'
+        req1.is_active = False
+        req2.status = 'completed'
+        req2.is_active = False
+
+        db.session.commit()
+        return jsonify({"message": "Обмен одобрен и выполнен!"})
+
+    elif action == 'reject':
+        pair.status = 'rejected'
+        pair.admin_id = current_user.admin_user.id
+        pair.admin_comment = comment
+        pair.admin_processed_at = datetime.now()
+
+        req1.status = 'open'
+        req2.status = 'open'
+
+        db.session.commit()
+        return jsonify({"message": "Обмен отклонён"})
+
+    return jsonify({"error": "Неверное действие"}), 400
+
+
+@app.route('/student/dashboard')
+@app.route('/student/dashboard/<int:student_id>')
+@login_required
+def student_dashboard(student_id=None):
+    if student_id:
+        student = next((s for s in current_user.students if s.id == student_id), None)
+    else:
+        student = next(iter(current_user.students), None)
+
+    if not student:
+        return render_error(403)
+
+    seminar_distribution = StudentDistribution.query.filter_by(
+        student_id=student.id,
+        distribution_type='seminar'
+    ).first()
+
+    profile_distribution = StudentDistribution.query.filter_by(
+        student_id=student.id,
+        distribution_type='profile'
+    ).first()
+
+    seminar_request = ExchangeRequest.query.filter_by(
+        student_id=student.id,
+        exchange_type='seminar',
+        is_active=True
+    ).first()
+
+    profile_request = ExchangeRequest.query.filter_by(
+        student_id=student.id,
+        exchange_type='profile',
+        is_active=True
+    ).first()
+
+    has_seminar_priorities = StudentProjectPriority.query.filter_by(
+        student_id=student.id
+    ).first() is not None
+
+    has_profile_priorities = DepartmentPriority.query.filter_by(
+        student_id=student.id
+    ).first() is not None
+
+    can_select_seminars = student.semester in [1, 3, 5]
+    can_select_profiles = student.semester == 5
+    can_exchange = student.semester in [1, 3, 5]
+
+    return render_template(
+        'student_dashboard.html',
+        student=student,
+        seminar_distribution=seminar_distribution,
+        profile_distribution=profile_distribution,
+        seminar_request=seminar_request,
+        profile_request=profile_request,
+        has_seminar_priorities=has_seminar_priorities,
+        has_profile_priorities=has_profile_priorities,
+        can_select_seminars=can_select_seminars,
+        can_select_profiles=can_select_profiles,
+        can_exchange=can_exchange
+    )
+
+@app.route('/admin/distribution')
+@login_required
+def admin_distribution_dashboard():
+    if current_user.admin_user is None:
+        return render_error(403)
+
+    seminar_stats = {
+        'total_priorities': StudentProjectPriority.query.distinct(StudentProjectPriority.student_id).count(),
+        'distributed': StudentDistribution.query.filter_by(distribution_type='seminar').count(),
+        'exchange_requests': ExchangeRequest.query.filter_by(exchange_type='seminar', is_active=True).count()
+    }
+
+    profile_stats = {
+        'total_priorities': DepartmentPriority.query.distinct(DepartmentPriority.student_id).count(),
+        'distributed': StudentDistribution.query.filter_by(distribution_type='profile').count(),
+        'exchange_requests': ExchangeRequest.query.filter_by(exchange_type='profile', is_active=True).count()
+    }
+
+    return render_template(
+        'distribution_dashboard.html',
+        seminar_stats=seminar_stats,
+        profile_stats=profile_stats
+    )
+
+@app.route('/admin/distribution/seminars')
+@login_required
+def admin_seminar_distribution():
+
+    if current_user.admin_user is None:
+        return render_error(403)
+
+    semester = request.args.get('semester', type=int)
+    category = request.args.get('category', type=int)
+
+    available_semesters = db.session.query(ProjectSeminar.semester).distinct().order_by(ProjectSeminar.semester).all()
+    available_semesters = [s[0] for s in available_semesters if s[0] is not None]
+
+    if not semester and available_semesters:
+        semester = available_semesters[0]
+
+    seminars_query = ProjectSeminar.query.filter_by(semester=semester).all() if semester else []
+
+    seminars = [{'id': s.id, 'name': s.name, 'semester': s.semester} for s in seminars_query]
+    seminar_ids = [s['id'] for s in seminars]
+
+    student_priorities = {}
+    existing_dist_map = {}
+
+    if seminar_ids:
+        query = db.session.query(
+            StudentProjectPriority.student_id,
+            StudentProjectPriority.priority_number,
+            StudentProjectPriority.seminar_id,
+            StudentRating.average_score,
+            StudentRating.category,
+            Person.surname,
+            Person.firstname,
+            Person.middlename
+        ).join(
+            StudentRating, StudentProjectPriority.student_id == StudentRating.student_id
+        ).join(
+            Student, StudentProjectPriority.student_id == Student.id
+        ).join(
+            Person, Student.person_id == Person.id
+        ).filter(
+            StudentProjectPriority.seminar_id.in_(seminar_ids)
+        )
+
+        if category:
+            query = query.filter(StudentRating.category == category)
+
+        priorities_data = query.order_by(
+            StudentProjectPriority.student_id,
+            StudentProjectPriority.priority_number
+        ).all()
+
+        for p in priorities_data:
+            if p.student_id not in student_priorities:
+                student_priorities[p.student_id] = {
+                    'priorities': [],
+                    'average_score': float(p.average_score),
+                    'category': p.category,
+                    'name': f"{p.surname} {p.firstname} {p.middlename or ''}".strip()
+                }
+            student_priorities[p.student_id]['priorities'].append({
+                'seminar_id': p.seminar_id,
+                'priority': p.priority_number
+            })
+
+        if student_priorities:
+            existing_distributions = StudentDistribution.query.filter(
+                StudentDistribution.distribution_type == 'seminar',
+                StudentDistribution.student_id.in_(list(student_priorities.keys()))
+            ).all()
+            existing_dist_map = {d.student_id: d.item_id for d in existing_distributions}
+
+    return render_template(
+        'seminar_distribution.html',
+        seminars=seminars,
+        student_priorities=student_priorities,
+        existing_distributions=existing_dist_map,
+        available_semesters=available_semesters,
+        current_semester=semester,
+        current_category=category,
+        categories=[
+            {'id': 1, 'name': 'Бюджет'},
+            {'id': 2, 'name': 'Договор'},
+        ]
+    )
+
+
+@app.route('/admin/distribution/seminars/run', methods=['POST'])
+@login_required
+def admin_run_seminar_distribution():
+    if current_user.admin_user is None:
+        return jsonify({"error": "Нет доступа"}), 403
+
+    data = request.get_json()
+    semester = data.get('semester')
+    category = data.get('category')
+    max_per_seminar = data.get('max_per_seminar', 20)
+
+    seminars = ProjectSeminar.query.filter_by(semester=semester).all()
+    seminar_ids = [s.id for s in seminars]
+
+    if not seminar_ids:
+        return jsonify({"error": "Нет семинаров для указанного семестра"}), 400
+
+    query = db.session.query(
+        StudentProjectPriority.student_id,
+        StudentProjectPriority.priority_number,
+        StudentProjectPriority.seminar_id,
+        StudentRating.average_score,
+        StudentRating.category
+    ).join(
+        StudentRating, StudentProjectPriority.student_id == StudentRating.student_id
+    ).filter(
+        StudentProjectPriority.seminar_id.in_(seminar_ids)
+    )
+
+    if category:
+        query = query.filter(StudentRating.category == category)
+
+    priorities_data = query.order_by(
+        StudentProjectPriority.student_id,
+        StudentProjectPriority.priority_number
+    ).all()
+
+    student_priorities = {}
+    for p in priorities_data:
+        if p.student_id not in student_priorities:
+            student_priorities[p.student_id] = {
+                'priorities': [],
+                'average_score': float(p.average_score),
+                'category': p.category
+            }
+        student_priorities[p.student_id]['priorities'].append({
+            'seminar_id': p.seminar_id,
+            'priority': p.priority_number
+        })
+
+    sorted_students = sorted(
+        student_priorities.items(),
+        key=lambda x: x[1]['average_score'],
+        reverse=True
+    )
+    seminar_slots = {s.id: {'name': s.name, 'count': 0, 'max': max_per_seminar} for s in seminars}
+
+    distribution_result = []
+    allocated_students = set()
+
+    for student_id, data in sorted_students:
+        if student_id in allocated_students:
+            continue
+        sorted_priorities = sorted(data['priorities'], key=lambda x: x['priority'])
+
+        for pref in sorted_priorities:
+            seminar_id = pref['seminar_id']
+            if seminar_id in seminar_slots and seminar_slots[seminar_id]['count'] < seminar_slots[seminar_id]['max']:
+                seminar_slots[seminar_id]['count'] += 1
+                allocated_students.add(student_id)
+                distribution_result.append({
+                    'student_id': student_id,
+                    'seminar_id': seminar_id,
+                    'priority_got': pref['priority'],
+                    'average_score': data['average_score']
+                })
+                break
+
+    stats = {
+        'total_students': len(student_priorities),
+        'distributed': len(distribution_result),
+        'not_distributed': len(student_priorities) - len(distribution_result),
+        'seminars': {s_id: s_data for s_id, s_data in seminar_slots.items()}
+    }
+
+    return jsonify({
+        "message": "Распределение выполнено",
+        "distribution": distribution_result,
+        "stats": stats
+    })
+
+
+@app.route('/admin/distribution/seminars/save', methods=['POST'])
+@login_required
+def admin_save_seminar_distribution():
+    if current_user.admin_user is None:
+        return jsonify({"error": "Нет доступа"}), 403
+
+    data = request.get_json()
+    distributions = data.get('distributions', [])
+
+    try:
+        saved_count = 0
+        for dist in distributions:
+            student_id = dist['student_id']
+            seminar_id = dist['seminar_id']
+
+            existing = StudentDistribution.query.filter_by(
+                student_id=student_id,
+                distribution_type='seminar'
+            ).first()
+
+            if existing:
+                existing.item_id = seminar_id
+                existing.distributed_at = datetime.now()
+                existing.is_original = True
+                existing.exchange_pair_id = None
+            else:
+                new_dist = StudentDistribution(
+                    student_id=student_id,
+                    distribution_type='seminar',
+                    item_id=seminar_id,
+                    is_original=True
+                )
+                db.session.add(new_dist)
+
+            saved_count += 1
+
+        db.session.commit()
+        return jsonify({"message": f"Сохранено {saved_count} распределений"})
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/admin/distribution/profiles')
+@login_required
+def admin_profile_distribution():
+
+    if current_user.admin_user is None:
+        return render_error(403)
+
+    priorities_data = db.session.query(
+        DepartmentPriority.student_id,
+        DepartmentPriority.priority,
+        DepartmentPriority.specialty_id,
+        StudentRating.average_score,
+        StudentRating.category,
+        Person.surname,
+        Person.firstname,
+        Person.middlename,
+        Student.specialty_id.label('student_specialty_id')
+    ).join(
+        StudentRating, DepartmentPriority.student_id == StudentRating.student_id
+    ).join(
+        Student, DepartmentPriority.student_id == Student.id
+    ).join(
+        Person, Student.person_id == Person.id
+    ).order_by(
+        DepartmentPriority.student_id,
+        DepartmentPriority.priority
+    ).all()
+
+    student_priorities = {}
+    departments = []
+    existing_dist_map = {}
+
+    if priorities_data:
+        base_specialty_ids = set()
+        for p in priorities_data:
+            base_specialty_ids.add(p.student_specialty_id)
+
+        for base_specialty_id in base_specialty_ids:
+            base_specialty = Specialty.query.get(base_specialty_id)
+            if not base_specialty:
+                continue
+
+            if not base_specialty.semestr_distirib:
+                base_specialty = Specialty.query.get(base_specialty.parent_specialty_id)
+                if not base_specialty:
+                    continue
+
+            available_specializations = Specialty.query.filter(
+                db.or_(
+                    Specialty.parent_specialty_id == base_specialty.id,
+                    db.and_(
+                        Specialty.name == base_specialty.name,
+                        Specialty.specialization != '',
+                        Specialty.id != base_specialty.id
+                    )
+                ),
+                Specialty.specialization != '',
+                Specialty.semestr_distirib.is_(None),
+                Specialty.education_standart == 'fgos3++',
+                Specialty.code == base_specialty.code
+            ).all()
+
+            departments.extend(available_specializations)
+
+        departments = list({dep.id: dep for dep in departments}.values())
+
+        for p in priorities_data:
+            if p.student_id not in student_priorities:
+                student_priorities[p.student_id] = {
+                    'priorities': [],
+                    'average_score': float(p.average_score),
+                    'category': p.category,
+                    'name': f"{p.surname} {p.firstname} {p.middlename or ''}".strip()
+                }
+            student_priorities[p.student_id]['priorities'].append({
+                'specialty_id': p.specialty_id,
+                'priority': p.priority
+            })
+
+        if student_priorities:
+            existing_distributions = StudentDistribution.query.filter(
+                StudentDistribution.distribution_type == 'profile',
+                StudentDistribution.student_id.in_(list(student_priorities.keys()))
+            ).all()
+            existing_dist_map = {d.student_id: d.item_id for d in existing_distributions}
+
+    departments_list = [
+        {
+            'id': dep.id,
+            'name': dep.specialization,
+            'code': dep.code
+        }
+        for dep in departments
+    ]
+
+    return render_template(
+        'profile_distribution.html',
+        departments=departments_list,
+        departments_objects=departments,
+        student_priorities=student_priorities,
+        existing_distributions=existing_dist_map,
+        categories=[
+            {'id': 1, 'name': 'Бюджет'},
+            {'id': 2, 'name': 'Договор'},
+        ]
+    )
+
+
+@app.route('/admin/distribution/profiles/run', methods=['POST'])
+@login_required
+def admin_run_profile_distribution():
+
+    if current_user.admin_user is None:
+        return jsonify({"error": "Нет доступа"}), 403
+
+    data = request.get_json()
+    max_per_profile = data.get('max_per_profile')
+
+    priorities_data = db.session.query(
+        DepartmentPriority.student_id,
+        DepartmentPriority.priority,
+        DepartmentPriority.specialty_id,
+        StudentRating.average_score,
+        Student.specialty_id.label('student_specialty_id')
+    ).join(
+        StudentRating, DepartmentPriority.student_id == StudentRating.student_id
+    ).join(
+        Student, DepartmentPriority.student_id == Student.id
+    ).order_by(
+        DepartmentPriority.student_id,
+        DepartmentPriority.priority
+    ).all()
+
+    base_specialty_ids = set(p.student_specialty_id for p in priorities_data)
+    departments = []
+
+    for base_specialty_id in base_specialty_ids:
+        base_specialty = Specialty.query.get(base_specialty_id)
+        if not base_specialty:
+            continue
+        if not base_specialty.semestr_distirib:
+            base_specialty = Specialty.query.get(base_specialty.parent_specialty_id)
+            if not base_specialty:
+                continue
+
+        available_specializations = Specialty.query.filter(
+            db.or_(
+                Specialty.parent_specialty_id == base_specialty.id,
+                db.and_(
+                    Specialty.name == base_specialty.name,
+                    Specialty.specialization != '',
+                    Specialty.id != base_specialty.id
+                )
+            ),
+            Specialty.specialization != '',
+            Specialty.semestr_distirib.is_(None),
+            Specialty.education_standart == 'fgos3++',
+            Specialty.code == base_specialty.code
+        ).all()
+
+        departments.extend(available_specializations)
+
+    departments = list({dep.id: dep for dep in departments}.values())
+
+    student_priorities = {}
+    for p in priorities_data:
+        if p.student_id not in student_priorities:
+            student_priorities[p.student_id] = {
+                'priorities': [],
+                'average_score': float(p.average_score)
+            }
+        student_priorities[p.student_id]['priorities'].append({
+            'specialty_id': p.specialty_id,
+            'priority': p.priority
+        })
+
+    num_students = len(student_priorities)
+    num_departments = len(departments)
+
+    if num_departments == 0:
+        return jsonify({"error": "Нет доступных профилей"}), 400
+
+    if not max_per_profile:
+        max_per_profile = round(num_students / num_departments)
+
+    dept_slots = {dep.id: {'name': dep.specialization, 'count': 0, 'max': max_per_profile} for dep in departments}
+
+    sorted_students = sorted(
+        student_priorities.items(),
+        key=lambda x: x[1]['average_score'],
+        reverse=True
+    )
+
+    distribution_result = []
+    allocated_students = set()
+
+    for student_id, data in sorted_students:
+        if student_id in allocated_students:
+            continue
+
+        sorted_priorities = sorted(data['priorities'], key=lambda x: x['priority'])
+
+        for pref in sorted_priorities:
+            specialty_id = pref['specialty_id']
+            if specialty_id in dept_slots and dept_slots[specialty_id]['count'] < dept_slots[specialty_id]['max']:
+                dept_slots[specialty_id]['count'] += 1
+                allocated_students.add(student_id)
+                distribution_result.append({
+                    'student_id': student_id,
+                    'specialty_id': specialty_id,
+                    'priority_got': pref['priority'],
+                    'average_score': data['average_score']
+                })
+                break
+
+    stats = {
+        'total_students': len(student_priorities),
+        'distributed': len(distribution_result),
+        'not_distributed': len(student_priorities) - len(distribution_result),
+        'max_per_profile': max_per_profile,
+        'profiles': {d_id: d_data for d_id, d_data in dept_slots.items()}
+    }
+
+    return jsonify({
+        "message": "Распределение выполнено",
+        "distribution": distribution_result,
+        "stats": stats
+    })
+
+
+@app.route('/admin/distribution/profiles/save', methods=['POST'])
+@login_required
+def admin_save_profile_distribution():
+    if current_user.admin_user is None:
+        return jsonify({"error": "Нет доступа"}), 403
+
+    data = request.get_json()
+    distributions = data.get('distributions', [])
+
+    try:
+        saved_count = 0
+        for dist in distributions:
+            student_id = dist['student_id']
+            specialty_id = dist['specialty_id']
+
+            existing = StudentDistribution.query.filter_by(
+                student_id=student_id,
+                distribution_type='profile'
+            ).first()
+
+            if existing:
+                existing.item_id = specialty_id
+                existing.distributed_at = datetime.now()
+                existing.is_original = True
+                existing.exchange_pair_id = None
+            else:
+                new_dist = StudentDistribution(
+                    student_id=student_id,
+                    distribution_type='profile',
+                    item_id=specialty_id,
+                    is_original=True
+                )
+                db.session.add(new_dist)
+
+            saved_count += 1
+
+        db.session.commit()
+        return jsonify({"message": f"Сохранено {saved_count} распределений"})
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/admin/distribution/view/<distribution_type>')
+@login_required
+def admin_view_distribution(distribution_type):
+
+    if current_user.admin_user is None:
+        return render_error(403)
+
+    if distribution_type not in ['seminar', 'profile']:
+        return render_error(400)
+
+    distributions = db.session.query(
+        StudentDistribution,
+        Student,
+        Person
+    ).join(
+        Student, StudentDistribution.student_id == Student.id
+    ).join(
+        Person, Student.person_id == Person.id
+    ).filter(
+        StudentDistribution.distribution_type == distribution_type
+    ).order_by(
+        StudentDistribution.item_id,
+        Person.surname
+    ).all()
+
+    grouped = {}
+    for dist, student, person in distributions:
+        item_id = dist.item_id
+
+        if item_id not in grouped:
+            if distribution_type == 'seminar':
+                item = ProjectSeminar.query.get(item_id)
+                item_name = item.name if item else f"ID: {item_id}"
+            else:
+                item = Specialty.query.get(item_id)
+                item_name = item.specialization if item else f"ID: {item_id}"
+
+            grouped[item_id] = {
+                'name': item_name,
+                'students': []
+            }
+
+        grouped[item_id]['students'].append({
+            'id': student.id,
+            'name': person.full_name,
+            'is_original': dist.is_original,
+            'distributed_at': dist.distributed_at
+        })
+
+    return render_template(
+        'view_distribution.html',
+        distribution_type=distribution_type,
+        grouped=grouped
+    )
+
+
+
+
 
 
 @app.route('/certificate_of_study/<int:student_id>', methods=['GET', 'POST'])
@@ -2600,70 +4303,6 @@ def certificates_of_study_archive(year=None):
                            year=year, years=years, page=page)
 
 
-@app.route('/certificates_of_study_archive_print/<int:year>', methods=['GET'])
-@login_required
-def certificates_of_study_archive_print(year):
-    if not ((current_user.admin_user is not None and current_user.admin_user.active) or
-            (current_user.teacher is not None and current_user.teacher.active and current_user.teacher.dean_staff)):
-        return render_error(403)
-
-    certificates = db.session.query(CertificateOfStudy).filter(CertificateOfStudy.year == year).filter(CertificateOfStudy.ready_time.isnot(None)).order_by(CertificateOfStudy.num).all()
-
-    f = create_excel_certificates_of_study(certificates)
-    f.seek(0)
-    file_name = "Справки об обучении ФКН %d.xlsx" % year
-    return send_file(f, mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                     as_attachment=True,
-                     download_name=file_name)
-
-@app.route('/schedule/<schedule_type>/<object_type>/<int:object_id>', methods=["GET"])
-@login_required
-def schedule(schedule_type, object_type, object_id: int):
-    t: Teacher = None
-    s: Student = None
-    sg: StudGroup = None
-    if object_type == "teacher":
-        t = db.session.query(Teacher).filter_by(id=object_id).one_or_none()
-        if t is None:
-            return render_error(404)
-
-    elif object_type == "student":
-        s = db.session.query(Student).filter_by(id=object_id).one_or_none()
-        if s is None:
-            return render_error(404)
-        if not s.get_rights(current_user)["read_marks"]:
-            return render_error(403)
-
-    elif object_type == "stud_group":
-        sg = db.session.query(StudGroup).filter_by(id=object_id).one_or_none()
-        if sg is None:
-            return render_error(404)
-    else:
-        return render_error(404)
-
-
-
-    if schedule_type == "exams":
-        q_exams = db.session.query(Exam).join(CurriculumUnit, Exam.curriculum_unit_id==CurriculumUnit.id)
-        if s is not None:
-            q_exams = q_exams.filter(CurriculumUnit.stud_group_id == s.stud_group_id)
-            if s.stud_group is not None and s.stud_group.sub_count > 1 and s.stud_group_subnum > 0:
-                q_exams = q_exams.filter(Exam.stud_group_subnums.op('&')((1<<(s.stud_group_subnum - 1))))
-            q_exams = q_exams.order_by(Exam.stime)
-        if t is not None:
-            q_exams = q_exams.join(StudGroup, CurriculumUnit.stud_group_id == StudGroup.id).filter(StudGroup.active)
-            q_exams = q_exams.filter(Exam.teacher_id == t.id)
-            q_exams = q_exams.order_by(Exam.stime, StudGroup.semester, StudGroup.num, Exam.stud_group_subnums)
-
-        if sg is not None:
-            q_exams = q_exams.filter(CurriculumUnit.stud_group_id == object_id)
-            q_exams = q_exams.order_by(Exam.stime, Exam.stud_group_subnums)
-
-        exams = q_exams.all()
-
-        return render_template('schedule_exams.html', teacher=t, student=s, exams=exams, stud_group=sg, now=datetime.now())
-    else:
-        return render_error(404)
 
 @app.route('/lessons', methods=["GET"])
 @login_required
@@ -2687,7 +4326,8 @@ def lessons():
 
 @app.route('/schedule/exams', methods=["GET"])
 @app.route('/schedule', methods=["GET"])
-def schedule_all():
+@login_required
+def schedule():
     index_js_file = None
     index_js_file_st_mtime = None
 

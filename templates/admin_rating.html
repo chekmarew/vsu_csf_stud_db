@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+
+{% block title %}Управление рейтингом{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Управление рейтингом</h2>
+    <form id="ratingForm">
+        <div class="form-group">
+            <label for="student_id">ID студента</label>
+            <input type="number" class="form-control" id="student_id" required>
+        </div>
+        <div class="form-group">
+            <label for="average_score">Средний балл</label>
+            <input type="number" step="0.01" min="0" max="100" class="form-control" id="average_score" required>
+        </div>
+        <div class="form-group">
+            <label for="category">Категория</label>
+        </div>
+        <button type="submit" class="btn btn-primary">Сохранить</button>
+    </form>
+
+    <h3 class="mt-4">Текущие рейтинги</h3>
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>ID студента</th>
+                <th>ФИО</th>
+                <th>Средний балл</th>
+                <th>Категория</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for rating, full_name in ratings %}
+            <tr>
+                <td>{{ rating.student_id }}</td>
+                <td>{{ full_name }}</td>
+                <td>{{ rating.average_score }}</td>
+                <td>
+                    {% if rating.category|int == 1 %}Бюджет
+                    {% elif rating.category|int == 2 %}Договор
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const form = document.getElementById("ratingForm");
+    form.addEventListener("submit", function (event) {
+        event.preventDefault();
+        const data = {
+            student_id: parseInt(document.getElementById("student_id").value),
+            average_score: parseFloat(document.getElementById("average_score").value),
+            category: parseInt(document.getElementById("category").value)
+        };
+        console.log("Sending data:", data);
+        fetch("/admin/rating", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify(data)
+        })
+        .then(res => res.json())
+        .then(result => {
+            alert(result.message || result.error);
+            if (result.message) location.reload();
+        })
+        .catch(err => {
+            console.error("Fetch error:", err);
+            alert("Ошибка при отправке данных.");
+        });
+    });
+});
+</script>
+{% endblock %}

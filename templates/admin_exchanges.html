@@ -1,0 +1,299 @@
+{% extends "base.html" %}
+
+{% block title %}Управление обменами{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <h2><i class="fas fa-exchange-alt"></i> Управление обменами</h2>
+
+    <a href="{{ url_for('admin_distribution_dashboard') }}" class="btn btn-secondary mb-3">
+        <i class="fas fa-arrow-left"></i> К распределению
+    </a>
+
+    <!-- Статистика -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card bg-warning text-dark">
+                <div class="card-body text-center">
+                    <h2 class="mb-0">{{ stats.pending_admin }}</h2>
+                    <p class="mb-0"><i class="fas fa-clock"></i> Ожидают одобрения</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-info text-white">
+                <div class="card-body text-center">
+                    <h2 class="mb-0">{{ stats.pending_students }}</h2>
+                    <p class="mb-0"><i class="fas fa-users"></i> Ждут студентов</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-success text-white">
+                <div class="card-body text-center">
+                    <h2 class="mb-0">{{ stats.approved }}</h2>
+                    <p class="mb-0"><i class="fas fa-check"></i> Одобрено</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-secondary text-white">
+                <div class="card-body text-center">
+                    <h2 class="mb-0">{{ stats.total_requests }}</h2>
+                    <p class="mb-0"><i class="fas fa-file-alt"></i> Активных заявок</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Фильтр -->
+    <div class="btn-group mb-4">
+        <a href="?type=all" class="btn btn-{{ 'primary' if filter_type == 'all' else 'outline-primary' }}">
+            Все
+        </a>
+        <a href="?type=seminar" class="btn btn-{{ 'primary' if filter_type == 'seminar' else 'outline-primary' }}">
+            Семинары
+        </a>
+        <a href="?type=profile" class="btn btn-{{ 'primary' if filter_type == 'profile' else 'outline-primary' }}">
+            Профили
+        </a>
+    </div>
+
+    <!-- Обмены на рассмотрении -->
+    <div class="card mb-4">
+        <div class="card-header bg-warning text-dark">
+            <h5 class="mb-0">
+                <i class="fas fa-hourglass-half"></i>
+                Обмены на рассмотрении ({{ pending_pairs|length }})
+            </h5>
+        </div>
+        <div class="card-body">
+            {% if pending_pairs %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead class="thead-dark">
+                        <tr>
+                            <th>ID</th>
+                            <th>Тип</th>
+                            <th>Студент 1</th>
+                            <th>Отдаёт → Хочет</th>
+                            <th class="text-center">↔</th>
+                            <th>Студент 2</th>
+                            <th>Отдаёт → Хочет</th>
+                            <th>Дата</th>
+                            <th>Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for pair in pending_pairs %}
+                        <tr>
+                            <td><strong>#{{ pair.pair_id }}</strong></td>
+                            <td>
+                                <span class="badge badge-{{ 'info' if pair.exchange_type == 'seminar' else 'primary' }}">
+                                    {{ 'Семинар' if pair.exchange_type == 'seminar' else 'Профиль' }}
+                                </span>
+                            </td>
+                            <td>
+                                <strong>{{ pair.student1_name }}</strong><br>
+                                <small class="text-muted">ID: {{ pair.student1_id }}</small>
+                            </td>
+                            <td>
+                                <small>
+                                    {{ pair.student1_current }}<br>
+                                    → {{ pair.student1_desired }}
+                                </small>
+                            </td>
+                            <td class="text-center text-muted h4">↔</td>
+                            <td>
+                                <strong>{{ pair.student2_name }}</strong><br>
+                                <small class="text-muted">ID: {{ pair.student2_id }}</small>
+                            </td>
+                            <td>
+                                <small>
+                                    {{ pair.student2_current }}<br>
+                                    → {{ pair.student2_desired }}
+                                </small>
+                            </td>
+                            <td>
+                                <small>{{ pair.created_at.strftime('%d.%m.%Y %H:%M') }}</small>
+                            </td>
+                            <td>
+                                <div class="btn-group btn-group-sm">
+                                    <button class="btn btn-success approve-btn"
+                                            data-pair-id="{{ pair.pair_id }}"
+                                            data-student1="{{ pair.student1_name }}"
+                                            data-student2="{{ pair.student2_name }}">
+                                        <i class="fas fa-check"></i> Одобрить
+                                    </button>
+                                    <button class="btn btn-danger reject-btn"
+                                            data-pair-id="{{ pair.pair_id }}">
+                                        <i class="fas fa-times"></i> Отклонить
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="alert alert-success mb-0">
+                <i class="fas fa-check-circle"></i>
+                Нет обменов, ожидающих рассмотрения.
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- История -->
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="fas fa-history"></i> История обменов</h5>
+        </div>
+        <div class="card-body">
+            {% if history %}
+            <div class="table-responsive">
+                <table class="table table-striped table-sm">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Дата</th>
+                            <th>Тип</th>
+                            <th>Студент 1</th>
+                            <th>Студент 2</th>
+                            <th>Статус</th>
+                            <th>Обработал</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in history %}
+                        <tr>
+                            <td>#{{ item.pair_id }}</td>
+                            <td>{{ item.processed_at.strftime('%d.%m.%Y %H:%M') if item.processed_at else '-' }}</td>
+                            <td>
+                                <span class="badge badge-{{ 'info' if item.exchange_type == 'seminar' else 'primary' }}">
+                                    {{ 'Семинар' if item.exchange_type == 'seminar' else 'Профиль' }}
+                                </span>
+                            </td>
+                            <td>{{ item.student1_name }}</td>
+                            <td>{{ item.student2_name }}</td>
+                            <td>
+                                <span class="badge badge-{{ 'success' if item.status == 'approved' else 'danger' }}">
+                                    {{ 'Одобрен' if item.status == 'approved' else 'Отклонён' }}
+                                </span>
+                            </td>
+                            <td>{{ item.admin_name }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p class="text-muted mb-0">История пуста.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно -->
+<div class="modal fade" id="actionModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="actionModalTitle">Подтверждение</h5>
+                <button type="button" class="close" data-dismiss="modal">
+                    <span>&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p id="actionModalText"></p>
+                <div class="form-group">
+                    <label for="adminComment">Комментарий (необязательно):</label>
+                    <textarea class="form-control" id="adminComment" rows="3"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Отмена</button>
+                <button type="button" class="btn btn-primary" id="confirmBtn">Подтвердить</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let currentPairId = null;
+let currentAction = null;
+
+// Одобрение
+document.querySelectorAll('.approve-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+        currentPairId = this.dataset.pairId;
+        currentAction = 'approve';
+
+        document.getElementById('actionModalTitle').innerHTML =
+            '<i class="fas fa-check text-success"></i> Одобрить обмен #' + currentPairId;
+        document.getElementById('actionModalText').innerHTML =
+            'Студенты <strong>' + this.dataset.student1 + '</strong> и <strong>' +
+            this.dataset.student2 + '</strong> обменяются местами.';
+        document.getElementById('confirmBtn').className = 'btn btn-success';
+        document.getElementById('confirmBtn').innerHTML = '<i class="fas fa-check"></i> Одобрить';
+        document.getElementById('adminComment').value = '';
+
+        $('#actionModal').modal('show');
+    });
+});
+
+// Отклонение
+document.querySelectorAll('.reject-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+        currentPairId = this.dataset.pairId;
+        currentAction = 'reject';
+
+        document.getElementById('actionModalTitle').innerHTML =
+            '<i class="fas fa-times text-danger"></i> Отклонить обмен #' + currentPairId;
+        document.getElementById('actionModalText').innerHTML =
+            'Заявки студентов вернутся в статус "открыта". Укажите причину:';
+        document.getElementById('confirmBtn').className = 'btn btn-danger';
+        document.getElementById('confirmBtn').innerHTML = '<i class="fas fa-times"></i> Отклонить';
+        document.getElementById('adminComment').value = '';
+
+        $('#actionModal').modal('show');
+    });
+});
+
+// Подтверждение действия
+document.getElementById('confirmBtn').addEventListener('click', function() {
+    const comment = document.getElementById('adminComment').value;
+    const btn = this;
+
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Обработка...';
+
+    fetch('/admin/exchanges/' + currentPairId, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            action: currentAction,
+            comment: comment
+        })
+    })
+    .then(res => res.json())
+    .then(data => {
+        $('#actionModal').modal('hide');
+        if (data.error) {
+            alert('Ошибка: ' + data.error);
+        } else {
+            alert(data.message);
+            location.reload();
+        }
+    })
+    .catch(err => {
+        console.error(err);
+        alert('Произошла ошибка');
+    })
+    .finally(() => {
+        btn.disabled = false;
+    });
+});
+</script>
+{% endblock %}

@@ -53,6 +53,11 @@
                      <a class="page-link" href="{{ url_for('curriculum_units_open') }}">Незакрытые ведомости</a>
                 </li>
             </ul>
+            <div class="mb-3">
+                <a href="{{ url_for('admin_distribution_dashboard') }}" class="btn btn-info">
+                    Управление распределением и обменами
+                </a>
+            </div>
         </nav>
 
         {% if semester != None %}

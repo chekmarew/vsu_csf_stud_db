@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+
+{% block title %}Рейтинговая таблица{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Рейтинговая таблица</h2>
+
+    <a href="{{ url_for('seminars_project', student_id=student_id) }}" class="btn btn-secondary mb-3">Вернуться к выбору приоритетов</a>
+
+    {% if error %}
+    <p class="text-danger">{{ error }}</p>
+    {% else %}
+    <p>Категория:
+        {% if category|int == 1 %}Бюджет
+        {% elif category|int == 2 %}Договор
+        {% elif category|int == 3 %}Вне конкурса
+        {% else %}Неизвестная категория ({{ category }}) {% endif %}
+    </p>
+
+    {% for table in seminar_tables %}
+    <h3>Семинар: {{ table.seminar_name }}</h3>
+    {% if table.ratings %}
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Место</th>
+                <th>ФИО</th>
+                <th>Средний балл</th>
+                <th>Приоритет</th>
+                <th>Статус</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for rating in table.ratings %}
+            <tr class="{% if rating.is_admitted %}table-success{% elif rating.is_current_student %}table-info{% else %}table-light{% endif %}">
+                <td>{{ rating.rank }}</td>
+                <td>{{ rating.full_name }}</td>
+                <td>{{ rating.average_score }}</td>
+                <td>{{ rating.priority_number }}</td>
+                <td>{{ 'Поступает' if rating.is_admitted else 'Не поступает' }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p>Нет студентов, выбравших этот семинар в вашей категории.</p>
+    {% endif %}
+    {% endfor %}
+    {% endif %}
+</div>
+{% endblock %}

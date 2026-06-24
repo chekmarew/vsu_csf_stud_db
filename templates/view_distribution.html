@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+
+{% block title %}Просмотр распределения{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <h2>
+        <i class="fas fa-eye"></i>
+        Распределение по {{ 'семинарам' if distribution_type == 'seminar' else 'профилям' }}
+    </h2>
+
+    <a href="{{ url_for('admin_distribution_dashboard') }}" class="btn btn-secondary mb-3">
+        <i class="fas fa-arrow-left"></i> Назад
+    </a>
+
+    {% if grouped %}
+    <div class="row">
+        {% for item_id, data in grouped.items() %}
+        <div class="col-md-4 mb-4">
+            <div class="card h-100">
+                <div class="card-header">
+                    <strong>{{ data.name }}</strong>
+                    <span class="badge badge-primary float-right">{{ data.students|length }}</span>
+                </div>
+                <div class="card-body" style="max-height: 400px; overflow-y: auto;">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Студент</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for student in data.students %}
+                            <tr>
+                                <td>{{ loop.index }}</td>
+                                <td>{{ student.name }}</td>
+                                <td>
+                                    {% if not student.is_original %}
+                                    <span class="badge badge-warning" title="После обмена">
+                                        <i class="fas fa-exchange-alt"></i>
+                                    </span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="alert alert-info">
+        <i class="fas fa-info-circle"></i>
+        Распределение ещё не проводилось.
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

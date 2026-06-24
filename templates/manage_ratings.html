@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+
+{% block title %}Управление рейтингом{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Управление рейтингом</h2>
+
+    <!-- Форма для добавления рейтинга -->
+    <h3>Добавить рейтинг</h3>
+    <form id="ratingForm" class="mb-4">
+        <div class="form-group">
+            <label for="student_id">ID студента (номер зачётки):</label>
+            <input type="number" class="form-control" id="student_id" name="student_id" required>
+        </div>
+        <div class="form-group">
+            <label for="average_score">Средний балл (0–5):</label>
+            <input type="number" step="0.1" min="0" max="5" class="form-control" id="average_score" name="average_score" required>
+        </div>
+        <button type="submit" class="btn btn-primary mt-2">Добавить рейтинг</button>
+    </form>
+
+    <!-- Таблица текущих рейтингов -->
+    <h3>Текущие рейтинги</h3>
+    {% if ratings %}
+    <table class="table table-bordered">
+        <thead>
+            <tr>
+                <th>ID студента</th>
+                <th>ФИО</th>
+                <th>Средний балл</th>
+                <th>Категория</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for rating, student, person in ratings %}
+            <tr>
+                <td>{{ rating.student_id }}</td>
+                <td>{{ person.surname }} {{ person.firstname }} {{ person.middlename }}</td>
+                <td>{{ rating.average_score }}</td>
+                <td>
+                    {% if rating.category == 1 %}Бюджет
+                    {% elif rating.category == 2 %}Договор
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p>Рейтинги отсутствуют.</p>
+    {% endif %}
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('ratingForm');
+
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        const studentId = document.getElementById('student_id').value;
+        const averageScore = document.getElementById('average_score').value;
+        const category = document.getElementById('category').value;
+
+        fetch('/manage_ratings', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                student_id: parseInt(studentId),
+                average_score: parseFloat(averageScore),
+                category: parseInt(category)
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                alert('Ошибка: ' + data.error);
+            } else {
+                alert(data.message);
+                window.location.reload();
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Произошла ошибка при добавлении рейтинга');
+        });
+    });
+});
+</script>
+{% endblock %}

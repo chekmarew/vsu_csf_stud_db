@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+
+{% block title %}Выбор приоритетов{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Выбор приоритетов проектного семинара</h2>
+
+    {% if seminar_count < 2 %}
+        <div class="alert alert-warning">
+            Недостаточно семинаров для выбора приоритетов. Обратитесь к администратору.
+        </div>
+    {% else %}
+        <form id="priorityForm">
+            <input type="hidden" id="student_id" value="{{ student_id }}">
+            <input type="hidden" id="seminar_count" value="{{ seminar_count }}">
+
+            {% for i in range(1, seminar_count + 1) %}
+            <div class="form-group">
+                <label for="priority_{{ i }}">Приоритет {{ i }}</label>
+                <select class="form-control" id="priority_{{ i }}" name="priority_{{ i }}" required>
+                    <option disabled selected value="">Выберите семинар</option>
+                    {% for seminar in seminar_options %}
+                    <option value="{{ seminar.id }}"
+                            {% if priorities[i] == seminar.id %}selected{% endif %}>
+                        {{ seminar.name }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            {% endfor %}
+
+            <button type="submit" class="btn btn-primary">Сохранить</button>
+            <a href="{{ url_for('rating_table') }}" class="btn btn-secondary ml-2">Посмотреть рейтинг</a>
+        </form>
+    {% endif %}
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const form = document.getElementById("priorityForm");
+    if (!form) return;
+
+    form.addEventListener("submit", function (event) {
+        event.preventDefault();
+
+        const seminarCount = parseInt(document.getElementById("seminar_count").value);
+        let data = {};
+        for (let i = 1; i <= seminarCount; i++) {
+            const select = document.getElementById("priority_" + i);
+            if (!select || !select.value) {
+                alert("Пожалуйста, выберите все приоритеты.");
+                return;
+            }
+            data["priority_" + i] = parseInt(select.value);
+        }
+
+        const values = Object.values(data);
+        if (new Set(values).size !== seminarCount) {
+            alert("Все приоритеты должны быть разными!");
+            return;
+        }
+
+        fetch("/submit_priorities", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify(data)
+        })
+        .then(res => res.json())
+        .then(result => {
+            alert(result.message || result.error);
+            if (result.message) {
+                window.location.href = "{{ url_for('rating_table') }}"; // Redirect to rating table on success
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            alert("Ошибка при отправке данных.");
+        });
+    });
+});
+</script>
+{% endblock %}

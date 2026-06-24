@@ -7,7 +7,7 @@ from datetime import timedelta
 
 class Config:
 
-    SQLALCHEMY_DATABASE_URI = "mysql+pymysql://user:pass@localhost/db"
+    SQLALCHEMY_DATABASE_URI = "mysql+pymysql://root:1234567@localhost/db_brs"
     SQLALCHEMY_COMMIT_ON_TEARDOWN = False # Autocommit
     SQLALCHEMY_TRACK_MODIFICATIONS = False # ??? Если не прописать, то будет Warning
     SECRET_KEY = '$_SECRET_KEY_$'

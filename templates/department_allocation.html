@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+
+{% block title %}Распределение по кафедрам{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Распределение студентов по профилям</h2>
+    <p class="mb-4">Списки студентов, распределённых по профилям на основе их приоритетов и среднего балла.</p>
+
+    {% for dep_id, dep in department_lists.items() %}
+    <div class="card mb-3">
+        <div class="card-header">
+            <h5>{{ dep.name }}</h5>
+        </div>
+        <div class="card-body">
+            {% if dep.students %}
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>ФИО</th>
+                        <th>Средний балл</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for student in dep.students %}
+                    <tr>
+                        <td>{{ student.name }}</td>
+                        <td>{{ student.average_score }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <!-- Сообщение, если студентов нет -->
+            <p>Нет студентов, распределённых на эту кафедру.</p>
+            {% endif %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}
