@@ -2705,22 +2705,6 @@ def admin_rating():
 
 
 
-
-
-class DepartmentPriority(db.Model):
-    __tablename__ = 'department_priorities'
-
-    id = db.Column(db.Integer, primary_key=True)
-    student_id = db.Column(db.BigInteger, db.ForeignKey('student.student_id', ondelete='CASCADE'), nullable=False)
-    priority = db.Column(db.Integer, nullable=False)
-    specialty_id = db.Column(db.Integer, db.ForeignKey('specialty.specialty_id', ondelete='CASCADE'), nullable=False)
-
-    __table_args__ = (
-        db.UniqueConstraint('student_id', 'priority', name='_student_priority_uc'),
-        db.UniqueConstraint('student_id', 'specialty_id', name='_student_specialty_uc'),
-    )
-
-
 @app.route('/profile_selection/<int:student_id>', methods=['GET'])
 @login_required
 def department_selection(student_id):
