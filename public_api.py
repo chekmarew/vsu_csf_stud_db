@@ -67,19 +67,6 @@ def public_api_marks():
         "errors": [],
         "ok": True
     }
-
-    specialty_code = None
-    if "specialty_code" in request.args and request.args["specialty_code"]:
-        specialty_code = request.args["specialty_code"]
-    else:
-        result["errors"].append("Не указан параметр 'specialty_code'")
-
-    subject_code = None
-    if "subject_code" in request.args and request.args["subject_code"]:
-        subject_code = request.args["subject_code"]
-    else:
-        result["errors"].append("Не указан параметр 'subject_code'")
-
     semester = None
     if "semester" in request.args and request.args["semester"]:
         try:
@@ -88,6 +75,14 @@ def public_api_marks():
             result["errors"].append("Параметр 'semester' должен быть целым числом")
     else:
         result["errors"].append("Не указан параметр 'semester'")
+
+
+
+    specialty_code = None
+    if "specialty_code" in request.args and request.args["specialty_code"]:
+        specialty_code = request.args["specialty_code"]
+    else:
+        result["errors"].append("Не указан параметр 'specialty_code'")
 
     group_num = None
     if "group_num" in request.args and request.args["group_num"]:
@@ -101,6 +96,23 @@ def public_api_marks():
         for _mark_type, _mark_type_name in MarkSimpleTypeDict.items():
             if _mark_type_name == request.args["test_form"]:
                 mark_type = _mark_type
+
+    subject_code = None
+    if "subject_code" in request.args and request.args["subject_code"]:
+        subject_code = request.args["subject_code"]
+    else:
+        # Костыль !!!
+        # Пример
+        # request.args["subject_name"] == "Курсовая работа по дисциплине Б1.О.26 Теория информационных процессов и систем"
+        if "subject_name" in request.args and "test_form" in request.args and request.args["test_form"] == "Оценка":
+            subject_name = request.args["subject_name"]
+            for _mark_type, _mark_type_name in MarkSimpleTypeDict.items():
+                if subject_name.startswith(_mark_type_name + " "):
+                    subject_code = subject_name[len(_mark_type_name)+1:].split(" ", 1)[0]
+                    mark_type = _mark_type
+
+    if subject_code is None:
+        result["errors"].append("Не указан параметр 'subject_code'")
 
     if mark_type is None:
         result["errors"].append("Параметр 'test_form' не указан или имеет недопустимое значение")
