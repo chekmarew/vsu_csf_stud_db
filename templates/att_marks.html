@@ -190,7 +190,7 @@
                 {% if show_group_subnum %}
                 <div class="col-0-half"><a href="javascript:void(null)" data-sort-students-keys="stud_group_subnum,full_name">Пг</a></div>
                 {% endif %}
-                <div class="col-2"><a href="javascript:void(null)" data-sort-students-keys="full_name">ФИО</a></div>
+                <div class="col-2"><a href="javascript:void(null)" data-sort-students-keys="full_name">ФИО</a><br><a id="button_copy_student_names" href="javascript:void(null)" title="Скопировать фамилии">&#128203;</a></div>
                 <div class="col-1-half"><a href="javascript:void(null)" data-sort-students-keys="id">Студ. билет №</a></div>
                 {% if 'teacher' in curriculum_unit.visible_attrs %}
                 <div class="col-2">Науч. рук.</div>
@@ -1010,6 +1010,7 @@
                 }, 1000);
             });
 
+
             var is_changed_input_mark = false;
             /* При изменении оценок запретить изменение состояния ведомости и печать */
             var fn_change_mark = function(){
@@ -1265,6 +1266,22 @@
             {
                 fn_sort_students(["full_name"]);
             }
+
+            $('#button_copy_student_names').click(function(){
+                var buffer_text = "";
+                for (var i=0; i<students_all.length; i++)
+                {
+                    var s = students_all[i];
+                    if (s.enable)
+                    {
+                        buffer_text += s.full_name + "\r\n";
+                    }
+                }
+
+                navigator.clipboard.writeText(buffer_text);
+
+            })
+
         });
 
     </script>
